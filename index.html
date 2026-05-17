@@ -677,6 +677,7 @@
     async function startPlayback() {
       try {
         await Tone.start();
+        if ('audioSession' in navigator) navigator.audioSession.type = 'playback';
         initChannels();
         const chords = parseProgression(progEl.value, keyEl.value);
         buildPart(chords);
