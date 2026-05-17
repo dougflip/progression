@@ -199,6 +199,27 @@
     }
     .preset-btn:active { background: #e1e1e1; }
 
+    .bars-options {
+      display: flex;
+      gap: 0.4rem;
+    }
+    .bars-btn {
+      flex: 1;
+      padding: 0.6rem;
+      background: #f1f1f1;
+      border: 1px solid #ddd;
+      border-radius: 0.5rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .bars-btn.active {
+      background: #222;
+      color: #fff;
+      border-color: #222;
+    }
+
     .share-btn {
       display: block;
       width: 100%;
@@ -296,9 +317,16 @@
       <label class="field-label" for="tempo">Tempo <span class="tempo-display"><span id="tempoValue">85</span> BPM</span></label>
       <input id="tempo" type="range" min="40" max="220" step="1" value="85" />
 
+      <label class="field-label">Bars per chord</label>
+      <div class="bars-options" id="bars-options">
+        <button type="button" class="bars-btn" data-bars="1">1</button>
+        <button type="button" class="bars-btn active" data-bars="2">2</button>
+        <button type="button" class="bars-btn" data-bars="4">4</button>
+      </div>
+
       <label class="field-label" for="progression">Progression</label>
       <input id="progression" type="text" value="I vi ii V" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
-      <div class="hint">Space-separated Roman numerals. Uppercase = major, lowercase = minor.</div>
+      <div class="hint">Space-separated Roman numerals. Upper = major, lower = minor. Repeat to extend, or use <code>:n</code> for n bars (e.g. <code>V:4</code>).</div>
 
       <label class="field-label">Presets</label>
       <div class="presets" id="presets"></div>
@@ -343,7 +371,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
   <script>
-    const CHORD_LENGTH_MEASURES = 2;
+    const BARS_OPTIONS = [1, 2, 4];
 
     const MAJOR_SCALE = [0, 2, 4, 5, 7, 9, 11];
     const ROMAN = {
@@ -364,7 +392,7 @@
       { label: 'ii V I',       value: 'ii V I' },
       { label: 'I IV V',       value: 'I IV V' },
       { label: 'i iv v',       value: 'i iv v' },
-      { label: '12-bar blues', value: 'I I I I IV IV I I V IV I V' },
+      { label: '12-bar blues', value: 'I:4 IV:2 I:2 V:1 IV:1 I:1 V:1' },
     ];
 
     function midiToNote(m) {
@@ -396,11 +424,24 @@
       };
     }
 
-    function parseProgression(input, key) {
+    function parseToken(token, defaultBars) {
+      const [numeral, durStr] = token.split(':');
+      let bars = defaultBars;
+      if (durStr !== undefined) {
+        const n = parseInt(durStr, 10);
+        if (Number.isFinite(n) && n > 0) bars = n;
+      }
+      return { numeral, bars };
+    }
+
+    function parseProgression(input, key, defaultBars) {
       const keyMidi = KEY_MIDI[key];
       const tokens = input.trim().split(/\s+/).filter(Boolean);
       if (tokens.length === 0) throw new Error('Progression is empty');
-      return tokens.map(t => ({ numeral: t, ...buildChord(t, keyMidi) }));
+      return tokens.map(t => {
+        const { numeral, bars } = parseToken(t, defaultBars);
+        return { token: t, numeral, bars, ...buildChord(numeral, keyMidi) };
+      });
     }
 
     const BASS_PATTERN_MAJOR = ['root', 'root', 'fifth', 'root'];
@@ -502,7 +543,8 @@
       const steps = [];
       for (const c of chords) {
         const pattern = c.isMinor ? BASS_PATTERN_MINOR : BASS_PATTERN_MAJOR;
-        for (let beat = 0; beat < 8; beat++) {
+        const beats = c.bars * 4;
+        for (let beat = 0; beat < beats; beat++) {
           const step = pattern[beat % 4];
           steps.push(step === 'fifth' ? c.bassFifth : c.bassRoot);
         }
@@ -525,24 +567,30 @@
       }).connect(reverb);
       synth.volume.value = -10;
 
-      const events = chords.map((c, i) => ({
-        time: `${i * CHORD_LENGTH_MEASURES}m`,
-        notes: c.notes,
-        numeral: c.numeral,
-        index: i,
-        total: chords.length,
-      }));
+      let cumBars = 0;
+      const events = chords.map((c, i) => {
+        const ev = {
+          time: `${cumBars}m`,
+          bars: c.bars,
+          notes: c.notes,
+          token: c.token,
+          index: i,
+          total: chords.length,
+        };
+        cumBars += c.bars;
+        return ev;
+      });
 
       part = new Tone.Part((time, ev) => {
-        synth.triggerAttackRelease(ev.notes, `${CHORD_LENGTH_MEASURES}m`, time);
+        synth.triggerAttackRelease(ev.notes, `${ev.bars}m`, time);
         Tone.Draw.schedule(() => {
           setActiveChip(ev.index);
-          setStatus(`${ev.index + 1}/${ev.total}: ${ev.numeral}  (${ev.notes.slice(1).join(' ')})`);
+          setStatus(`${ev.index + 1}/${ev.total}: ${ev.token}  (${ev.notes.slice(1).join(' ')})`);
         }, time);
       }, events);
 
       part.loop = true;
-      part.loopEnd = `${chords.length * CHORD_LENGTH_MEASURES}m`;
+      part.loopEnd = `${cumBars}m`;
       part.start(0);
 
       buildDrums();
@@ -567,6 +615,12 @@
     const tempoValueEl = $('tempoValue');
     const readoutKey   = $('readout-key');
     const readoutTempo = $('readout-tempo');
+    const barsButtons  = document.querySelectorAll('.bars-btn');
+
+    function getDefaultBars() {
+      const active = document.querySelector('.bars-btn.active');
+      return active ? parseInt(active.dataset.bars, 10) : 2;
+    }
 
     let wakeLock = null;
     async function acquireWakeLock() {
@@ -601,12 +655,13 @@
     function renderChips() {
       stripEl.innerHTML = '';
       const tokens = progEl.value.trim().split(/\s+/).filter(Boolean);
-      tokens.forEach(numeral => {
+      tokens.forEach(token => {
+        const [numeral] = token.split(':');
         const chip = document.createElement('div');
         chip.className = 'chip';
         const n = document.createElement('div');
         n.className = 'numeral';
-        n.textContent = numeral;
+        n.textContent = token;
         const name = document.createElement('div');
         name.className = 'name';
         name.textContent = chordName(numeral, keyEl.value);
@@ -626,12 +681,15 @@
       clearTimeout(rebuildTimer);
       rebuildTimer = setTimeout(() => {
         if (Tone.Transport.state !== 'started') return;
-        try {
-          const chords = parseProgression(progEl.value, keyEl.value);
-          buildPart(chords);
-        } catch (e) {
-          setStatus('Error: ' + e.message);
-        }
+        Tone.Transport.scheduleOnce(() => {
+          if (Tone.Transport.state !== 'started') return;
+          try {
+            const chords = parseProgression(progEl.value, keyEl.value, getDefaultBars());
+            buildPart(chords);
+          } catch (e) {
+            setStatus('Error: ' + e.message);
+          }
+        }, '+0');
       }, 250);
     }
 
@@ -678,6 +736,15 @@
       scheduleRebuild();
     });
 
+    barsButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        barsButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        scheduleRebuild();
+        syncUrl();
+      });
+    });
+
     function setStatus(msg) { statusEl.textContent = msg; }
 
     function setPlayingUI(playing) {
@@ -697,7 +764,7 @@
         await Tone.start();
         if ('audioSession' in navigator) navigator.audioSession.type = 'playback';
         initChannels();
-        const chords = parseProgression(progEl.value, keyEl.value);
+        const chords = parseProgression(progEl.value, keyEl.value, getDefaultBars());
         buildPart(chords);
         Tone.Transport.bpm.value = clampedTempo();
         Tone.Transport.start();
@@ -764,6 +831,7 @@
     const DEFAULTS = {
       key: 'C',
       tempo: 85,
+      bars: 2,
       progression: 'I vi ii V',
       chordVol: 50,
       bassVol: 100,
@@ -779,6 +847,7 @@
       return {
         key: keyEl.value,
         tempo: clampedTempo(),
+        bars: getDefaultBars(),
         progression: progEl.value,
         chordVol: chordVolEl.value,
         bassVol: bassVolEl.value,
@@ -794,6 +863,7 @@
       const p = new URLSearchParams();
       p.set('key', s.key);
       p.set('tempo', s.tempo);
+      p.set('bars', s.bars);
       p.set('progression', s.progression);
       p.set('chordVol', s.chordVol);
       p.set('bassVol', s.bassVol);
@@ -819,9 +889,11 @@
       };
       const str = (k, def) => p.get(k) ?? def;
       const key = str('key', DEFAULTS.key);
+      const bars = num('bars', DEFAULTS.bars);
       return {
         key: VALID_KEYS.includes(key) ? key : DEFAULTS.key,
         tempo: Math.max(40, Math.min(220, num('tempo', DEFAULTS.tempo))),
+        bars: BARS_OPTIONS.includes(bars) ? bars : DEFAULTS.bars,
         progression: str('progression', DEFAULTS.progression),
         chordVol: num('chordVol', DEFAULTS.chordVol),
         bassVol: num('bassVol', DEFAULTS.bassVol),
@@ -840,6 +912,10 @@
       tempoEl.value = s.tempo;
       tempoValueEl.textContent = s.tempo;
       readoutTempo.textContent = s.tempo;
+
+      barsButtons.forEach(btn => {
+        btn.classList.toggle('active', parseInt(btn.dataset.bars, 10) === s.bars);
+      });
 
       progEl.value = s.progression;
 
