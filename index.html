@@ -31,11 +31,15 @@
     .chip {
       flex: 1 1 4.5rem;
       min-width: 4.5rem;
-      padding: 0.9rem 0.5rem;
+      min-height: 3.8rem;
+      padding: 0.6rem 0.5rem;
       border-radius: 0.5rem;
       background: #fff;
       border: 1px solid #ddd;
       text-align: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
       transition: background 0.1s, color 0.1s, border-color 0.1s;
     }
     .chip .numeral { font-size: 0.75rem; color: #888; line-height: 1; }
@@ -373,7 +377,7 @@
 
       <label class="field-label" for="progression">Progression</label>
       <input id="progression" type="text" value="I vi ii V" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
-      <div class="hint">Space-separated Roman numerals. Upper = major, lower = minor. Repeat to extend, or use <code>:n</code> for n bars (e.g. <code>V:4</code>).</div>
+      <div class="hint">Roman numerals (<code>I</code>, <code>vi</code>) or chord names (<code>C</code>, <code>Am</code>, <code>F#</code>). Upper = major, lower = minor (or use <code>m</code> suffix). Repeat to extend, or use <code>:n</code> for n bars (e.g. <code>V:4</code>).</div>
 
       <label class="field-label">My presets</label>
       <div id="user-presets" class="user-presets"></div>
@@ -437,33 +441,39 @@
     const FLAT_NAMES  = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
     const FLAT_KEYS = new Set(['F','Bb','Eb','Ab','Db','Gb']);
 
+    const PITCH_CLASS = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+    const CHORD_NAME_RE = /^([A-G])([#b]?)(m?)$/;
+
     const PRESETS = [
-      { label: 'I V vi IV',    value: 'I V vi IV' },
-      { label: 'I vi ii V',    value: 'I vi ii V' },
-      { label: 'ii V I',       value: 'ii V I' },
-      { label: 'I IV V',       value: 'I IV V' },
-      { label: 'i iv v',       value: 'i iv v' },
-      { label: '12-bar blues', value: 'I:4 IV:2 I:2 V:1 IV:1 I:1 V:1' },
+      { label: 'I V vi IV',          value: 'I V vi IV' },
+      { label: 'I vi ii V',          value: 'I vi ii V' },
+      { label: 'ii V I',             value: 'ii V I' },
+      { label: 'I IV V',             value: 'I IV V' },
+      { label: 'i iv v',             value: 'i iv v' },
+      { label: '12-bar blues',       value: 'I:4 IV:2 I:2 V:1 IV:1 I:1 V:1' },
+      { label: 'Circle 5ths',        value: 'C G D A E B F# C# G# D# A# F' },
+      { label: 'Circle 4ths',        value: 'C F Bb Eb Ab Db Gb B E A D G' },
+      { label: 'Circle 5ths (min)',  value: 'Cm Gm Dm Am Em Bm F#m C#m G#m D#m A#m Fm' },
+      { label: 'Circle 4ths (min)',  value: 'Cm Fm Bbm Ebm Abm Dbm Gbm Bm Em Am Dm Gm' },
     ];
 
     function midiToNote(m) {
       return SHARP_NAMES[m % 12] + (Math.floor(m / 12) - 1);
     }
 
-    function chordName(numeral, key) {
-      const degree = ROMAN[numeral];
-      if (degree === undefined) return '?';
-      const isMinor = numeral === numeral.toLowerCase();
-      const rootPc = (KEY_MIDI[key] + MAJOR_SCALE[degree]) % 12;
-      const names = FLAT_KEYS.has(key) ? FLAT_NAMES : SHARP_NAMES;
-      return names[rootPc] + (isMinor ? 'm' : '');
+    function chordName(token, key) {
+      if (token in ROMAN) {
+        const degree = ROMAN[token];
+        const isMinor = token === token.toLowerCase();
+        const rootPc = (KEY_MIDI[key] + MAJOR_SCALE[degree]) % 12;
+        const names = FLAT_KEYS.has(key) ? FLAT_NAMES : SHARP_NAMES;
+        return names[rootPc] + (isMinor ? 'm' : '');
+      }
+      if (CHORD_NAME_RE.test(token)) return token;
+      return '?';
     }
 
-    function buildChord(numeral, keyMidi) {
-      const degree = ROMAN[numeral];
-      if (degree === undefined) throw new Error(`Unknown numeral: ${numeral}`);
-      const isMinor = numeral === numeral.toLowerCase();
-      const root = keyMidi + MAJOR_SCALE[degree];
+    function makeChord(root, isMinor) {
       const third = root + (isMinor ? 3 : 4);
       const fifth = root + 7;
       const bassRoot = root - 12;
@@ -473,6 +483,22 @@
         bassFifth: midiToNote(bassRoot + 7),
         isMinor,
       };
+    }
+
+    function buildChord(token, keyMidi) {
+      if (token in ROMAN) {
+        const degree = ROMAN[token];
+        const isMinor = token === token.toLowerCase();
+        return makeChord(keyMidi + MAJOR_SCALE[degree], isMinor);
+      }
+      const m = CHORD_NAME_RE.exec(token);
+      if (m) {
+        const [, letter, acc, q] = m;
+        const acci = acc === '#' ? 1 : acc === 'b' ? -1 : 0;
+        const pc = ((PITCH_CLASS[letter] + acci) % 12 + 12) % 12;
+        return makeChord(60 + pc, q === 'm');
+      }
+      throw new Error(`Unknown chord: ${token}`);
     }
 
     function parseToken(token, defaultBars) {
@@ -710,13 +736,21 @@
         const [numeral] = token.split(':');
         const chip = document.createElement('div');
         chip.className = 'chip';
-        const n = document.createElement('div');
-        n.className = 'numeral';
-        n.textContent = token;
-        const name = document.createElement('div');
-        name.className = 'name';
-        name.textContent = chordName(numeral, keyEl.value);
-        chip.append(n, name);
+        const isAbsolute = !(numeral in ROMAN) && CHORD_NAME_RE.test(numeral);
+        if (isAbsolute) {
+          const name = document.createElement('div');
+          name.className = 'name';
+          name.textContent = token;
+          chip.appendChild(name);
+        } else {
+          const n = document.createElement('div');
+          n.className = 'numeral';
+          n.textContent = token;
+          const name = document.createElement('div');
+          name.className = 'name';
+          name.textContent = chordName(numeral, keyEl.value);
+          chip.append(n, name);
+        }
         stripEl.appendChild(chip);
       });
     }
