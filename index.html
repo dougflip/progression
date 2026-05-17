@@ -236,6 +236,53 @@
     }
     .share-btn:active { background: #444; }
 
+    .user-presets {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      margin-bottom: 0.4rem;
+    }
+    .user-preset-row {
+      display: flex;
+      gap: 0.4rem;
+    }
+    .user-preset-name {
+      flex: 1;
+      text-align: left;
+    }
+    .icon-btn {
+      padding: 0.4rem 0.7rem;
+      background: #f1f1f1;
+      border: 1px solid #ddd;
+      border-radius: 999px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      font-family: inherit;
+      color: #555;
+      min-width: 2.4rem;
+    }
+    .icon-btn:active { background: #e1e1e1; color: #000; }
+    .rename-input {
+      flex: 1;
+      padding: 0.4rem 0.85rem;
+      font-size: 0.9rem;
+      border-radius: 999px;
+      border: 1px solid #888;
+      font-family: inherit;
+    }
+    .save-current-btn {
+      width: 100%;
+      border-style: dashed;
+      color: #666;
+      background: transparent;
+      margin-top: 0.2rem;
+    }
+    .empty-presets {
+      font-size: 0.8rem;
+      color: #888;
+      padding: 0.25rem 0;
+    }
+
     .tempo-display {
       font-weight: 400;
       color: #666;
@@ -327,6 +374,10 @@
       <label class="field-label" for="progression">Progression</label>
       <input id="progression" type="text" value="I vi ii V" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
       <div class="hint">Space-separated Roman numerals. Upper = major, lower = minor. Repeat to extend, or use <code>:n</code> for n bars (e.g. <code>V:4</code>).</div>
+
+      <label class="field-label">My presets</label>
+      <div id="user-presets" class="user-presets"></div>
+      <button id="save-preset" type="button" class="preset-btn save-current-btn">+ Save current</button>
 
       <label class="field-label">Presets</label>
       <div class="presets" id="presets"></div>
@@ -912,6 +963,7 @@
       tempoEl.value = s.tempo;
       tempoValueEl.textContent = s.tempo;
       readoutTempo.textContent = s.tempo;
+      tempoEl.dispatchEvent(new Event('input'));
 
       barsButtons.forEach(btn => {
         btn.classList.toggle('active', parseInt(btn.dataset.bars, 10) === s.bars);
@@ -923,10 +975,17 @@
       bassVolEl.value   = s.bassVol;   $('bassVolValue').textContent   = s.bassVol;
       drumVolEl.value   = s.drumVol;   $('drumVolValue').textContent   = s.drumVol;
       masterVolEl.value = s.masterVol; $('masterVolValue').textContent = s.masterVol;
+      chordVolEl.dispatchEvent(new Event('input'));
+      bassVolEl.dispatchEvent(new Event('input'));
+      drumVolEl.dispatchEvent(new Event('input'));
+      masterVolEl.dispatchEvent(new Event('input'));
 
       chordsEl.checked = s.chordsOn;
       bassEl.checked   = s.bassOn;
       drumsEl.checked  = s.drumsOn;
+      chordsEl.dispatchEvent(new Event('change'));
+      bassEl.dispatchEvent(new Event('change'));
+      drumsEl.dispatchEvent(new Event('change'));
 
       renderChips();
     }
@@ -952,6 +1011,125 @@
       }
       setTimeout(() => { copyShareBtn.textContent = 'Copy share link'; }, 1500);
     });
+
+    // User presets (localStorage)
+    const PRESETS_KEY = 'progression-presets-v1';
+    const userPresetsEl = $('user-presets');
+
+    function loadUserPresets() {
+      try { return JSON.parse(localStorage.getItem(PRESETS_KEY) || '[]'); }
+      catch { return []; }
+    }
+    function saveUserPresets(list) {
+      localStorage.setItem(PRESETS_KEY, JSON.stringify(list));
+    }
+    function addUserPreset(name, state) {
+      const list = loadUserPresets();
+      const id = Date.now().toString(36);
+      list.push({ id, name, state });
+      saveUserPresets(list);
+      return id;
+    }
+    function renameUserPreset(id, name) {
+      const list = loadUserPresets();
+      const p = list.find(p => p.id === id);
+      if (p) { p.name = name; saveUserPresets(list); }
+    }
+    function deleteUserPreset(id) {
+      saveUserPresets(loadUserPresets().filter(p => p.id !== id));
+    }
+
+    function loadPreset(state) {
+      applyState({ ...DEFAULTS, ...state });
+      syncUrl();
+      if (Tone.Transport.state === 'started') scheduleRebuild();
+    }
+
+    function enterRename(row, preset) {
+      row.innerHTML = '';
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'rename-input';
+      input.value = preset.name;
+      input.autocomplete = 'off';
+      input.spellcheck = false;
+
+      let done = false;
+      const commit = () => {
+        if (done) return;
+        done = true;
+        const name = input.value.trim() || preset.name;
+        renameUserPreset(preset.id, name);
+        renderUserPresets();
+      };
+      const cancel = () => {
+        if (done) return;
+        done = true;
+        renderUserPresets();
+      };
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter')  { e.preventDefault(); commit(); }
+        if (e.key === 'Escape') { e.preventDefault(); cancel(); }
+      });
+      input.addEventListener('blur', commit);
+
+      row.appendChild(input);
+      input.focus();
+      input.select();
+    }
+
+    function renderUserPresets(focusEditId) {
+      userPresetsEl.innerHTML = '';
+      const list = loadUserPresets();
+      if (list.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'empty-presets';
+        empty.textContent = 'No saved presets yet.';
+        userPresetsEl.appendChild(empty);
+        return;
+      }
+      list.forEach(p => {
+        const row = document.createElement('div');
+        row.className = 'user-preset-row';
+
+        const nameBtn = document.createElement('button');
+        nameBtn.type = 'button';
+        nameBtn.className = 'preset-btn user-preset-name';
+        nameBtn.textContent = p.name;
+        nameBtn.addEventListener('click', () => loadPreset(p.state));
+
+        const editBtn = document.createElement('button');
+        editBtn.type = 'button';
+        editBtn.className = 'icon-btn';
+        editBtn.textContent = '✎';
+        editBtn.setAttribute('aria-label', `Rename ${p.name}`);
+        editBtn.addEventListener('click', () => enterRename(row, p));
+
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'icon-btn';
+        delBtn.textContent = '×';
+        delBtn.setAttribute('aria-label', `Delete ${p.name}`);
+        delBtn.addEventListener('click', () => {
+          deleteUserPreset(p.id);
+          renderUserPresets();
+        });
+
+        row.append(nameBtn, editBtn, delBtn);
+        userPresetsEl.appendChild(row);
+
+        if (focusEditId === p.id) enterRename(row, p);
+      });
+    }
+
+    $('save-preset').addEventListener('click', () => {
+      const n = loadUserPresets().length + 1;
+      const id = addUserPreset(`Preset ${n}`, currentState());
+      renderUserPresets(id);
+    });
+
+    renderUserPresets();
 
     // Initial render
     applyState(parseUrlState());
