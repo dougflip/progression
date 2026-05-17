@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Chord Progression Player</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 600px; margin: 2rem auto; padding: 0 1rem; color: #222; }
+    h1 { font-size: 1.4rem; }
+    label { display: block; margin: 0.75rem 0 0.25rem; font-weight: 600; }
+    input, select { font-size: 1rem; padding: 0.4rem; width: 100%; box-sizing: border-box; }
+    .controls { margin-top: 1.5rem; display: flex; gap: 0.5rem; }
+    button { font-size: 1rem; padding: 0.5rem 1rem; cursor: pointer; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    #status { margin-top: 1rem; font-family: monospace; color: #555; min-height: 1.2em; }
+    .hint { font-size: 0.85rem; color: #777; margin-top: 0.25rem; }
+  </style>
+</head>
+<body>
+  <h1>Chord Progression Player</h1>
+
+  <label for="key">Key (major)</label>
+  <select id="key">
+    <option>C</option>
+    <option>Db</option>
+    <option>D</option>
+    <option>Eb</option>
+    <option>E</option>
+    <option>F</option>
+    <option>F#</option>
+    <option>G</option>
+    <option>Ab</option>
+    <option>A</option>
+    <option>Bb</option>
+    <option>B</option>
+  </select>
+
+  <label for="tempo">Tempo: <span id="tempoValue">85</span> BPM</label>
+  <input id="tempo" type="range" min="40" max="220" step="1" value="85" />
+
+  <label for="progression">Progression</label>
+  <input id="progression" value="I vi ii V" />
+  <div class="hint">Space-separated Roman numerals. Uppercase = major, lowercase = minor. e.g. <code>I vi ii V</code></div>
+
+  <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600;">
+    <input id="chords" type="checkbox" style="width: auto;" checked /> Chords
+  </label>
+
+  <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600;">
+    <input id="bass" type="checkbox" style="width: auto;" checked /> Bass
+  </label>
+
+  <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600;">
+    <input id="drums" type="checkbox" style="width: auto;" checked /> Drums
+  </label>
+
+  <label for="chordVol">Chord volume: <span id="chordVolValue">50</span></label>
+  <input id="chordVol" type="range" min="0" max="100" step="1" value="50" />
+
+  <label for="bassVol">Bass volume: <span id="bassVolValue">100</span></label>
+  <input id="bassVol" type="range" min="0" max="100" step="1" value="100" />
+
+  <label for="drumVol">Drum volume: <span id="drumVolValue">100</span></label>
+  <input id="drumVol" type="range" min="0" max="100" step="1" value="100" />
+
+  <label for="masterVol">Master volume: <span id="masterVolValue">100</span></label>
+  <input id="masterVol" type="range" min="0" max="100" step="1" value="100" />
+
+  <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; margin-top: 0.75rem;">
+    <input id="keepAwake" type="checkbox" style="width: auto;" /> Keep screen on while playing
+  </label>
+
+  <div class="controls">
+    <button id="play">Play</button>
+    <button id="stop" disabled>Stop</button>
+  </div>
+
+  <div id="status">Stopped</div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+  <script>
+    const CHORD_LENGTH_MEASURES = 2;
+
+    const MAJOR_SCALE = [0, 2, 4, 5, 7, 9, 11];
+    const ROMAN = {
+      I: 0, II: 1, III: 2, IV: 3, V: 4, VI: 5, VII: 6,
+      i: 0, ii: 1, iii: 2, iv: 3, v: 4, vi: 5, vii: 6,
+    };
+    const KEY_MIDI = {
+      C: 60, 'C#': 61, Db: 61, D: 62, 'D#': 63, Eb: 63, E: 64, F: 65,
+      'F#': 66, Gb: 66, G: 67, 'G#': 68, Ab: 68, A: 69, 'A#': 70, Bb: 70, B: 71,
+    };
+    const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+    function midiToNote(m) {
+      return NOTE_NAMES[m % 12] + (Math.floor(m / 12) - 1);
+    }
+
+    function buildChord(numeral, keyMidi) {
+      const degree = ROMAN[numeral];
+      if (degree === undefined) throw new Error(`Unknown numeral: ${numeral}`);
+      const isMinor = numeral === numeral.toLowerCase();
+      const root = keyMidi + MAJOR_SCALE[degree];
+      const third = root + (isMinor ? 3 : 4);
+      const fifth = root + 7;
+      const bassRoot = root - 12;
+      return {
+        notes: [bassRoot, root, third, fifth].map(midiToNote),
+        bassRoot: midiToNote(bassRoot),
+        bassFifth: midiToNote(bassRoot + 7),
+        isMinor,
+      };
+    }
+
+    function parseProgression(input, key) {
+      const keyMidi = KEY_MIDI[key];
+      const tokens = input.trim().split(/\s+/).filter(Boolean);
+      if (tokens.length === 0) throw new Error('Progression is empty');
+      return tokens.map(t => ({ numeral: t, ...buildChord(t, keyMidi) }));
+    }
+
+    const BASS_PATTERN_MAJOR = ['root', 'root', 'fifth', 'root'];
+    const BASS_PATTERN_MINOR = ['root', 'root', 'root', 'root'];
+
+    let synth = null;
+    let reverb = null;
+    let part = null;
+    let kick = null, snare = null, hat = null;
+    let kickSeq = null, snareSeq = null, hatSeq = null;
+    let bass = null, bassSeq = null;
+    let chordChannel = null, bassChannel = null, drumChannel = null, masterChannel = null;
+
+    function sliderToDb(v) {
+      const n = parseInt(v, 10);
+      if (!Number.isFinite(n) || n <= 0) return -Infinity;
+      return Tone.gainToDb(Math.min(100, n) / 100);
+    }
+
+    function initChannels() {
+      if (chordChannel) return;
+      masterChannel = new Tone.Channel().toDestination();
+      chordChannel = new Tone.Channel().connect(masterChannel);
+      bassChannel = new Tone.Channel().connect(masterChannel);
+      drumChannel = new Tone.Channel().connect(masterChannel);
+      chordChannel.volume.value = sliderToDb(chordVolEl.value);
+      bassChannel.volume.value = sliderToDb(bassVolEl.value);
+      drumChannel.volume.value = sliderToDb(drumVolEl.value);
+      masterChannel.volume.value = sliderToDb(masterVolEl.value);
+      chordChannel.mute = !chordsEl.checked;
+    }
+
+    function teardown() {
+      if (part) { part.stop(); part.dispose(); part = null; }
+      for (const s of [kickSeq, snareSeq, hatSeq, bassSeq]) if (s) { s.stop(); s.dispose(); }
+      kickSeq = snareSeq = hatSeq = bassSeq = null;
+      for (const v of [synth, kick, snare, hat, bass, reverb]) if (v) v.dispose();
+      synth = kick = snare = hat = bass = reverb = null;
+    }
+
+    function buildDrums() {
+      kick = new Tone.MembraneSynth({
+        pitchDecay: 0.05,
+        octaves: 6,
+        envelope: { attack: 0.001, decay: 0.4, sustain: 0, release: 1.4 },
+      }).connect(drumChannel);
+      kick.volume.value = -4;
+
+      snare = new Tone.NoiseSynth({
+        noise: { type: 'white' },
+        envelope: { attack: 0.005, decay: 0.15, sustain: 0 },
+      }).connect(drumChannel);
+      snare.volume.value = -10;
+
+      hat = new Tone.MetalSynth({
+        frequency: 250,
+        envelope: { attack: 0.001, decay: 0.05, release: 0.01 },
+        harmonicity: 5.1,
+        modulationIndex: 32,
+        resonance: 4000,
+        octaves: 1.5,
+      }).connect(drumChannel);
+      hat.volume.value = -28;
+
+      // 16-step patterns, one measure
+      const kickP  = [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0];
+      const snareP = [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0];
+      const hatP   = [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0];
+
+      kickSeq = new Tone.Sequence((time, hit) => {
+        if (hit) kick.triggerAttackRelease('C1', '8n', time);
+      }, kickP, '16n').start(0);
+
+      snareSeq = new Tone.Sequence((time, hit) => {
+        if (hit) snare.triggerAttackRelease('16n', time);
+      }, snareP, '16n').start(0);
+
+      hatSeq = new Tone.Sequence((time, hit) => {
+        if (hit) hat.triggerAttackRelease('32n', time);
+      }, hatP, '16n').start(0);
+
+      applyDrumMute();
+    }
+
+    function applyDrumMute() {
+      const muted = !drumsEl.checked;
+      for (const s of [kickSeq, snareSeq, hatSeq]) if (s) s.mute = muted;
+    }
+
+    function applyBassMute() {
+      if (bassSeq) bassSeq.mute = !bassEl.checked;
+    }
+
+    function buildBass(chords) {
+      bass = new Tone.MonoSynth({
+        oscillator: { type: 'sawtooth' },
+        filter: { Q: 2, type: 'lowpass' },
+        envelope: { attack: 0.01, decay: 0.25, sustain: 0.4, release: 0.3 },
+        filterEnvelope: { attack: 0.01, decay: 0.2, sustain: 0.4, release: 0.3, baseFrequency: 80, octaves: 2.5 },
+      }).connect(bassChannel);
+      bass.volume.value = -6;
+
+      const steps = [];
+      for (const c of chords) {
+        const pattern = c.isMinor ? BASS_PATTERN_MINOR : BASS_PATTERN_MAJOR;
+        for (let beat = 0; beat < 8; beat++) {
+          const step = pattern[beat % 4];
+          steps.push(step === 'fifth' ? c.bassFifth : c.bassRoot);
+        }
+      }
+
+      bassSeq = new Tone.Sequence((time, note) => {
+        bass.triggerAttackRelease(note, '8n', time);
+      }, steps, '4n').start(0);
+
+      applyBassMute();
+    }
+
+    function buildPart(chords) {
+      teardown();
+
+      reverb = new Tone.Reverb({ decay: 2.5, wet: 0.25 }).connect(chordChannel);
+      synth = new Tone.PolySynth(Tone.Synth, {
+        oscillator: { type: 'triangle' },
+        envelope: { attack: 0.05, decay: 0.3, sustain: 0.6, release: 1.5 },
+      }).connect(reverb);
+      synth.volume.value = -10;
+
+      const events = chords.map((c, i) => ({
+        time: `${i * CHORD_LENGTH_MEASURES}m`,
+        notes: c.notes,
+        numeral: c.numeral,
+        index: i,
+        total: chords.length,
+      }));
+
+      part = new Tone.Part((time, ev) => {
+        synth.triggerAttackRelease(ev.notes, `${CHORD_LENGTH_MEASURES}m`, time);
+        Tone.Draw.schedule(() => {
+          setStatus(`Playing ${ev.index + 1}/${ev.total}: ${ev.numeral}  (${ev.notes.slice(1).join(' ')})`);
+        }, time);
+      }, events);
+
+      part.loop = true;
+      part.loopEnd = `${chords.length * CHORD_LENGTH_MEASURES}m`;
+      part.start(0);
+
+      buildDrums();
+      buildBass(chords);
+    }
+
+    const $ = id => document.getElementById(id);
+    const playBtn = $('play');
+    const stopBtn = $('stop');
+    const keyEl = $('key');
+    const tempoEl = $('tempo');
+    const progEl = $('progression');
+    const chordsEl = $('chords');
+    const drumsEl = $('drums');
+    const bassEl = $('bass');
+    const statusEl = $('status');
+    const chordVolEl = $('chordVol');
+    const bassVolEl = $('bassVol');
+    const drumVolEl = $('drumVol');
+    const masterVolEl = $('masterVol');
+    const keepAwakeEl = $('keepAwake');
+
+    let wakeLock = null;
+    async function acquireWakeLock() {
+      if (wakeLock || !('wakeLock' in navigator)) return;
+      try {
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => { wakeLock = null; });
+      } catch (e) {
+        setStatus('Wake lock failed: ' + e.message);
+      }
+    }
+    async function releaseWakeLock() {
+      if (!wakeLock) return;
+      try { await wakeLock.release(); } catch {}
+      wakeLock = null;
+    }
+
+    keepAwakeEl.addEventListener('change', () => {
+      if (Tone.Transport.state === 'started') {
+        keepAwakeEl.checked ? acquireWakeLock() : releaseWakeLock();
+      }
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' &&
+          keepAwakeEl.checked &&
+          Tone.Transport.state === 'started') {
+        acquireWakeLock();
+      }
+    });
+
+    drumsEl.addEventListener('change', applyDrumMute);
+    bassEl.addEventListener('change', applyBassMute);
+    chordsEl.addEventListener('change', () => {
+      if (chordChannel) chordChannel.mute = !chordsEl.checked;
+    });
+
+    function wireVolume(sliderEl, valueElId, getChannel) {
+      const valueEl = $(valueElId);
+      sliderEl.addEventListener('input', () => {
+        valueEl.textContent = sliderEl.value;
+        const ch = getChannel();
+        if (ch) ch.volume.value = sliderToDb(sliderEl.value);
+      });
+    }
+    wireVolume(chordVolEl, 'chordVolValue', () => chordChannel);
+    wireVolume(bassVolEl, 'bassVolValue', () => bassChannel);
+    wireVolume(drumVolEl, 'drumVolValue', () => drumChannel);
+    wireVolume(masterVolEl, 'masterVolValue', () => masterChannel);
+
+    function clampedTempo() {
+      const v = parseInt(tempoEl.value, 10);
+      if (!Number.isFinite(v)) return 85;
+      return Math.max(40, Math.min(220, v));
+    }
+
+    const tempoValueEl = $('tempoValue');
+    tempoEl.addEventListener('input', () => {
+      const v = clampedTempo();
+      tempoValueEl.textContent = v;
+      Tone.Transport.bpm.value = v;
+    });
+
+    function setStatus(msg) { statusEl.textContent = msg; }
+
+    playBtn.addEventListener('click', async () => {
+      try {
+        await Tone.start();
+        initChannels();
+        const chords = parseProgression(progEl.value, keyEl.value);
+        buildPart(chords);
+        Tone.Transport.bpm.value = clampedTempo();
+        Tone.Transport.start();
+        if (keepAwakeEl.checked) acquireWakeLock();
+        playBtn.disabled = true;
+        stopBtn.disabled = false;
+      } catch (e) {
+        setStatus('Error: ' + e.message);
+      }
+    });
+
+    stopBtn.addEventListener('click', () => {
+      Tone.Transport.stop();
+      teardown();
+      releaseWakeLock();
+      playBtn.disabled = false;
+      stopBtn.disabled = true;
+      setStatus('Stopped');
+    });
+  </script>
+</body>
+</html>
