@@ -199,6 +199,22 @@
     }
     .preset-btn:active { background: #e1e1e1; }
 
+    .share-btn {
+      display: block;
+      width: 100%;
+      margin-top: 1.5rem;
+      padding: 0.75rem;
+      background: #222;
+      color: #fff;
+      border: none;
+      border-radius: 0.5rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .share-btn:active { background: #444; }
+
     .tempo-display {
       font-weight: 400;
       color: #666;
@@ -290,6 +306,8 @@
       <label class="toggle">
         <input id="keepAwake" type="checkbox" /> Keep screen on while playing
       </label>
+
+      <button id="copy-share" class="share-btn" type="button">Copy share link</button>
     </div>
   </dialog>
 
@@ -737,14 +755,136 @@
         progEl.value = p.value;
         renderChips();
         scheduleRebuild();
+        syncUrl();
       });
       presetsEl.appendChild(btn);
     });
 
+    // URL state sync
+    const DEFAULTS = {
+      key: 'C',
+      tempo: 85,
+      progression: 'I vi ii V',
+      chordVol: 50,
+      bassVol: 100,
+      drumVol: 100,
+      masterVol: 100,
+      chordsOn: true,
+      bassOn: true,
+      drumsOn: true,
+    };
+    const VALID_KEYS = Array.from(keyEl.options).map(o => o.value);
+
+    function currentState() {
+      return {
+        key: keyEl.value,
+        tempo: clampedTempo(),
+        progression: progEl.value,
+        chordVol: chordVolEl.value,
+        bassVol: bassVolEl.value,
+        drumVol: drumVolEl.value,
+        masterVol: masterVolEl.value,
+        chordsOn: chordsEl.checked,
+        bassOn: bassEl.checked,
+        drumsOn: drumsEl.checked,
+      };
+    }
+
+    function stateToParams(s) {
+      const p = new URLSearchParams();
+      p.set('key', s.key);
+      p.set('tempo', s.tempo);
+      p.set('progression', s.progression);
+      p.set('chordVol', s.chordVol);
+      p.set('bassVol', s.bassVol);
+      p.set('drumVol', s.drumVol);
+      p.set('masterVol', s.masterVol);
+      p.set('chordsOn', s.chordsOn ? '1' : '0');
+      p.set('bassOn', s.bassOn ? '1' : '0');
+      p.set('drumsOn', s.drumsOn ? '1' : '0');
+      return p.toString();
+    }
+
+    function parseUrlState() {
+      const p = new URLSearchParams(window.location.search);
+      const num = (k, def) => {
+        const v = parseInt(p.get(k), 10);
+        return Number.isFinite(v) ? v : def;
+      };
+      const bool = (k, def) => {
+        const v = p.get(k);
+        if (v === '1' || v === 'true') return true;
+        if (v === '0' || v === 'false') return false;
+        return def;
+      };
+      const str = (k, def) => p.get(k) ?? def;
+      const key = str('key', DEFAULTS.key);
+      return {
+        key: VALID_KEYS.includes(key) ? key : DEFAULTS.key,
+        tempo: Math.max(40, Math.min(220, num('tempo', DEFAULTS.tempo))),
+        progression: str('progression', DEFAULTS.progression),
+        chordVol: num('chordVol', DEFAULTS.chordVol),
+        bassVol: num('bassVol', DEFAULTS.bassVol),
+        drumVol: num('drumVol', DEFAULTS.drumVol),
+        masterVol: num('masterVol', DEFAULTS.masterVol),
+        chordsOn: bool('chordsOn', DEFAULTS.chordsOn),
+        bassOn: bool('bassOn', DEFAULTS.bassOn),
+        drumsOn: bool('drumsOn', DEFAULTS.drumsOn),
+      };
+    }
+
+    function applyState(s) {
+      keyEl.value = s.key;
+      readoutKey.textContent = s.key;
+
+      tempoEl.value = s.tempo;
+      tempoValueEl.textContent = s.tempo;
+      readoutTempo.textContent = s.tempo;
+
+      progEl.value = s.progression;
+
+      chordVolEl.value  = s.chordVol;  $('chordVolValue').textContent  = s.chordVol;
+      bassVolEl.value   = s.bassVol;   $('bassVolValue').textContent   = s.bassVol;
+      drumVolEl.value   = s.drumVol;   $('drumVolValue').textContent   = s.drumVol;
+      masterVolEl.value = s.masterVol; $('masterVolValue').textContent = s.masterVol;
+
+      chordsEl.checked = s.chordsOn;
+      bassEl.checked   = s.bassOn;
+      drumsEl.checked  = s.drumsOn;
+
+      renderChips();
+    }
+
+    let urlSyncTimer = null;
+    function syncUrl() {
+      clearTimeout(urlSyncTimer);
+      urlSyncTimer = setTimeout(() => {
+        history.replaceState(null, '', '?' + stateToParams(currentState()));
+      }, 200);
+    }
+
+    // Copy share link
+    const copyShareBtn = $('copy-share');
+    copyShareBtn.addEventListener('click', async () => {
+      clearTimeout(urlSyncTimer);
+      history.replaceState(null, '', '?' + stateToParams(currentState()));
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        copyShareBtn.textContent = 'Copied!';
+      } catch {
+        copyShareBtn.textContent = 'Copy failed';
+      }
+      setTimeout(() => { copyShareBtn.textContent = 'Copy share link'; }, 1500);
+    });
+
     // Initial render
-    readoutKey.textContent = keyEl.value;
-    readoutTempo.textContent = clampedTempo();
-    renderChips();
+    applyState(parseUrlState());
+    syncUrl();
+    [keyEl, tempoEl, progEl, chordVolEl, bassVolEl, drumVolEl, masterVolEl,
+     chordsEl, bassEl, drumsEl].forEach(el => {
+      el.addEventListener('input', syncUrl);
+      el.addEventListener('change', syncUrl);
+    });
   </script>
 </body>
 </html>
