@@ -19,7 +19,14 @@
       margin: 0 auto;
       padding: 1.25rem 1rem;
     }
-    h1 { font-size: 1.25rem; margin: 0 0 1rem; }
+    h1#key-display {
+      font-size: 3rem;
+      font-weight: 700;
+      margin: 0.25rem 0 1rem;
+      text-align: center;
+      letter-spacing: -0.02em;
+      line-height: 1;
+    }
 
     #chord-strip {
       display: flex;
@@ -31,6 +38,7 @@
     .chip {
       flex: 1 1 4.5rem;
       min-width: 4.5rem;
+      max-width: 8rem;
       min-height: 3.8rem;
       padding: 0.6rem 0.5rem;
       border-radius: 0.5rem;
@@ -207,7 +215,7 @@
       display: flex;
       gap: 0.4rem;
     }
-    .bars-btn {
+    .bars-btn, .cycle-btn {
       flex: 1;
       padding: 0.6rem;
       background: #f1f1f1;
@@ -218,7 +226,7 @@
       cursor: pointer;
       font-family: inherit;
     }
-    .bars-btn.active {
+    .bars-btn.active, .cycle-btn.active {
       background: #222;
       color: #fff;
       border-color: #222;
@@ -321,10 +329,9 @@
 </head>
 <body>
   <main>
-    <h1>Chord Progression Player</h1>
+    <h1 id="key-display">C</h1>
     <div id="chord-strip"></div>
     <div id="readout">
-      <div>Key <strong id="readout-key">C</strong></div>
       <div><strong id="readout-tempo">85</strong> BPM</div>
     </div>
     <div id="status"></div>
@@ -373,6 +380,13 @@
         <button type="button" class="bars-btn" data-bars="1">1</button>
         <button type="button" class="bars-btn active" data-bars="2">2</button>
         <button type="button" class="bars-btn" data-bars="4">4</button>
+      </div>
+
+      <label class="field-label">Loop mode</label>
+      <div class="bars-options" id="cycle-options">
+        <button type="button" class="cycle-btn active" data-cycle="none">Loop</button>
+        <button type="button" class="cycle-btn" data-cycle="4ths">Cycle 4ths</button>
+        <button type="button" class="cycle-btn" data-cycle="5ths">Cycle 5ths</button>
       </div>
 
       <label class="field-label" for="progression">Progression</label>
@@ -443,33 +457,65 @@
 
     const PITCH_CLASS = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
     const CHORD_NAME_RE = /^([A-G])([#b]?)(m?)$/;
+    const NOTE_RE = /^([A-G])([#b]?)(-?\d+)$/;
+    const CYCLE_SEMIS = { none: 0, '4ths': 5, '5ths': 7 };
+    const CYCLE_OPTIONS = ['none', '4ths', '5ths'];
 
     const PRESETS = [
-      { label: 'I V vi IV',          value: 'I V vi IV' },
-      { label: 'I vi ii V',          value: 'I vi ii V' },
-      { label: 'ii V I',             value: 'ii V I' },
-      { label: 'I IV V',             value: 'I IV V' },
-      { label: 'i iv v',             value: 'i iv v' },
-      { label: '12-bar blues',       value: 'I:4 IV:2 I:2 V:1 IV:1 I:1 V:1' },
-      { label: 'Circle 5ths',        value: 'C G D A E B F# C# G# D# A# F' },
-      { label: 'Circle 4ths',        value: 'C F Bb Eb Ab Db Gb B E A D G' },
-      { label: 'Circle 5ths (min)',  value: 'Cm Gm Dm Am Em Bm F#m C#m G#m D#m A#m Fm' },
-      { label: 'Circle 4ths (min)',  value: 'Cm Fm Bbm Ebm Abm Dbm Gbm Bm Em Am Dm Gm' },
+      { label: 'I V vi IV',         state: { progression: 'I V vi IV',                        cycle: 'none' } },
+      { label: 'I vi ii V',         state: { progression: 'I vi ii V',                        cycle: 'none' } },
+      { label: 'ii V I',            state: { progression: 'ii V I',                           cycle: 'none' } },
+      { label: 'I IV V',            state: { progression: 'I IV V',                           cycle: 'none' } },
+      { label: 'i iv v',            state: { progression: 'i iv v',                           cycle: 'none' } },
+      { label: '12-bar blues',      state: { progression: 'I:4 IV:2 I:2 V:1 IV:1 I:1 V:1',    cycle: 'none' } },
+      { label: 'Cycle 5ths',        state: { progression: 'I',                                cycle: '5ths' } },
+      { label: 'Cycle 4ths',        state: { progression: 'I',                                cycle: '4ths' } },
+      { label: 'Cycle 5ths (min)',  state: { progression: 'i',                                cycle: '5ths' } },
+      { label: 'Cycle 4ths (min)',  state: { progression: 'i',                                cycle: '4ths' } },
     ];
 
     function midiToNote(m) {
       return SHARP_NAMES[m % 12] + (Math.floor(m / 12) - 1);
     }
 
-    function chordName(token, key) {
-      if (token in ROMAN) {
-        const degree = ROMAN[token];
-        const isMinor = token === token.toLowerCase();
-        const rootPc = (KEY_MIDI[key] + MAJOR_SCALE[degree]) % 12;
-        const names = FLAT_KEYS.has(key) ? FLAT_NAMES : SHARP_NAMES;
+    function clampShift(shift) {
+      const s = ((shift % 12) + 12) % 12;
+      return s > 6 ? s - 12 : s;
+    }
+
+    function transposeNote(noteName, semis) {
+      if (!semis) return noteName;
+      const m = NOTE_RE.exec(noteName);
+      if (!m) return noteName;
+      const [, letter, acc, octave] = m;
+      const acci = acc === '#' ? 1 : acc === 'b' ? -1 : 0;
+      const midi = PITCH_CLASS[letter] + acci + (parseInt(octave, 10) + 1) * 12 + semis;
+      return SHARP_NAMES[((midi % 12) + 12) % 12] + (Math.floor(midi / 12) - 1);
+    }
+
+    function cycleUsesFlats(cycle, key) {
+      if (cycle === '4ths') return true;
+      if (cycle === '5ths') return false;
+      return FLAT_KEYS.has(key);
+    }
+
+    function resolvedChordName(numeral, shift, key, cycle) {
+      const useFlats = cycleUsesFlats(cycle, key);
+      const names = useFlats ? FLAT_NAMES : SHARP_NAMES;
+      if (numeral in ROMAN) {
+        const degree = ROMAN[numeral];
+        const isMinor = numeral === numeral.toLowerCase();
+        const rootPc = (((KEY_MIDI[key] + MAJOR_SCALE[degree] + shift) % 12) + 12) % 12;
         return names[rootPc] + (isMinor ? 'm' : '');
       }
-      if (CHORD_NAME_RE.test(token)) return token;
+      const m = CHORD_NAME_RE.exec(numeral);
+      if (m) {
+        if (shift === 0) return numeral;
+        const [, letter, acc, q] = m;
+        const acci = acc === '#' ? 1 : acc === 'b' ? -1 : 0;
+        const pc = (((PITCH_CLASS[letter] + acci + shift) % 12) + 12) % 12;
+        return names[pc] + q;
+      }
       return '?';
     }
 
@@ -608,7 +654,7 @@
       if (bassSeq) bassSeq.mute = !bassEl.checked;
     }
 
-    function buildBass(chords) {
+    function buildBass(chords, cycle) {
       bass = new Tone.MonoSynth({
         oscillator: { type: 'sawtooth' },
         filter: { Q: 2, type: 'lowpass' },
@@ -617,13 +663,21 @@
       }).connect(bassChannel);
       bass.volume.value = -6;
 
+      const semis = CYCLE_SEMIS[cycle] || 0;
+      const laps = semis ? 12 : 1;
+
       const steps = [];
-      for (const c of chords) {
-        const pattern = c.isMinor ? BASS_PATTERN_MINOR : BASS_PATTERN_MAJOR;
-        const beats = c.bars * 4;
-        for (let beat = 0; beat < beats; beat++) {
-          const step = pattern[beat % 4];
-          steps.push(step === 'fifth' ? c.bassFifth : c.bassRoot);
+      for (let lap = 0; lap < laps; lap++) {
+        const shift = clampShift(semis * lap);
+        for (const c of chords) {
+          const pattern = c.isMinor ? BASS_PATTERN_MINOR : BASS_PATTERN_MAJOR;
+          const beats = c.bars * 4;
+          const bRoot = shift ? transposeNote(c.bassRoot, shift) : c.bassRoot;
+          const bFifth = shift ? transposeNote(c.bassFifth, shift) : c.bassFifth;
+          for (let beat = 0; beat < beats; beat++) {
+            const step = pattern[beat % 4];
+            steps.push(step === 'fifth' ? bFifth : bRoot);
+          }
         }
       }
 
@@ -634,7 +688,7 @@
       applyBassMute();
     }
 
-    function buildPart(chords) {
+    function buildPart(chords, cycle) {
       teardown();
 
       reverb = new Tone.Reverb({ decay: 2.5, wet: 0.25 }).connect(chordChannel);
@@ -644,25 +698,34 @@
       }).connect(reverb);
       synth.volume.value = -10;
 
+      const semis = CYCLE_SEMIS[cycle] || 0;
+      const laps = semis ? 12 : 1;
+
       let cumBars = 0;
-      const events = chords.map((c, i) => {
-        const ev = {
-          time: `${cumBars}m`,
-          bars: c.bars,
-          notes: c.notes,
-          token: c.token,
-          index: i,
-          total: chords.length,
-        };
-        cumBars += c.bars;
-        return ev;
-      });
+      const events = [];
+      for (let lap = 0; lap < laps; lap++) {
+        const rawShift = semis * lap;
+        const audioShift = clampShift(rawShift);
+        chords.forEach((c, i) => {
+          events.push({
+            time: `${cumBars}m`,
+            bars: c.bars,
+            notes: audioShift ? c.notes.map(n => transposeNote(n, audioShift)) : c.notes,
+            token: c.token,
+            chipIndex: i,
+            shift: rawShift,
+            total: chords.length,
+          });
+          cumBars += c.bars;
+        });
+      }
 
       part = new Tone.Part((time, ev) => {
         synth.triggerAttackRelease(ev.notes, `${ev.bars}m`, time);
         Tone.Draw.schedule(() => {
-          setActiveChip(ev.index);
-          setStatus(`${ev.index + 1}/${ev.total}: ${ev.token}  (${ev.notes.slice(1).join(' ')})`);
+          setActiveChip(ev.chipIndex);
+          updateChipsForShift(ev.shift);
+          setStatus(`${ev.chipIndex + 1}/${ev.total}: ${ev.token}  (${ev.notes.slice(1).join(' ')})`);
         }, time);
       }, events);
 
@@ -671,7 +734,7 @@
       part.start(0);
 
       buildDrums();
-      buildBass(chords);
+      buildBass(chords, cycle);
     }
 
     const $ = id => document.getElementById(id);
@@ -690,13 +753,19 @@
     const keepAwakeEl  = $('keepAwake');
     const stripEl      = $('chord-strip');
     const tempoValueEl = $('tempoValue');
-    const readoutKey   = $('readout-key');
+    const readoutKey   = $('key-display');
     const readoutTempo = $('readout-tempo');
     const barsButtons  = document.querySelectorAll('.bars-btn');
+    const cycleButtons = document.querySelectorAll('.cycle-btn');
 
     function getDefaultBars() {
       const active = document.querySelector('.bars-btn.active');
       return active ? parseInt(active.dataset.bars, 10) : 2;
+    }
+
+    function getCycleMode() {
+      const active = document.querySelector('.cycle-btn.active');
+      return active ? active.dataset.cycle : 'none';
     }
 
     let wakeLock = null;
@@ -737,22 +806,38 @@
         const chip = document.createElement('div');
         chip.className = 'chip';
         const isAbsolute = !(numeral in ROMAN) && CHORD_NAME_RE.test(numeral);
-        if (isAbsolute) {
-          const name = document.createElement('div');
-          name.className = 'name';
-          name.textContent = token;
-          chip.appendChild(name);
-        } else {
+        chip.dataset.absolute = isAbsolute ? '1' : '0';
+        chip.dataset.numeral = numeral;
+        chip.dataset.duration = token.includes(':') ? token.split(':')[1] : '';
+        if (!isAbsolute) {
           const n = document.createElement('div');
           n.className = 'numeral';
           n.textContent = token;
-          const name = document.createElement('div');
-          name.className = 'name';
-          name.textContent = chordName(numeral, keyEl.value);
-          chip.append(n, name);
+          chip.appendChild(n);
         }
+        const name = document.createElement('div');
+        name.className = 'name';
+        chip.appendChild(name);
         stripEl.appendChild(chip);
       });
+      updateChipsForShift(0);
+    }
+
+    function updateChipsForShift(shift) {
+      const key = keyEl.value;
+      const cycle = getCycleMode();
+      stripEl.querySelectorAll('.chip').forEach(chip => {
+        const numeral = chip.dataset.numeral;
+        const dur = chip.dataset.duration;
+        const isAbsolute = chip.dataset.absolute === '1';
+        const resolved = resolvedChordName(numeral, shift, key, cycle);
+        const nameEl = chip.querySelector('.name');
+        nameEl.textContent = isAbsolute && dur ? `${resolved}:${dur}` : resolved;
+      });
+      const baseKeyPc = KEY_MIDI[key] % 12;
+      const curPc = (((baseKeyPc + shift) % 12) + 12) % 12;
+      const names = cycleUsesFlats(cycle, key) ? FLAT_NAMES : SHARP_NAMES;
+      readoutKey.textContent = `Key of ${names[curPc]}`;
     }
 
     function setActiveChip(index) {
@@ -830,6 +915,16 @@
       });
     });
 
+    cycleButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        cycleButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderChips();
+        scheduleRebuild();
+        syncUrl();
+      });
+    });
+
     function setStatus(msg) { statusEl.textContent = msg; }
 
     function setPlayingUI(playing) {
@@ -850,7 +945,7 @@
         if ('audioSession' in navigator) navigator.audioSession.type = 'playback';
         initChannels();
         const chords = parseProgression(progEl.value, keyEl.value, getDefaultBars());
-        buildPart(chords);
+        buildPart(chords, getCycleMode());
         Tone.Transport.bpm.value = clampedTempo();
         Tone.Transport.start();
         if (keepAwakeEl.checked) acquireWakeLock();
@@ -865,6 +960,7 @@
       teardown();
       releaseWakeLock();
       setActiveChip(-1);
+      updateChipsForShift(0);
       setPlayingUI(false);
       setStatus('');
     }
@@ -904,10 +1000,7 @@
       btn.className = 'preset-btn';
       btn.textContent = p.label;
       btn.addEventListener('click', () => {
-        progEl.value = p.value;
-        renderChips();
-        scheduleRebuild();
-        syncUrl();
+        loadPreset({ ...currentState(), ...p.state });
       });
       presetsEl.appendChild(btn);
     });
@@ -917,6 +1010,7 @@
       key: 'C',
       tempo: 85,
       bars: 2,
+      cycle: 'none',
       progression: 'I vi ii V',
       chordVol: 50,
       bassVol: 100,
@@ -933,6 +1027,7 @@
         key: keyEl.value,
         tempo: clampedTempo(),
         bars: getDefaultBars(),
+        cycle: getCycleMode(),
         progression: progEl.value,
         chordVol: chordVolEl.value,
         bassVol: bassVolEl.value,
@@ -949,6 +1044,7 @@
       p.set('key', s.key);
       p.set('tempo', s.tempo);
       p.set('bars', s.bars);
+      p.set('cycle', s.cycle);
       p.set('progression', s.progression);
       p.set('chordVol', s.chordVol);
       p.set('bassVol', s.bassVol);
@@ -975,10 +1071,12 @@
       const str = (k, def) => p.get(k) ?? def;
       const key = str('key', DEFAULTS.key);
       const bars = num('bars', DEFAULTS.bars);
+      const cycle = str('cycle', DEFAULTS.cycle);
       return {
         key: VALID_KEYS.includes(key) ? key : DEFAULTS.key,
         tempo: Math.max(40, Math.min(220, num('tempo', DEFAULTS.tempo))),
         bars: BARS_OPTIONS.includes(bars) ? bars : DEFAULTS.bars,
+        cycle: CYCLE_OPTIONS.includes(cycle) ? cycle : DEFAULTS.cycle,
         progression: str('progression', DEFAULTS.progression),
         chordVol: num('chordVol', DEFAULTS.chordVol),
         bassVol: num('bassVol', DEFAULTS.bassVol),
@@ -1001,6 +1099,9 @@
 
       barsButtons.forEach(btn => {
         btn.classList.toggle('active', parseInt(btn.dataset.bars, 10) === s.bars);
+      });
+      cycleButtons.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.cycle === s.cycle);
       });
 
       progEl.value = s.progression;
