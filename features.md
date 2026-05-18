@@ -60,12 +60,16 @@ Bottom sheet with per-instrument rows (mute + volume) and a master volume. Chang
 
 ## Setup
 
-Bottom sheet for everything else: key, tempo, bars-per-chord, loop mode, progression input, presets, saved presets, keep-screen-on, copy share link.
+Bottom sheet for everything else: key, tempo, bars-per-chord, loop mode, progression input, presets, saved presets, theme, keep-screen-on, copy share link.
+
+## Theme
+
+Light / Dark toggle in Setup. Defaults to dark. Stored per-device in `localStorage` (not in URL or saved presets — it's a device preference, not session config). Applied before first paint so there's no flash on load.
 
 ## Mobile / UX
 
 - Bottom action bar: Setup · Play/Stop · Mix. Thumb-reachable.
-- Bottom sheet drawers for Setup and Mix — audio keeps playing while open.
+- Bottom sheet drawers for Setup and Mix — audio keeps playing while open. Sheet headers stay pinned while content scrolls.
 - Safe-area inset aware.
 - Keep-screen-on uses the Wake Lock API while playing.
 - iOS audio session set to `playback` so the silent switch doesn't mute output.
