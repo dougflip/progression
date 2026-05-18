@@ -1,8 +1,10 @@
 # Chord Progression Player
 
-A tiny single-page web app for practicing. Pick a key, type a Roman-numeral progression, and get a looping backing track — chords, bass, and drums — to practice triads, scales, and improv over.
+A small single-page web app for practicing.
 
-I use it as a practice tool for triads on guitar. I'll usually pick a progression that has both major and minor chords to practice different inversions across different string sets.
+1. Define a progression, see [features](./features.md)
+2. Click play to loop playback of that progression (chords, bass, drums)
+3. Practice triads, scales, voice leading, etc
 
 ## Run
 
@@ -12,13 +14,9 @@ No build step. Open `index.html` directly in a browser, or serve the folder loca
 npx serve
 ```
 
-Click **Play** to start — browsers require a user gesture before audio.
+## Features
 
-## Usage
-
-- Pick a key and tempo.
-- Type a progression as space-separated Roman numerals. Uppercase = major, lowercase = minor (e.g. `I vi ii V`, `ii V I`, `i iv v`).
-- Toggle/mix the individual parts (chords, bass, drums) to taste.
+See [features](./features.md) for mor details.
 
 ## Stack
 

@@ -13,6 +13,7 @@ The progression input accepts space-separated tokens:
 
 - **Roman numerals**: `I`, `vi`, `ii V I`. Uppercase = major triad, lowercase = minor.
 - **Absolute chord names**: `C`, `Am`, `F#`, `Bbm`. Use `m` suffix for minor.
+- **7th chords**: `Imaj7`, `V7`, `iim7`, `Cmaj7`, `G7`, `Dm7`. On Roman numerals, bare `7` follows case (`V7` = dom7, `v7` = m7).
 - **Mix both** in one progression if you want.
 - **Per-chord duration**: append `:n` for n bars (`V:4`, `Am:1`). Omitted = uses bars-per-chord default.
 - **Repeat tokens** to extend (`I I vi V` = two bars of I then default-duration vi and V).
@@ -31,7 +32,7 @@ Cycle mode applies to any progression — `ii V I` through all 12 keys, `I` thro
 
 Quick-load chips for common shapes:
 
-- Progressions: `I V vi IV`, `I vi ii V`, `ii V I`, `I IV V`, `i iv v`, 12-bar blues.
+- Progressions: `I V vi IV`, `I vi ii V`, `ii V I`, `iim7 V7 Imaj7` (jazz ii-V-I), `I IV V`, `i iv v`, 12-bar blues.
 - Cycle starters: Cycle 4ths/5ths in major or minor (each just loads `I` or `i` with the matching loop mode).
 
 Clicking a preset overrides progression and loop mode but preserves your key, tempo, volumes, mutes.

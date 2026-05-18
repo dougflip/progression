@@ -447,7 +447,7 @@
 
       <label class="field-label" for="progression">Progression</label>
       <input id="progression" type="text" value="I vi ii V" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
-      <div class="hint">Roman numerals (<code>I</code>, <code>vi</code>) or chord names (<code>C</code>, <code>Am</code>, <code>F#</code>). Upper = major, lower = minor (or use <code>m</code> suffix). Repeat to extend, or use <code>:n</code> for n bars (e.g. <code>V:4</code>).</div>
+      <div class="hint">Roman numerals (<code>I</code>, <code>vi</code>) or chord names (<code>C</code>, <code>Am</code>, <code>F#</code>). Upper = major, lower = minor. 7ths: <code>Imaj7</code>, <code>V7</code>, <code>iim7</code>. Repeat to extend or use <code>:n</code> for n bars (e.g. <code>V:4</code>).</div>
 
       <label class="field-label">My presets</label>
       <div id="user-presets" class="user-presets"></div>
@@ -517,15 +517,49 @@
     const FLAT_KEYS = new Set(['F','Bb','Eb','Ab','Db','Gb']);
 
     const PITCH_CLASS = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
-    const CHORD_NAME_RE = /^([A-G])([#b]?)(m?)$/;
+    const CHORD_NAME_RE = /^([A-G])([#b]?)(.*)$/;
     const NOTE_RE = /^([A-G])([#b]?)(-?\d+)$/;
     const CYCLE_SEMIS = { none: 0, '4ths': 5, '5ths': 7 };
     const CYCLE_OPTIONS = ['none', '4ths', '5ths'];
+
+    const ROMAN_NUMERALS = ['III','VII','iii','vii','II','IV','VI','ii','iv','vi','I','V','i','v'];
+    const QUALITY_INTERVALS = {
+      major: [0, 4, 7],
+      minor: [0, 3, 7],
+      maj7:  [0, 4, 7, 11],
+      m7:    [0, 3, 7, 10],
+      dom7:  [0, 4, 7, 10],
+    };
+    const QUALITY_IS_MINOR = {
+      major: false, minor: true,
+      maj7:  false, m7:    true,  dom7: false,
+    };
+    const QUALITY_DISPLAY = {
+      major: '', minor: 'm',
+      maj7: 'maj7', m7: 'm7', dom7: '7',
+    };
+
+    function parseRoman(token) {
+      for (const r of ROMAN_NUMERALS) {
+        if (token.startsWith(r)) return { numeral: r, suffix: token.slice(r.length) };
+      }
+      return null;
+    }
+
+    function suffixToQuality(suffix, isLowerCase) {
+      if (suffix === '')     return isLowerCase ? 'minor' : 'major';
+      if (suffix === 'm')    return 'minor';
+      if (suffix === 'maj7') return 'maj7';
+      if (suffix === 'm7')   return 'm7';
+      if (suffix === '7')    return isLowerCase ? 'm7' : 'dom7';
+      return null;
+    }
 
     const PRESETS = [
       { label: 'I V vi IV',         state: { progression: 'I V vi IV',                        cycle: 'none' } },
       { label: 'I vi ii V',         state: { progression: 'I vi ii V',                        cycle: 'none' } },
       { label: 'ii V I',            state: { progression: 'ii V I',                           cycle: 'none' } },
+      { label: 'iim7 V7 Imaj7',     state: { progression: 'iim7 V7 Imaj7',                    cycle: 'none' } },
       { label: 'I IV V',            state: { progression: 'I IV V',                           cycle: 'none' } },
       { label: 'i iv v',            state: { progression: 'i iv v',                           cycle: 'none' } },
       { label: '12-bar blues',      state: { progression: 'I:4 IV:2 I:2 V:1 IV:1 I:1 V:1',    cycle: 'none' } },
@@ -563,47 +597,61 @@
     function resolvedChordName(numeral, shift, key, cycle) {
       const useFlats = cycleUsesFlats(cycle, key);
       const names = useFlats ? FLAT_NAMES : SHARP_NAMES;
-      if (numeral in ROMAN) {
-        const degree = ROMAN[numeral];
-        const isMinor = numeral === numeral.toLowerCase();
-        const rootPc = (((KEY_MIDI[key] + MAJOR_SCALE[degree] + shift) % 12) + 12) % 12;
-        return names[rootPc] + (isMinor ? 'm' : '');
+
+      const roman = parseRoman(numeral);
+      if (roman && roman.numeral in ROMAN) {
+        const isLowerCase = roman.numeral === roman.numeral.toLowerCase();
+        const quality = suffixToQuality(roman.suffix, isLowerCase);
+        if (quality) {
+          const degree = ROMAN[roman.numeral];
+          const rootPc = (((KEY_MIDI[key] + MAJOR_SCALE[degree] + shift) % 12) + 12) % 12;
+          return names[rootPc] + QUALITY_DISPLAY[quality];
+        }
       }
+
       const m = CHORD_NAME_RE.exec(numeral);
       if (m) {
+        const [, letter, acc, suffix] = m;
+        if (suffixToQuality(suffix, false) === null) return '?';
         if (shift === 0) return numeral;
-        const [, letter, acc, q] = m;
         const acci = acc === '#' ? 1 : acc === 'b' ? -1 : 0;
         const pc = (((PITCH_CLASS[letter] + acci + shift) % 12) + 12) % 12;
-        return names[pc] + q;
+        return names[pc] + suffix;
       }
       return '?';
     }
 
-    function makeChord(root, isMinor) {
-      const third = root + (isMinor ? 3 : 4);
-      const fifth = root + 7;
+    function makeChord(root, quality) {
+      const intervals = QUALITY_INTERVALS[quality];
+      const chordNotes = intervals.map(iv => root + iv);
       const bassRoot = root - 12;
       return {
-        notes: [bassRoot, root, third, fifth].map(midiToNote),
+        notes: [bassRoot, ...chordNotes].map(midiToNote),
         bassRoot: midiToNote(bassRoot),
         bassFifth: midiToNote(bassRoot + 7),
-        isMinor,
+        isMinor: QUALITY_IS_MINOR[quality],
       };
     }
 
     function buildChord(token, keyMidi) {
-      if (token in ROMAN) {
-        const degree = ROMAN[token];
-        const isMinor = token === token.toLowerCase();
-        return makeChord(keyMidi + MAJOR_SCALE[degree], isMinor);
+      const roman = parseRoman(token);
+      if (roman && roman.numeral in ROMAN) {
+        const isLowerCase = roman.numeral === roman.numeral.toLowerCase();
+        const quality = suffixToQuality(roman.suffix, isLowerCase);
+        if (quality) {
+          const degree = ROMAN[roman.numeral];
+          return makeChord(keyMidi + MAJOR_SCALE[degree], quality);
+        }
       }
       const m = CHORD_NAME_RE.exec(token);
       if (m) {
-        const [, letter, acc, q] = m;
-        const acci = acc === '#' ? 1 : acc === 'b' ? -1 : 0;
-        const pc = ((PITCH_CLASS[letter] + acci) % 12 + 12) % 12;
-        return makeChord(60 + pc, q === 'm');
+        const [, letter, acc, suffix] = m;
+        const quality = suffixToQuality(suffix, false);
+        if (quality) {
+          const acci = acc === '#' ? 1 : acc === 'b' ? -1 : 0;
+          const pc = ((PITCH_CLASS[letter] + acci) % 12 + 12) % 12;
+          return makeChord(60 + pc, quality);
+        }
       }
       throw new Error(`Unknown chord: ${token}`);
     }
