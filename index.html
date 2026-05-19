@@ -526,9 +526,11 @@
     const QUALITY_INTERVALS = {
       major: [0, 4, 7],
       minor: [0, 3, 7],
-      maj7:  [0, 4, 7, 11],
-      m7:    [0, 3, 7, 10],
-      dom7:  [0, 4, 7, 10],
+      // 7ths omit the 5th (jazz shell voicing) — bass + chord context imply it,
+      // and dropping it reduces density / brightness up top.
+      maj7:  [0, 4, 11],
+      m7:    [0, 3, 10],
+      dom7:  [0, 4, 10],
     };
     const QUALITY_IS_MINOR = {
       major: false, minor: true,
@@ -623,13 +625,24 @@
 
     function makeChord(root, quality) {
       const intervals = QUALITY_INTERVALS[quality];
-      const chordNotes = intervals.map(iv => root + iv);
-      const bassRoot = root - 12;
+      // Drop the whole voicing an octave if the top note sits too high
+      // (the synth gets shrill up there). Tighter ceiling on 7ths since
+      // their top is a 7th up; triads only need clamping at the very top.
+      let r = root;
+      const has7th = quality === 'maj7' || quality === 'm7' || quality === 'dom7';
+      const topMax = has7th ? 72 : 76;
+      while (r + intervals[intervals.length - 1] > topMax && r > 48) {
+        r -= 12;
+      }
+      const chordNotes = intervals.map(iv => r + iv);
+      const bassRoot = r - 12;
       return {
         notes: [bassRoot, ...chordNotes].map(midiToNote),
         bassRoot: midiToNote(bassRoot),
         bassFifth: midiToNote(bassRoot + 7),
         isMinor: QUALITY_IS_MINOR[quality],
+        root,
+        quality,
       };
     }
 
@@ -779,13 +792,12 @@
       for (let lap = 0; lap < laps; lap++) {
         const shift = clampShift(semis * lap);
         for (const c of chords) {
-          const pattern = c.isMinor ? BASS_PATTERN_MINOR : BASS_PATTERN_MAJOR;
+          const voiced = shift ? makeChord(c.root + shift, c.quality) : c;
+          const pattern = voiced.isMinor ? BASS_PATTERN_MINOR : BASS_PATTERN_MAJOR;
           const beats = c.bars * 4;
-          const bRoot = shift ? transposeNote(c.bassRoot, shift) : c.bassRoot;
-          const bFifth = shift ? transposeNote(c.bassFifth, shift) : c.bassFifth;
           for (let beat = 0; beat < beats; beat++) {
             const step = pattern[beat % 4];
-            steps.push(step === 'fifth' ? bFifth : bRoot);
+            steps.push(step === 'fifth' ? voiced.bassFifth : voiced.bassRoot);
           }
         }
       }
@@ -816,10 +828,11 @@
         const rawShift = semis * lap;
         const audioShift = clampShift(rawShift);
         chords.forEach((c, i) => {
+          const voiced = audioShift ? makeChord(c.root + audioShift, c.quality) : c;
           events.push({
             time: `${cumBars}m`,
             bars: c.bars,
-            notes: audioShift ? c.notes.map(n => transposeNote(n, audioShift)) : c.notes,
+            notes: voiced.notes,
             token: c.token,
             chipIndex: i,
             shift: rawShift,
