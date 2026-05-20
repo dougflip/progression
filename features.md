@@ -28,6 +28,13 @@ Chord chips show the resolved chord names below each token (or the literal name 
 
 Cycle mode applies to any progression — `ii V I` through all 12 keys, `I` through 12 keys (= the circle itself), or whatever shape you want. The displayed key updates per lap. Spelling uses flats in 4ths, sharps in 5ths. Pitch is octave-clamped so the cycle doesn't keep climbing into screech range.
 
+## Style
+
+Pick a drum/bass feel. All 4/4, just different patterns:
+
+- **Pop** — kick on 1 & 3, snare on 2 & 4, 8th-note hats. Bass: root-root-fifth-root (major), all roots (minor).
+- **Funk** — syncopated kick (1, "and of 2", "and of 3"), snare on 2 & 4, straight 16th hats. Bass alternates root/fifth.
+
 ## Built-in presets
 
 Quick-load chips for common shapes:

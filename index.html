@@ -269,7 +269,7 @@
       display: flex;
       gap: 0.4rem;
     }
-    .bars-btn, .cycle-btn, .theme-btn {
+    .bars-btn, .cycle-btn, .style-btn, .theme-btn {
       flex: 1;
       padding: 0.6rem;
       background: var(--surface-alt);
@@ -281,7 +281,7 @@
       cursor: pointer;
       font-family: inherit;
     }
-    .bars-btn.active, .cycle-btn.active, .theme-btn.active {
+    .bars-btn.active, .cycle-btn.active, .style-btn.active, .theme-btn.active {
       background: var(--accent);
       color: var(--accent-text);
       border-color: var(--accent);
@@ -443,6 +443,12 @@
         <button type="button" class="cycle-btn active" data-cycle="none">Loop</button>
         <button type="button" class="cycle-btn" data-cycle="4ths">Cycle 4ths</button>
         <button type="button" class="cycle-btn" data-cycle="5ths">Cycle 5ths</button>
+      </div>
+
+      <label class="field-label">Style</label>
+      <div class="bars-options" id="style-options">
+        <button type="button" class="style-btn active" data-style="pop">Pop</button>
+        <button type="button" class="style-btn" data-style="funk">Funk</button>
       </div>
 
       <label class="field-label" for="progression">Progression</label>
@@ -689,8 +695,23 @@
       });
     }
 
-    const BASS_PATTERN_MAJOR = ['root', 'root', 'fifth', 'root'];
-    const BASS_PATTERN_MINOR = ['root', 'root', 'root', 'root'];
+    const STYLES = {
+      pop: {
+        kick:  [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
+        snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+        hat:   [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
+        bassMajor: ['root', 'root', 'fifth', 'root'],
+        bassMinor: ['root', 'root', 'root', 'root'],
+      },
+      funk: {
+        kick:  [1,0,0,0, 0,0,1,0, 0,0,1,0, 0,0,0,0],
+        snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+        hat:   [1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1],
+        bassMajor: ['root', 'fifth', 'root', 'fifth'],
+        bassMinor: ['root', 'fifth', 'root', 'fifth'],
+      },
+    };
+    const STYLE_OPTIONS = Object.keys(STYLES);
 
     let synth = null, reverb = null, part = null;
     let kick = null, snare = null, hat = null;
@@ -725,7 +746,7 @@
       synth = kick = snare = hat = bass = reverb = null;
     }
 
-    function buildDrums() {
+    function buildDrums(style) {
       kick = new Tone.MembraneSynth({
         pitchDecay: 0.05,
         octaves: 6,
@@ -749,21 +770,17 @@
       }).connect(drumChannel);
       hat.volume.value = -28;
 
-      const kickP  = [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0];
-      const snareP = [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0];
-      const hatP   = [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0];
-
       kickSeq = new Tone.Sequence((time, hit) => {
         if (hit) kick.triggerAttackRelease('C1', '8n', time);
-      }, kickP, '16n').start(0);
+      }, style.kick, '16n').start(0);
 
       snareSeq = new Tone.Sequence((time, hit) => {
         if (hit) snare.triggerAttackRelease('16n', time);
-      }, snareP, '16n').start(0);
+      }, style.snare, '16n').start(0);
 
       hatSeq = new Tone.Sequence((time, hit) => {
         if (hit) hat.triggerAttackRelease('32n', time);
-      }, hatP, '16n').start(0);
+      }, style.hat, '16n').start(0);
 
       applyDrumMute();
     }
@@ -776,7 +793,7 @@
       if (bassSeq) bassSeq.mute = !bassEl.checked;
     }
 
-    function buildBass(chords, cycle) {
+    function buildBass(chords, cycle, style) {
       bass = new Tone.MonoSynth({
         oscillator: { type: 'sawtooth' },
         filter: { Q: 2, type: 'lowpass' },
@@ -793,7 +810,7 @@
         const shift = clampShift(semis * lap);
         for (const c of chords) {
           const voiced = shift ? makeChord(c.root + shift, c.quality) : c;
-          const pattern = voiced.isMinor ? BASS_PATTERN_MINOR : BASS_PATTERN_MAJOR;
+          const pattern = voiced.isMinor ? style.bassMinor : style.bassMajor;
           const beats = c.bars * 4;
           for (let beat = 0; beat < beats; beat++) {
             const step = pattern[beat % 4];
@@ -809,7 +826,7 @@
       applyBassMute();
     }
 
-    function buildPart(chords, cycle) {
+    function buildPart(chords, cycle, style) {
       teardown();
 
       reverb = new Tone.Reverb({ decay: 2.5, wet: 0.25 }).connect(chordChannel);
@@ -855,8 +872,8 @@
       part.loopEnd = `${cumBars}m`;
       part.start(0);
 
-      buildDrums();
-      buildBass(chords, cycle);
+      buildDrums(style);
+      buildBass(chords, cycle, style);
     }
 
     const $ = id => document.getElementById(id);
@@ -879,6 +896,7 @@
     const readoutTempo = $('readout-tempo');
     const barsButtons  = document.querySelectorAll('.bars-btn');
     const cycleButtons = document.querySelectorAll('.cycle-btn');
+    const styleButtons = document.querySelectorAll('.style-btn');
 
     function getDefaultBars() {
       const active = document.querySelector('.bars-btn.active');
@@ -888,6 +906,11 @@
     function getCycleMode() {
       const active = document.querySelector('.cycle-btn.active');
       return active ? active.dataset.cycle : 'none';
+    }
+
+    function getStyle() {
+      const active = document.querySelector('.style-btn.active');
+      return active ? active.dataset.style : 'pop';
     }
 
     let wakeLock = null;
@@ -977,7 +1000,7 @@
           if (Tone.Transport.state !== 'started') return;
           try {
             const chords = parseProgression(progEl.value, keyEl.value, getDefaultBars());
-            buildPart(chords);
+            buildPart(chords, getCycleMode(), STYLES[getStyle()]);
           } catch (e) {
             setStatus('Error: ' + e.message);
           }
@@ -1047,6 +1070,15 @@
       });
     });
 
+    styleButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        styleButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        scheduleRebuild();
+        syncUrl();
+      });
+    });
+
     function setStatus(msg) { statusEl.textContent = msg; }
 
     function setPlayingUI(playing) {
@@ -1067,7 +1099,7 @@
         if ('audioSession' in navigator) navigator.audioSession.type = 'playback';
         initChannels();
         const chords = parseProgression(progEl.value, keyEl.value, getDefaultBars());
-        buildPart(chords, getCycleMode());
+        buildPart(chords, getCycleMode(), STYLES[getStyle()]);
         Tone.Transport.bpm.value = clampedTempo();
         Tone.Transport.start();
         if (keepAwakeEl.checked) acquireWakeLock();
@@ -1133,6 +1165,7 @@
       tempo: 85,
       bars: 2,
       cycle: 'none',
+      style: 'pop',
       progression: 'I vi ii V',
       chordVol: 50,
       bassVol: 100,
@@ -1150,6 +1183,7 @@
         tempo: clampedTempo(),
         bars: getDefaultBars(),
         cycle: getCycleMode(),
+        style: getStyle(),
         progression: progEl.value,
         chordVol: chordVolEl.value,
         bassVol: bassVolEl.value,
@@ -1167,6 +1201,7 @@
       p.set('tempo', s.tempo);
       p.set('bars', s.bars);
       p.set('cycle', s.cycle);
+      p.set('style', s.style);
       p.set('progression', s.progression);
       p.set('chordVol', s.chordVol);
       p.set('bassVol', s.bassVol);
@@ -1194,11 +1229,13 @@
       const key = str('key', DEFAULTS.key);
       const bars = num('bars', DEFAULTS.bars);
       const cycle = str('cycle', DEFAULTS.cycle);
+      const style = str('style', DEFAULTS.style);
       return {
         key: VALID_KEYS.includes(key) ? key : DEFAULTS.key,
         tempo: Math.max(40, Math.min(220, num('tempo', DEFAULTS.tempo))),
         bars: BARS_OPTIONS.includes(bars) ? bars : DEFAULTS.bars,
         cycle: CYCLE_OPTIONS.includes(cycle) ? cycle : DEFAULTS.cycle,
+        style: STYLE_OPTIONS.includes(style) ? style : DEFAULTS.style,
         progression: str('progression', DEFAULTS.progression),
         chordVol: num('chordVol', DEFAULTS.chordVol),
         bassVol: num('bassVol', DEFAULTS.bassVol),
@@ -1224,6 +1261,9 @@
       });
       cycleButtons.forEach(btn => {
         btn.classList.toggle('active', btn.dataset.cycle === s.cycle);
+      });
+      styleButtons.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.style === s.style);
       });
 
       progEl.value = s.progression;

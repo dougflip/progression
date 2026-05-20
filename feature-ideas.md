@@ -36,12 +36,6 @@ The "advance-on-press" cycle mode is the real prize: nail ii-V-I in C, foot pres
  If the feature is good, then invest in Web MIDI integration. Web MIDI works in Chrome/Edge but not Safari; iOS is rough. I'd target one specific switch (iRig Blueboard, AirTurn) rather
 than aim for universal.
 
-## Different Drum/Bass Rhythms
-
-Maybe offer a few variety of bass and drums.
-This can all still be in 4/4 but a different feel.
-Could just be presets like "Rock", "Pop", "Blues", "Jazz".
-
 ## Auth and Preset Persistence
 
 I've used [instantdb](https://www.instantdb.com/) for other apps as a lightweight db.
