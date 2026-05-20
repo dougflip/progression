@@ -36,15 +36,11 @@ The "advance-on-press" cycle mode is the real prize: nail ii-V-I in C, foot pres
  If the feature is good, then invest in Web MIDI integration. Web MIDI works in Chrome/Edge but not Safari; iOS is rough. I'd target one specific switch (iRig Blueboard, AirTurn) rather
 than aim for universal.
 
-## Extended Chord Voicings
+## Different Drum/Bass Rhythms
 
-- At a minimum maj7 and dominant 7 support would be nice: Amaj7, A7, Am7
-- If it is easy enough we could add support for suspenions, 9ths, 11ths, etc.
-
-#### Claude's thoughts
-
-Smallest code change for biggest user payoff. Adding maj7, 7, m7 unlocks jazz practice — exactly the same demographic as the current app. Suspensions and tensions can come later. Just
-parser regex + a chord-quality → intervals lookup. Few dozen lines.
+Maybe offer a few variety of bass and drums.
+This can all still be in 4/4 but a different feel.
+Could just be presets like "Rock", "Pop", "Blues", "Jazz".
 
 ## Auth and Preset Persistence
 
