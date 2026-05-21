@@ -934,7 +934,10 @@
       wakeLock = null;
     }
 
+    const KEEP_AWAKE_KEY = 'keep-awake';
+    keepAwakeEl.checked = localStorage.getItem(KEEP_AWAKE_KEY) === '1';
     keepAwakeEl.addEventListener('change', () => {
+      localStorage.setItem(KEEP_AWAKE_KEY, keepAwakeEl.checked ? '1' : '0');
       if (Tone.Transport.state === 'started') {
         keepAwakeEl.checked ? acquireWakeLock() : releaseWakeLock();
       }
