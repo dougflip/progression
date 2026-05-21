@@ -695,20 +695,23 @@
       });
     }
 
+    // Style patterns are 16-step (one bar of 16th notes).
+    // Drums: 1 = hit, 0 = rest.
+    // Bass: 'R' = root, '5' = fifth, 0 = rest.
     const STYLES = {
       pop: {
-        kick:  [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
-        snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
-        hat:   [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
-        bassMajor: ['root', 'root', 'fifth', 'root'],
-        bassMinor: ['root', 'root', 'root', 'root'],
+        kick:      [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
+        snare:     [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+        hat:       [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
+        bassMajor: ['R',0,0,0, 'R',0,0,0, '5',0,0,0, 'R',0,0,0],
+        bassMinor: ['R',0,0,0, 'R',0,0,0, 'R',0,0,0, 'R',0,0,0],
       },
       funk: {
-        kick:  [1,0,0,0, 0,0,1,0, 0,0,1,0, 0,0,0,0],
-        snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
-        hat:   [1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1],
-        bassMajor: ['root', 'fifth', 'root', 'fifth'],
-        bassMinor: ['root', 'fifth', 'root', 'fifth'],
+        kick:      [1,0,0,0, 0,0,1,0, 0,0,1,0, 0,0,0,0],
+        snare:     [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+        hat:       [1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1],
+        bassMajor: ['R',0,0,0, 0,0,'R',0, 0,0,'R',0, 0,0,0,0],
+        bassMinor: ['R',0,0,0, 0,0,'R',0, 0,0,'R',0, 0,0,0,0],
       },
     };
     const STYLE_OPTIONS = Object.keys(STYLES);
@@ -811,17 +814,19 @@
         for (const c of chords) {
           const voiced = shift ? makeChord(c.root + shift, c.quality) : c;
           const pattern = voiced.isMinor ? style.bassMinor : style.bassMajor;
-          const beats = c.bars * 4;
-          for (let beat = 0; beat < beats; beat++) {
-            const step = pattern[beat % 4];
-            steps.push(step === 'fifth' ? voiced.bassFifth : voiced.bassRoot);
+          const totalSteps = c.bars * 16;
+          for (let s = 0; s < totalSteps; s++) {
+            const step = pattern[s % 16];
+            if (step === 'R')      steps.push(voiced.bassRoot);
+            else if (step === '5') steps.push(voiced.bassFifth);
+            else                   steps.push(null);
           }
         }
       }
 
       bassSeq = new Tone.Sequence((time, note) => {
-        bass.triggerAttackRelease(note, '8n', time);
-      }, steps, '4n').start(0);
+        if (note) bass.triggerAttackRelease(note, '8n', time);
+      }, steps, '16n').start(0);
 
       applyBassMute();
     }

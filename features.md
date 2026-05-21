@@ -33,7 +33,7 @@ Cycle mode applies to any progression — `ii V I` through all 12 keys, `I` thro
 Pick a drum/bass feel. All 4/4, just different patterns:
 
 - **Pop** — kick on 1 & 3, snare on 2 & 4, 8th-note hats. Bass: root-root-fifth-root (major), all roots (minor).
-- **Funk** — syncopated kick (1, "and of 2", "and of 3"), snare on 2 & 4, straight 16th hats. Bass alternates root/fifth.
+- **Funk** — syncopated kick (1, "and of 2", "and of 3"), snare on 2 & 4, straight 16th hats. Bass locks to the kick (root on every kick hit).
 
 ## Built-in presets
 
