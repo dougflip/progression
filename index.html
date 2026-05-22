@@ -359,6 +359,26 @@
       padding: 0.25rem 0.5rem;
     }
 
+    .setup-group {
+      padding-top: 1.75rem;
+      margin-top: 1.75rem;
+      border-top: 1px solid var(--border-faint);
+    }
+    .setup-group:first-child {
+      padding-top: 0;
+      margin-top: 0;
+      border-top: none;
+    }
+    .setup-group-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-3);
+      margin: 0 0 0.4rem;
+    }
+    .setup-group > .field-label:first-of-type { margin-top: 0.4rem; }
+
     .field-label {
       display: block;
       margin: 1rem 0 0.4rem;
@@ -576,67 +596,79 @@
       <button class="close-btn" type="button" data-close="setup-sheet" aria-label="Close">×</button>
     </div>
     <div class="sheet-body">
-      <label class="field-label" for="key">Key (major)</label>
-      <select id="key">
-        <option>C</option>
-        <option>Db</option>
-        <option>D</option>
-        <option>Eb</option>
-        <option>E</option>
-        <option>F</option>
-        <option>F#</option>
-        <option>G</option>
-        <option>Ab</option>
-        <option>A</option>
-        <option>Bb</option>
-        <option>B</option>
-      </select>
+      <section class="setup-group">
+        <h3 class="setup-group-title">Playback</h3>
 
-      <label class="field-label" for="tempo">Tempo <span class="tempo-display"><span id="tempoValue">85</span> BPM</span></label>
-      <input id="tempo" type="range" min="40" max="220" step="1" value="85" />
+        <label class="field-label" for="key">Key (major)</label>
+        <select id="key">
+          <option>C</option>
+          <option>Db</option>
+          <option>D</option>
+          <option>Eb</option>
+          <option>E</option>
+          <option>F</option>
+          <option>F#</option>
+          <option>G</option>
+          <option>Ab</option>
+          <option>A</option>
+          <option>Bb</option>
+          <option>B</option>
+        </select>
 
-      <label class="field-label">Bars per chord</label>
-      <div class="bars-options" id="bars-options">
-        <button type="button" class="bars-btn" data-bars="1">1</button>
-        <button type="button" class="bars-btn active" data-bars="2">2</button>
-        <button type="button" class="bars-btn" data-bars="4">4</button>
-      </div>
+        <label class="field-label" for="tempo">Tempo <span class="tempo-display"><span id="tempoValue">85</span> BPM</span></label>
+        <input id="tempo" type="range" min="40" max="220" step="1" value="85" />
 
-      <label class="field-label">Loop mode</label>
-      <div class="bars-options" id="cycle-options">
-        <button type="button" class="cycle-btn active" data-cycle="none">Loop</button>
-        <button type="button" class="cycle-btn" data-cycle="4ths">Cycle 4ths</button>
-        <button type="button" class="cycle-btn" data-cycle="5ths">Cycle 5ths</button>
-      </div>
+        <label class="field-label">Bars per chord</label>
+        <div class="bars-options" id="bars-options">
+          <button type="button" class="bars-btn" data-bars="1">1</button>
+          <button type="button" class="bars-btn active" data-bars="2">2</button>
+          <button type="button" class="bars-btn" data-bars="4">4</button>
+        </div>
 
-      <label class="field-label">Style</label>
-      <div class="bars-options" id="style-options">
-        <button type="button" class="style-btn active" data-style="pop">Pop</button>
-        <button type="button" class="style-btn" data-style="funk">Funk</button>
-      </div>
+        <label class="field-label">Loop mode</label>
+        <div class="bars-options" id="cycle-options">
+          <button type="button" class="cycle-btn active" data-cycle="none">Loop</button>
+          <button type="button" class="cycle-btn" data-cycle="4ths">Cycle 4ths</button>
+          <button type="button" class="cycle-btn" data-cycle="5ths">Cycle 5ths</button>
+        </div>
 
-      <label class="field-label" for="progression">Progression</label>
-      <input id="progression" type="text" value="I vi ii V" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
-      <div class="hint">Roman numerals (<code>I</code>, <code>vi</code>) or chord names (<code>C</code>, <code>Am</code>, <code>F#</code>). Upper = major, lower = minor. 7ths: <code>Imaj7</code>, <code>V7</code>, <code>iim7</code>. Repeat to extend or use <code>:n</code> for n bars (e.g. <code>V:4</code>).</div>
+        <label class="field-label">Style</label>
+        <div class="bars-options" id="style-options">
+          <button type="button" class="style-btn active" data-style="pop">Pop</button>
+          <button type="button" class="style-btn" data-style="funk">Funk</button>
+        </div>
+      </section>
 
-      <label class="field-label">My presets</label>
-      <div id="user-presets" class="user-presets"></div>
-      <button id="save-preset" type="button" class="preset-btn save-current-btn">+ Save current</button>
+      <section class="setup-group">
+        <h3 class="setup-group-title">Progression</h3>
 
-      <label class="field-label">Presets</label>
-      <div class="presets" id="presets"></div>
+        <label class="field-label" for="progression">Progression</label>
+        <input id="progression" type="text" value="I vi ii V" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
+        <div class="hint">Roman numerals (<code>I</code>, <code>vi</code>) or chord names (<code>C</code>, <code>Am</code>, <code>F#</code>). Upper = major, lower = minor. 7ths: <code>Imaj7</code>, <code>V7</code>, <code>iim7</code>. Repeat to extend or use <code>:n</code> for n bars (e.g. <code>V:4</code>).</div>
 
-      <label class="field-label">Theme</label>
-      <div class="bars-options" id="theme-options">
-        <button type="button" class="theme-btn" data-theme="light">Light</button>
-        <button type="button" class="theme-btn" data-theme="dark">Dark</button>
-      </div>
+        <label class="field-label">My presets</label>
+        <div id="user-presets" class="user-presets"></div>
+        <button id="save-preset" type="button" class="preset-btn save-current-btn">+ Save current</button>
 
-      <label class="toggle">
-        <input id="keepAwake" type="checkbox" /> Keep screen on while playing
-      </label>
+        <label class="field-label">Presets</label>
+        <div class="presets" id="presets"></div>
+      </section>
 
-      <button id="copy-share" class="share-btn" type="button">Copy share link</button>
+      <section class="setup-group">
+        <h3 class="setup-group-title">App</h3>
+
+        <label class="field-label">Theme</label>
+        <div class="bars-options" id="theme-options">
+          <button type="button" class="theme-btn" data-theme="light">Light</button>
+          <button type="button" class="theme-btn" data-theme="dark">Dark</button>
+        </div>
+
+        <label class="toggle">
+          <input id="keepAwake" type="checkbox" /> Keep screen on while playing
+        </label>
+
+        <button id="copy-share" class="share-btn" type="button">Copy share link</button>
+      </section>
     </div>
   </dialog>
 
