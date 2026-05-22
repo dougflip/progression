@@ -915,20 +915,30 @@
     }
 
     // Tone occasionally throws "Value must be within [0, Infinity]" from
-    // floating-point noise during rapid teardown/rebuild. Swallow it so the
-    // worklet doesn't get poisoned; we lose one trigger, audio keeps going.
+    // floating-point noise during rapid teardown/rebuild — both from
+    // trigger callbacks AND from part/sequence stop/dispose. Swallow these
+    // so cleanup runs to completion and playback survives.
     function safeTrigger(fn) {
       try { fn(); } catch (e) { console.warn('Tone trigger suppressed:', e); }
     }
+    function safeCall(obj, method) {
+      if (!obj) return;
+      try { obj[method](); } catch (e) { console.warn(`Tone ${method} suppressed:`, e); }
+    }
 
     function teardown() {
-      if (part) { part.stop(); part.dispose(); part = null; }
-      for (const s of [kickSeq, snareSeq, hatSeq, bassSeq, beatSeq]) if (s) { s.stop(); s.dispose(); }
+      safeCall(part, 'stop');
+      safeCall(part, 'dispose');
+      part = null;
+      for (const s of [kickSeq, snareSeq, hatSeq, bassSeq, beatSeq]) {
+        safeCall(s, 'stop');
+        safeCall(s, 'dispose');
+      }
       kickSeq = snareSeq = hatSeq = bassSeq = beatSeq = null;
-      for (const v of [synth, kick, snare, hat, bass, reverb]) if (v) v.dispose();
+      for (const v of [synth, kick, snare, hat, bass, reverb]) safeCall(v, 'dispose');
       synth = kick = snare = hat = bass = reverb = null;
-      Tone.Draw.cancel(0);
-      Tone.Transport.cancel();
+      safeTrigger(() => Tone.Draw.cancel(0));
+      safeTrigger(() => Tone.Transport.cancel());
     }
 
     function buildDrums(style) {
