@@ -179,6 +179,62 @@
     .readout-btn:hover { background: var(--surface-alt-active); }
     .readout-btn:active { background: var(--surface-alt-active); }
 
+    .tempo-group {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+    }
+    #tempo-picker {
+      position: absolute;
+      top: calc(100% + 0.55rem);
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 0.55rem 0.7rem;
+      min-width: 15rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+      z-index: 5;
+    }
+    [data-theme="dark"] #tempo-picker { box-shadow: 0 4px 14px rgba(0,0,0,0.5); }
+    #tempo-picker::before {
+      content: '';
+      position: absolute;
+      top: -0.35rem;
+      left: 50%;
+      transform: translateX(-50%) rotate(45deg);
+      width: 0.6rem;
+      height: 0.6rem;
+      background: var(--surface-alt);
+      border-left: 1px solid var(--border);
+      border-top: 1px solid var(--border);
+    }
+    #tempo-picker[hidden] { display: none; }
+    #tempo-picker input[type=range] { flex: 1; min-width: 0; }
+    .tempo-step {
+      flex: 0 0 auto;
+      width: 1.85rem;
+      height: 1.85rem;
+      padding: 0;
+      border-radius: 50%;
+      border: none;
+      background: var(--surface);
+      color: var(--text);
+      font-size: 1rem;
+      font-family: inherit;
+      font-weight: 500;
+      line-height: 1;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .tempo-step:hover, .tempo-step:active { background: var(--surface-alt-active); }
+
     #beat-indicator {
       display: flex;
       justify-content: center;
@@ -487,7 +543,14 @@
       <span class="beat-dot"></span>
     </div>
     <div id="readout">
-      <span><strong id="readout-tempo">85</strong> BPM</span>
+      <span class="tempo-group">
+        <button type="button" class="readout-btn" id="tempo-toggle"><strong id="readout-tempo">85</strong> BPM</button>
+        <div id="tempo-picker" hidden>
+          <button type="button" class="tempo-step" id="tempo-down" aria-label="Decrease tempo">−</button>
+          <input id="tempo-quick" type="range" min="40" max="220" step="1" />
+          <button type="button" class="tempo-step" id="tempo-up" aria-label="Increase tempo">+</button>
+        </div>
+      </span>
       <button type="button" class="readout-btn" id="readout-style">Pop</button>
       <button type="button" class="readout-btn" id="readout-bars">2 bars</button>
       <button type="button" class="readout-btn" id="readout-cycle">Loop</button>
@@ -1229,6 +1292,7 @@
       const v = clampedTempo();
       tempoValueEl.textContent = v;
       readoutTempo.textContent = v;
+      if (tempoQuick && tempoQuick.value !== String(v)) tempoQuick.value = v;
       Tone.Transport.bpm.value = v;
     });
 
@@ -1282,6 +1346,33 @@
     $('readout-style').addEventListener('click', () => cycleNext(styleButtons));
     $('readout-bars').addEventListener('click', () => cycleNext(barsButtons));
     $('readout-cycle').addEventListener('click', () => cycleNext(cycleButtons));
+
+    const tempoToggle = $('tempo-toggle');
+    const tempoPickerEl = $('tempo-picker');
+    const tempoQuick = $('tempo-quick');
+
+    function setTempoValue(v) {
+      const n = parseInt(v, 10);
+      const clamped = Math.max(40, Math.min(220, Number.isFinite(n) ? n : 85));
+      tempoEl.value = clamped;
+      tempoEl.dispatchEvent(new Event('input'));
+    }
+    tempoToggle.addEventListener('click', () => {
+      if (tempoPickerEl.hidden) {
+        tempoQuick.value = clampedTempo();
+        tempoPickerEl.hidden = false;
+      } else {
+        tempoPickerEl.hidden = true;
+      }
+    });
+    tempoQuick.addEventListener('input', () => setTempoValue(tempoQuick.value));
+    $('tempo-down').addEventListener('click', () => setTempoValue(clampedTempo() - 1));
+    $('tempo-up').addEventListener('click', () => setTempoValue(clampedTempo() + 1));
+    document.addEventListener('click', e => {
+      if (tempoPickerEl.hidden) return;
+      if (tempoToggle.contains(e.target) || tempoPickerEl.contains(e.target)) return;
+      tempoPickerEl.hidden = true;
+    });
 
     const keyPickerEl = $('key-picker');
     const KEY_LIST = Array.from(keyEl.options).map(o => o.value);
