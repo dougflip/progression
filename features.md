@@ -43,6 +43,8 @@ Drum and bass feel. All 4/4.
 
 - **Pop** — straight and steady.
 - **Funk** — syncopated, tighter pocket.
+- **Ballad** — half-time feel, sparse — pairs well with slow tempos.
+- **Rock** — driving 8ths, heavier kick.
 
 ## Built-in presets
 

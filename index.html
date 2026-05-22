@@ -636,6 +636,8 @@
         <div class="bars-options" id="style-options">
           <button type="button" class="style-btn active" data-style="pop">Pop</button>
           <button type="button" class="style-btn" data-style="funk">Funk</button>
+          <button type="button" class="style-btn" data-style="ballad">Ballad</button>
+          <button type="button" class="style-btn" data-style="rock">Rock</button>
         </div>
       </section>
 
@@ -915,9 +917,23 @@
         bassMajor: ['R',0,0,0, 0,0,'R',0, 0,0,'R',0, 0,0,'5',0],
         bassMinor: ['R',0,0,0, 0,0,'R',0, 0,0,'R',0, 0,0,'R',0],
       },
+      ballad: {
+        kick:      [1,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+        snare:     [0,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
+        hat:       [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0],
+        bassMajor: ['R',0,0,0, 0,0,0,0, '5',0,0,0, 0,0,0,0],
+        bassMinor: ['R',0,0,0, 0,0,0,0, 'R',0,0,0, 0,0,0,0],
+      },
+      rock: {
+        kick:      [1,0,0,0, 0,0,1,0, 1,0,0,0, 0,0,0,0],
+        snare:     [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+        hat:       [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
+        bassMajor: ['R',0,0,0, 0,0,'R',0, 'R',0,0,0, '5',0,0,0],
+        bassMinor: ['R',0,0,0, 0,0,'R',0, 'R',0,0,0, 'R',0,0,0],
+      },
     };
     const STYLE_OPTIONS = Object.keys(STYLES);
-    const STYLE_LABELS = { pop: 'Pop', funk: 'Funk' };
+    const STYLE_LABELS = { pop: 'Pop', funk: 'Funk', ballad: 'Ballad', rock: 'Rock' };
     const CYCLE_LABELS = { none: 'Loop', '4ths': 'Cycle 4ths', '5ths': 'Cycle 5ths' };
 
     let synth = null, reverb = null, part = null;
