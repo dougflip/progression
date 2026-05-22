@@ -6,6 +6,15 @@
 - Single Play/Stop toggle button. Spacebar also works when no input is focused.
 - 12 major keys. Tempo 40–220 BPM.
 - Default 2 bars per chord; can be set to 1, 2, or 4.
+- Visual feedback while playing: chord chips highlight in turn, beat dots pulse on each quarter note, and bar dots inside the active chip show position within multi-bar chords.
+
+## Main player controls
+
+The most-used settings are tappable directly on the main screen — no need to open Setup. All changes apply live during playback.
+
+- Tap the **key heading** to reveal an inline key picker.
+- Tap the **BPM** to open a tempo popover with a slider and ± nudge buttons.
+- Tap **style**, **bars**, or **loop mode** pills to cycle through their options.
 
 ## Progression syntax
 
@@ -18,7 +27,7 @@ The progression input accepts space-separated tokens:
 - **Per-chord duration**: append `:n` for n bars (`V:4`, `Am:1`). Omitted = uses bars-per-chord default.
 - **Repeat tokens** to extend (`I I vi V` = two bars of I then default-duration vi and V).
 
-Chord chips show the resolved chord names below each token (or the literal name for absolute chords). The current chord highlights during playback.
+Chord chips show the resolved chord names below each token (or the literal name for absolute chords). The current chord highlights during playback. Very long progressions and oversized `:n` values are silently capped.
 
 ## Loop modes
 
