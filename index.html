@@ -72,6 +72,7 @@
     #chord-strip {
       display: flex;
       flex-wrap: wrap;
+      justify-content: center;
       gap: 0.5rem;
       margin-bottom: 1.25rem;
       min-height: 4.5rem;
@@ -89,8 +90,30 @@
       display: flex;
       flex-direction: column;
       justify-content: center;
+      position: relative;
       transition: background 0.1s, color 0.1s, border-color 0.1s;
     }
+    .bar-progress {
+      position: absolute;
+      left: 0.4rem;
+      right: 0.4rem;
+      bottom: 0.3rem;
+      display: flex;
+      justify-content: center;
+      gap: 0.25rem;
+      pointer-events: none;
+    }
+    .chip:not(.active) .bar-progress { display: none; }
+    .bar-progress .bar-dot {
+      flex: 0 1 0.6rem;
+      min-width: 0;
+      height: 0.2rem;
+      border-radius: 0.1rem;
+      background: var(--accent-text);
+      opacity: 0.3;
+      transition: opacity 0.08s;
+    }
+    .bar-progress .bar-dot.active { opacity: 1; }
     .chip .numeral { font-size: 0.75rem; color: var(--text-3); line-height: 1; }
     .chip .name { font-size: 1.25rem; font-weight: 600; line-height: 1.3; margin-top: 0.15rem; }
     .chip.active {
@@ -102,14 +125,39 @@
 
     #readout {
       display: flex;
-      gap: 1.5rem;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem 0.75rem;
+      margin-top: 1rem;
       color: var(--text-2);
       font-size: 0.9rem;
     }
     #readout strong { color: var(--text); font-weight: 600; }
+    .readout-sep { color: var(--text-4); }
+
+    #beat-indicator {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.7rem;
+      min-height: 0.75rem;
+    }
+    .beat-dot {
+      width: 0.5rem;
+      height: 0.5rem;
+      border-radius: 50%;
+      background: var(--surface-alt);
+      transition: background 0.08s, transform 0.08s;
+    }
+    .beat-dot.active {
+      background: var(--accent);
+      transform: scale(1.5);
+    }
 
     #status {
       margin-top: 0.75rem;
+      text-align: center;
       font-family: monospace;
       color: var(--text-3);
       font-size: 0.85rem;
@@ -388,8 +436,20 @@
   <main>
     <h1 id="key-display">C</h1>
     <div id="chord-strip"></div>
+    <div id="beat-indicator">
+      <span class="beat-dot"></span>
+      <span class="beat-dot"></span>
+      <span class="beat-dot"></span>
+      <span class="beat-dot"></span>
+    </div>
     <div id="readout">
-      <div><strong id="readout-tempo">85</strong> BPM</div>
+      <span><strong id="readout-tempo">85</strong> BPM</span>
+      <span class="readout-sep">·</span>
+      <span id="readout-style">Pop</span>
+      <span class="readout-sep">·</span>
+      <span id="readout-bars">2 bars</span>
+      <span class="readout-sep">·</span>
+      <span id="readout-cycle">Loop</span>
     </div>
     <div id="status"></div>
   </main>
@@ -508,6 +568,12 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
   <script>
     const BARS_OPTIONS = [1, 2, 4];
+    const MAX_BARS = 16;
+    const MAX_CHORDS = 24;
+
+    function tokenize(input) {
+      return input.trim().split(/\s+/).filter(Boolean).slice(0, MAX_CHORDS);
+    }
 
     const MAJOR_SCALE = [0, 2, 4, 5, 7, 9, 11];
     const ROMAN = {
@@ -680,14 +746,14 @@
       let bars = defaultBars;
       if (durStr !== undefined) {
         const n = parseInt(durStr, 10);
-        if (Number.isFinite(n) && n > 0) bars = n;
+        if (Number.isFinite(n) && n > 0) bars = Math.min(n, MAX_BARS);
       }
       return { numeral, bars };
     }
 
     function parseProgression(input, key, defaultBars) {
       const keyMidi = KEY_MIDI[key];
-      const tokens = input.trim().split(/\s+/).filter(Boolean);
+      const tokens = tokenize(input);
       if (tokens.length === 0) throw new Error('Progression is empty');
       return tokens.map(t => {
         const { numeral, bars } = parseToken(t, defaultBars);
@@ -715,11 +781,14 @@
       },
     };
     const STYLE_OPTIONS = Object.keys(STYLES);
+    const STYLE_LABELS = { pop: 'Pop', funk: 'Funk' };
+    const CYCLE_LABELS = { none: 'Loop', '4ths': 'Cycle 4ths', '5ths': 'Cycle 5ths' };
 
     let synth = null, reverb = null, part = null;
     let kick = null, snare = null, hat = null;
     let kickSeq = null, snareSeq = null, hatSeq = null;
     let bass = null, bassSeq = null;
+    let beatSeq = null;
     let chordChannel = null, bassChannel = null, drumChannel = null, masterChannel = null;
 
     function sliderToDb(v) {
@@ -743,10 +812,11 @@
 
     function teardown() {
       if (part) { part.stop(); part.dispose(); part = null; }
-      for (const s of [kickSeq, snareSeq, hatSeq, bassSeq]) if (s) { s.stop(); s.dispose(); }
-      kickSeq = snareSeq = hatSeq = bassSeq = null;
+      for (const s of [kickSeq, snareSeq, hatSeq, bassSeq, beatSeq]) if (s) { s.stop(); s.dispose(); }
+      kickSeq = snareSeq = hatSeq = bassSeq = beatSeq = null;
       for (const v of [synth, kick, snare, hat, bass, reverb]) if (v) v.dispose();
       synth = kick = snare = hat = bass = reverb = null;
+      Tone.Draw.cancel(0);
     }
 
     function buildDrums(style) {
@@ -869,16 +939,61 @@
         Tone.Draw.schedule(() => {
           setActiveChip(ev.chipIndex);
           updateChipsForShift(ev.shift);
-          setStatus(`${ev.chipIndex + 1}/${ev.total}: ${ev.token}  (${ev.notes.slice(1).join(' ')})`);
+          renderBarDots(ev.bars, 0);
         }, time);
+        const measureSec = Tone.Time('1m').toSeconds();
+        for (let b = 1; b < ev.bars; b++) {
+          Tone.Draw.schedule(() => setActiveBar(b), time + measureSec * b);
+        }
       }, events);
 
       part.loop = true;
       part.loopEnd = `${cumBars}m`;
       part.start(0);
 
+      beatSeq = new Tone.Sequence((time, beat) => {
+        Tone.Draw.schedule(() => setActiveBeat(beat), time);
+      }, [0, 1, 2, 3], '4n').start(0);
+
       buildDrums(style);
       buildBass(chords, cycle, style);
+    }
+
+    const beatDots = document.querySelectorAll('.beat-dot');
+    function setActiveBeat(b) {
+      if (Tone.Transport.state !== 'started') return;
+      beatDots.forEach((d, i) => d.classList.toggle('active', i === b));
+    }
+    function clearBeats() {
+      beatDots.forEach(d => d.classList.remove('active'));
+    }
+
+    function activeBarProgress() {
+      const active = stripEl.querySelector('.chip.active');
+      return active ? active.querySelector('.bar-progress') : null;
+    }
+    function renderBarDots(count, active) {
+      clearBars();
+      if (count <= 1) return;
+      const bp = activeBarProgress();
+      if (!bp) return;
+      for (let i = 0; i < count; i++) {
+        const d = document.createElement('span');
+        d.className = 'bar-dot';
+        if (i === active) d.classList.add('active');
+        bp.appendChild(d);
+      }
+    }
+    function setActiveBar(b) {
+      if (Tone.Transport.state !== 'started') return;
+      const bp = activeBarProgress();
+      if (!bp) return;
+      Array.from(bp.children).forEach((d, i) => {
+        d.classList.toggle('active', i === b);
+      });
+    }
+    function clearBars() {
+      stripEl.querySelectorAll('.bar-progress').forEach(bp => bp.innerHTML = '');
     }
 
     const $ = id => document.getElementById(id);
@@ -899,9 +1014,20 @@
     const tempoValueEl = $('tempoValue');
     const readoutKey   = $('key-display');
     const readoutTempo = $('readout-tempo');
+    const readoutStyle = $('readout-style');
+    const readoutBars  = $('readout-bars');
+    const readoutCycle = $('readout-cycle');
     const barsButtons  = document.querySelectorAll('.bars-btn');
     const cycleButtons = document.querySelectorAll('.cycle-btn');
     const styleButtons = document.querySelectorAll('.style-btn');
+
+    function updateReadout() {
+      readoutTempo.textContent = clampedTempo();
+      readoutStyle.textContent = STYLE_LABELS[getStyle()] || getStyle();
+      const bars = getDefaultBars();
+      readoutBars.textContent = bars + (bars === 1 ? ' bar' : ' bars');
+      readoutCycle.textContent = CYCLE_LABELS[getCycleMode()] || getCycleMode();
+    }
 
     function getDefaultBars() {
       const active = document.querySelector('.bars-btn.active');
@@ -953,24 +1079,33 @@
 
     function renderChips() {
       stripEl.innerHTML = '';
-      const tokens = progEl.value.trim().split(/\s+/).filter(Boolean);
+      const tokens = tokenize(progEl.value);
       tokens.forEach(token => {
-        const [numeral] = token.split(':');
+        const [numeral, durStr] = token.split(':');
+        let displayDur = '';
+        if (durStr !== undefined) {
+          const n = parseInt(durStr, 10);
+          if (Number.isFinite(n) && n > 0) displayDur = String(Math.min(n, MAX_BARS));
+        }
+        const displayToken = displayDur ? `${numeral}:${displayDur}` : numeral;
         const chip = document.createElement('div');
         chip.className = 'chip';
         const isAbsolute = !(numeral in ROMAN) && CHORD_NAME_RE.test(numeral);
         chip.dataset.absolute = isAbsolute ? '1' : '0';
         chip.dataset.numeral = numeral;
-        chip.dataset.duration = token.includes(':') ? token.split(':')[1] : '';
+        chip.dataset.duration = displayDur;
         if (!isAbsolute) {
-          const n = document.createElement('div');
-          n.className = 'numeral';
-          n.textContent = token;
-          chip.appendChild(n);
+          const ne = document.createElement('div');
+          ne.className = 'numeral';
+          ne.textContent = displayToken;
+          chip.appendChild(ne);
         }
         const name = document.createElement('div');
         name.className = 'name';
         chip.appendChild(name);
+        const bp = document.createElement('div');
+        bp.className = 'bar-progress';
+        chip.appendChild(bp);
         stripEl.appendChild(chip);
       });
       updateChipsForShift(0);
@@ -1063,6 +1198,7 @@
       btn.addEventListener('click', () => {
         barsButtons.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+        updateReadout();
         scheduleRebuild();
         syncUrl();
       });
@@ -1072,6 +1208,7 @@
       btn.addEventListener('click', () => {
         cycleButtons.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+        updateReadout();
         renderChips();
         scheduleRebuild();
         syncUrl();
@@ -1082,6 +1219,7 @@
       btn.addEventListener('click', () => {
         styleButtons.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+        updateReadout();
         scheduleRebuild();
         syncUrl();
       });
@@ -1123,6 +1261,8 @@
       releaseWakeLock();
       setActiveChip(-1);
       updateChipsForShift(0);
+      clearBeats();
+      clearBars();
       setPlayingUI(false);
       setStatus('');
     }
@@ -1450,6 +1590,7 @@
 
     // Initial render
     applyState(parseUrlState());
+    updateReadout();
     syncUrl();
     [keyEl, tempoEl, progEl, chordVolEl, bassVolEl, drumVolEl, masterVolEl,
      chordsEl, bassEl, drumsEl].forEach(el => {
