@@ -851,6 +851,13 @@
       chordChannel.mute = !chordsEl.checked;
     }
 
+    // Tone occasionally throws "Value must be within [0, Infinity]" from
+    // floating-point noise during rapid teardown/rebuild. Swallow it so the
+    // worklet doesn't get poisoned; we lose one trigger, audio keeps going.
+    function safeTrigger(fn) {
+      try { fn(); } catch (e) { console.warn('Tone trigger suppressed:', e); }
+    }
+
     function teardown() {
       if (part) { part.stop(); part.dispose(); part = null; }
       for (const s of [kickSeq, snareSeq, hatSeq, bassSeq, beatSeq]) if (s) { s.stop(); s.dispose(); }
@@ -858,6 +865,7 @@
       for (const v of [synth, kick, snare, hat, bass, reverb]) if (v) v.dispose();
       synth = kick = snare = hat = bass = reverb = null;
       Tone.Draw.cancel(0);
+      Tone.Transport.cancel();
     }
 
     function buildDrums(style) {
@@ -885,15 +893,15 @@
       hat.volume.value = -28;
 
       kickSeq = new Tone.Sequence((time, hit) => {
-        if (hit) kick.triggerAttackRelease('C1', '8n', time);
+        if (hit && kick) safeTrigger(() => kick.triggerAttackRelease('C1', '8n', time));
       }, style.kick, '16n').start(0);
 
       snareSeq = new Tone.Sequence((time, hit) => {
-        if (hit) snare.triggerAttackRelease('16n', time);
+        if (hit && snare) safeTrigger(() => snare.triggerAttackRelease('16n', time));
       }, style.snare, '16n').start(0);
 
       hatSeq = new Tone.Sequence((time, hit) => {
-        if (hit) hat.triggerAttackRelease('32n', time);
+        if (hit && hat) safeTrigger(() => hat.triggerAttackRelease('32n', time));
       }, style.hat, '16n').start(0);
 
       applyDrumMute();
@@ -936,7 +944,7 @@
       }
 
       bassSeq = new Tone.Sequence((time, note) => {
-        if (note) bass.triggerAttackRelease(note, '8n', time);
+        if (note && bass) safeTrigger(() => bass.triggerAttackRelease(note, '8n', time));
       }, steps, '16n').start(0);
 
       applyBassMute();
@@ -976,7 +984,7 @@
       }
 
       part = new Tone.Part((time, ev) => {
-        synth.triggerAttackRelease(ev.notes, `${ev.bars}m`, time);
+        if (synth) safeTrigger(() => synth.triggerAttackRelease(ev.notes, `${ev.bars}m`, time));
         Tone.Draw.schedule(() => {
           setActiveChip(ev.chipIndex);
           updateChipsForShift(ev.shift);
