@@ -436,7 +436,7 @@
       display: flex;
       gap: 0.4rem;
     }
-    .bars-btn, .cycle-btn, .style-btn, .theme-btn {
+    .bars-btn, .cycle-btn, .style-btn, .bass-btn, .theme-btn {
       flex: 1;
       padding: 0.6rem;
       background: var(--surface-alt);
@@ -448,7 +448,7 @@
       cursor: pointer;
       font-family: inherit;
     }
-    .bars-btn.active, .cycle-btn.active, .style-btn.active, .theme-btn.active {
+    .bars-btn.active, .cycle-btn.active, .style-btn.active, .bass-btn.active, .theme-btn.active {
       background: var(--accent);
       color: var(--accent-text);
       border-color: var(--accent);
@@ -638,6 +638,12 @@
           <button type="button" class="style-btn" data-style="funk">Funk</button>
           <button type="button" class="style-btn" data-style="ballad">Ballad</button>
           <button type="button" class="style-btn" data-style="rock">Rock</button>
+        </div>
+
+        <label class="field-label">Bass</label>
+        <div class="bars-options" id="bass-options">
+          <button type="button" class="bass-btn active" data-bass="simple">Simple</button>
+          <button type="button" class="bass-btn" data-bass="busy">Busy</button>
         </div>
       </section>
 
@@ -847,11 +853,13 @@
       const chordNotes = intervals.map(iv => r + iv);
       const chordBass = r - 12;
       const synthBass = r - 24;
+      const isMinor = QUALITY_IS_MINOR[quality];
       return {
         notes: [chordBass, ...chordNotes].map(midiToNote),
         bassRoot: midiToNote(synthBass),
+        bassThird: midiToNote(synthBass + (isMinor ? 3 : 4)),
         bassFifth: midiToNote(synthBass + 7),
-        isMinor: QUALITY_IS_MINOR[quality],
+        isMinor,
         root,
         quality,
       };
@@ -905,36 +913,70 @@
     // Bass: 'R' = root, '5' = fifth, 0 = rest.
     const STYLES = {
       pop: {
-        kick:      [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
-        snare:     [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
-        hat:       [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
-        bassMajor: ['R',0,0,0, 'R',0,0,0, '5',0,0,0, 'R',0,0,0],
-        bassMinor: ['R',0,0,0, 'R',0,0,0, 'R',0,0,0, 'R',0,0,0],
+        kick:  [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
+        snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+        hat:   [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
+        bass: {
+          simple: {
+            major: ['R',0,0,0, 'R',0,0,0, '5',0,0,0, 'R',0,0,0],
+            minor: ['R',0,0,0, 'R',0,0,0, 'R',0,0,0, 'R',0,0,0],
+          },
+          busy: {
+            major: ['R',0,0,0, '5',0,0,0, '3',0,0,0, '5',0,'R',0],
+            minor: ['R',0,0,0, '5',0,0,0, '3',0,0,0, '5',0,'R',0],
+          },
+        },
       },
       funk: {
-        kick:      [1,0,0,0, 0,0,1,0, 0,0,1,0, 0,0,1,0],
-        snare:     [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
-        hat:       [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
-        bassMajor: ['R',0,0,0, 0,0,'R',0, 0,0,'R',0, 0,0,'5',0],
-        bassMinor: ['R',0,0,0, 0,0,'R',0, 0,0,'R',0, 0,0,'R',0],
+        kick:  [1,0,0,0, 0,0,1,0, 0,0,1,0, 0,0,1,0],
+        snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+        hat:   [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
+        bass: {
+          simple: {
+            major: ['R',0,0,0, 0,0,'R',0, 0,0,'R',0, 0,0,'5',0],
+            minor: ['R',0,0,0, 0,0,'R',0, 0,0,'R',0, 0,0,'R',0],
+          },
+          busy: {
+            major: ['R',0,0,'R', 0,0,'R',0, 0,'3',0,'R', 0,'3',0,'5'],
+            minor: ['R',0,0,'R', 0,0,'R',0, 0,'3',0,'R', 0,'3',0,'R'],
+          },
+        },
       },
       ballad: {
-        kick:      [1,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
-        snare:     [0,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
-        hat:       [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0],
-        bassMajor: ['R',0,0,0, 0,0,0,0, '5',0,0,0, 0,0,0,0],
-        bassMinor: ['R',0,0,0, 0,0,0,0, 'R',0,0,0, 0,0,0,0],
+        kick:  [1,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+        snare: [0,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
+        hat:   [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0],
+        bass: {
+          simple: {
+            major: ['R',0,0,0, 0,0,0,0, '5',0,0,0, 0,0,0,0],
+            minor: ['R',0,0,0, 0,0,0,0, 'R',0,0,0, 0,0,0,0],
+          },
+          busy: {
+            major: ['R',0,0,0, 0,0,0,0, '3',0,'5',0, '3',0,'R',0],
+            minor: ['R',0,0,0, 0,0,0,0, '3',0,'5',0, '3',0,'R',0],
+          },
+        },
       },
       rock: {
-        kick:      [1,0,0,0, 0,0,1,0, 1,0,0,0, 0,0,0,0],
-        snare:     [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
-        hat:       [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
-        bassMajor: ['R',0,0,0, 0,0,'R',0, 'R',0,0,0, '5',0,0,0],
-        bassMinor: ['R',0,0,0, 0,0,'R',0, 'R',0,0,0, 'R',0,0,0],
+        kick:  [1,0,0,0, 0,0,1,0, 1,0,0,0, 0,0,0,0],
+        snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+        hat:   [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
+        bass: {
+          simple: {
+            major: ['R',0,0,0, 0,0,'R',0, 'R',0,0,0, '5',0,0,0],
+            minor: ['R',0,0,0, 0,0,'R',0, 'R',0,0,0, 'R',0,0,0],
+          },
+          busy: {
+            major: ['R',0,'R',0, '3',0,'R',0, 'R',0,'R',0, '5',0,'3',0],
+            minor: ['R',0,'R',0, '3',0,'R',0, 'R',0,'R',0, '5',0,'3',0],
+          },
+        },
       },
     };
     const STYLE_OPTIONS = Object.keys(STYLES);
     const STYLE_LABELS = { pop: 'Pop', funk: 'Funk', ballad: 'Ballad', rock: 'Rock' };
+    const BASS_OPTIONS = ['simple', 'busy'];
+    const BASS_LABELS = { simple: 'Simple', busy: 'Busy' };
     const CYCLE_LABELS = { none: 'Loop', '4ths': 'Cycle 4ths', '5ths': 'Cycle 5ths' };
 
     let synth = null, reverb = null, part = null;
@@ -1037,7 +1079,7 @@
       if (bassSeq) bassSeq.mute = !bassEl.checked;
     }
 
-    function buildBass(chords, cycle, style) {
+    function buildBass(chords, cycle, style, bassVariant) {
       bass = new Tone.MonoSynth({
         oscillator: { type: 'sawtooth' },
         filter: { Q: 2, type: 'lowpass' },
@@ -1046,6 +1088,7 @@
       }).connect(bassChannel);
       bass.volume.value = -6;
 
+      const bassPatterns = style.bass[bassVariant] || style.bass.simple;
       const semis = CYCLE_SEMIS[cycle] || 0;
       const laps = semis ? 12 : 1;
 
@@ -1054,11 +1097,12 @@
         const shift = clampShift(semis * lap);
         for (const c of chords) {
           const voiced = shift ? makeChord(c.root + shift, c.quality) : c;
-          const pattern = voiced.isMinor ? style.bassMinor : style.bassMajor;
+          const pattern = voiced.isMinor ? bassPatterns.minor : bassPatterns.major;
           const totalSteps = c.bars * 16;
           for (let s = 0; s < totalSteps; s++) {
             const step = pattern[s % 16];
             if (step === 'R')      steps.push(voiced.bassRoot);
+            else if (step === '3') steps.push(voiced.bassThird);
             else if (step === '5') steps.push(voiced.bassFifth);
             else                   steps.push(null);
           }
@@ -1072,7 +1116,7 @@
       applyBassMute();
     }
 
-    function buildPart(chords, cycle, style) {
+    function buildPart(chords, cycle, style, bassVariant) {
       teardown();
 
       reverb = new Tone.Reverb({ decay: 2.5, wet: 0.25 }).connect(chordChannel);
@@ -1127,7 +1171,7 @@
       }, [0, 1, 2, 3], '4n').start(0);
 
       buildDrums(style);
-      buildBass(chords, cycle, style);
+      buildBass(chords, cycle, style, bassVariant);
     }
 
     const beatDots = document.querySelectorAll('.beat-dot');
@@ -1191,6 +1235,7 @@
     const barsButtons  = document.querySelectorAll('.bars-btn');
     const cycleButtons = document.querySelectorAll('.cycle-btn');
     const styleButtons = document.querySelectorAll('.style-btn');
+    const bassButtons  = document.querySelectorAll('.bass-btn');
 
     function updateReadout() {
       readoutTempo.textContent = clampedTempo();
@@ -1213,6 +1258,11 @@
     function getStyle() {
       const active = document.querySelector('.style-btn.active');
       return active ? active.dataset.style : 'pop';
+    }
+
+    function getBassVariant() {
+      const active = document.querySelector('.bass-btn.active');
+      return active ? active.dataset.bass : 'simple';
     }
 
     let wakeLock = null;
@@ -1314,7 +1364,7 @@
           if (Tone.Transport.state !== 'started') return;
           try {
             const chords = parseProgression(progEl.value, keyEl.value, getDefaultBars());
-            buildPart(chords, getCycleMode(), STYLES[getStyle()]);
+            buildPart(chords, getCycleMode(), STYLES[getStyle()], getBassVariant());
           } catch (e) {
             setStatus('Error: ' + e.message);
           }
@@ -1392,6 +1442,15 @@
         styleButtons.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         updateReadout();
+        scheduleRebuild();
+        syncUrl();
+      });
+    });
+
+    bassButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        bassButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
         scheduleRebuild();
         syncUrl();
       });
@@ -1488,7 +1547,7 @@
         if ('audioSession' in navigator) navigator.audioSession.type = 'playback';
         initChannels();
         const chords = parseProgression(progEl.value, keyEl.value, getDefaultBars());
-        buildPart(chords, getCycleMode(), STYLES[getStyle()]);
+        buildPart(chords, getCycleMode(), STYLES[getStyle()], getBassVariant());
         Tone.Transport.bpm.value = clampedTempo();
         Tone.Transport.start();
         if (keepAwakeEl.checked) acquireWakeLock();
@@ -1557,6 +1616,7 @@
       bars: 2,
       cycle: 'none',
       style: 'pop',
+      bass: 'simple',
       progression: 'I vi ii V',
       chordVol: 50,
       bassVol: 100,
@@ -1575,6 +1635,7 @@
         bars: getDefaultBars(),
         cycle: getCycleMode(),
         style: getStyle(),
+        bass: getBassVariant(),
         progression: progEl.value,
         chordVol: chordVolEl.value,
         bassVol: bassVolEl.value,
@@ -1593,6 +1654,7 @@
       p.set('bars', s.bars);
       p.set('cycle', s.cycle);
       p.set('style', s.style);
+      p.set('bass', s.bass);
       p.set('progression', s.progression);
       p.set('chordVol', s.chordVol);
       p.set('bassVol', s.bassVol);
@@ -1621,12 +1683,14 @@
       const bars = num('bars', DEFAULTS.bars);
       const cycle = str('cycle', DEFAULTS.cycle);
       const style = str('style', DEFAULTS.style);
+      const bass = str('bass', DEFAULTS.bass);
       return {
         key: VALID_KEYS.includes(key) ? key : DEFAULTS.key,
         tempo: Math.max(40, Math.min(220, num('tempo', DEFAULTS.tempo))),
         bars: BARS_OPTIONS.includes(bars) ? bars : DEFAULTS.bars,
         cycle: CYCLE_OPTIONS.includes(cycle) ? cycle : DEFAULTS.cycle,
         style: STYLE_OPTIONS.includes(style) ? style : DEFAULTS.style,
+        bass: BASS_OPTIONS.includes(bass) ? bass : DEFAULTS.bass,
         progression: str('progression', DEFAULTS.progression),
         chordVol: num('chordVol', DEFAULTS.chordVol),
         bassVol: num('bassVol', DEFAULTS.bassVol),
@@ -1655,6 +1719,9 @@
       });
       styleButtons.forEach(btn => {
         btn.classList.toggle('active', btn.dataset.style === s.style);
+      });
+      bassButtons.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.bass === s.bass);
       });
 
       progEl.value = s.progression;
