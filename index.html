@@ -845,11 +845,12 @@
         r -= 12;
       }
       const chordNotes = intervals.map(iv => r + iv);
-      const bassRoot = r - 12;
+      const chordBass = r - 12;
+      const synthBass = r - 24;
       return {
-        notes: [bassRoot, ...chordNotes].map(midiToNote),
-        bassRoot: midiToNote(bassRoot),
-        bassFifth: midiToNote(bassRoot + 7),
+        notes: [chordBass, ...chordNotes].map(midiToNote),
+        bassRoot: midiToNote(synthBass),
+        bassFifth: midiToNote(synthBass + 7),
         isMinor: QUALITY_IS_MINOR[quality],
         root,
         quality,
