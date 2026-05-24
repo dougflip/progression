@@ -572,6 +572,7 @@
         </div>
       </span>
       <button type="button" class="readout-btn" id="readout-style">Pop</button>
+      <button type="button" class="readout-btn" id="readout-bass">Simple</button>
       <button type="button" class="readout-btn" id="readout-bars">2 bars</button>
       <button type="button" class="readout-btn" id="readout-cycle">Loop</button>
     </div>
@@ -1230,6 +1231,7 @@
     const readoutKey   = $('key-display');
     const readoutTempo = $('readout-tempo');
     const readoutStyle = $('readout-style');
+    const readoutBass  = $('readout-bass');
     const readoutBars  = $('readout-bars');
     const readoutCycle = $('readout-cycle');
     const barsButtons  = document.querySelectorAll('.bars-btn');
@@ -1240,6 +1242,7 @@
     function updateReadout() {
       readoutTempo.textContent = clampedTempo();
       readoutStyle.textContent = STYLE_LABELS[getStyle()] || getStyle();
+      readoutBass.textContent = BASS_LABELS[getBassVariant()] || getBassVariant();
       const bars = getDefaultBars();
       readoutBars.textContent = bars + (bars === 1 ? ' bar' : ' bars');
       readoutCycle.textContent = CYCLE_LABELS[getCycleMode()] || getCycleMode();
@@ -1451,6 +1454,7 @@
       btn.addEventListener('click', () => {
         bassButtons.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+        updateReadout();
         scheduleRebuild();
         syncUrl();
       });
@@ -1462,6 +1466,7 @@
       arr[(idx + 1) % arr.length].click();
     }
     $('readout-style').addEventListener('click', () => cycleNext(styleButtons));
+    $('readout-bass').addEventListener('click', () => cycleNext(bassButtons));
     $('readout-bars').addEventListener('click', () => cycleNext(barsButtons));
     $('readout-cycle').addEventListener('click', () => cycleNext(cycleButtons));
 

@@ -14,7 +14,7 @@ The most-used settings are tappable directly on the main screen — no need to o
 
 - Tap the **key heading** to reveal an inline key picker.
 - Tap the **BPM** to open a tempo popover with a slider and ± nudge buttons.
-- Tap **style**, **bars**, or **loop mode** pills to cycle through their options.
+- Tap **style**, **bass**, **bars**, or **loop mode** pills to cycle through their options.
 
 ## Progression syntax
 
@@ -45,6 +45,13 @@ Drum and bass feel. All 4/4.
 - **Funk** — syncopated, tighter pocket.
 - **Ballad** — half-time feel, sparse — pairs well with slow tempos.
 - **Rock** — driving 8ths, heavier kick.
+
+## Bass variant
+
+Each style has two bass patterns:
+
+- **Simple** — sparse, root-focused.
+- **Busy** — more motion, weaves in chord tones (root, 3rd, 5th). The 3rd auto-adapts to chord quality.
 
 ## Built-in presets
 
