@@ -994,7 +994,7 @@
       kick = new Tone.MembraneSynth({
         pitchDecay: 0.05,
         octaves: 6,
-        envelope: { attack: 0.001, decay: 0.4, sustain: 0, release: 1.4 },
+        envelope: { attack: 0.005, decay: 0.4, sustain: 0, release: 1.4 },
       }).connect(drumChannel);
       kick.volume.value = -4;
 
@@ -1006,7 +1006,7 @@
 
       hat = new Tone.MetalSynth({
         frequency: 250,
-        envelope: { attack: 0.001, decay: 0.05, release: 0.01 },
+        envelope: { attack: 0.002, decay: 0.05, release: 0.01 },
         harmonicity: 5.1,
         modulationIndex: 32,
         resonance: 4000,
