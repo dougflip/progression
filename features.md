@@ -53,6 +53,14 @@ Each style has two bass patterns:
 - **Simple** — sparse, root-focused.
 - **Busy** — more motion, weaves in chord tones (root, 3rd, 5th). The 3rd auto-adapts to chord quality.
 
+## Voicing
+
+How chord notes are arranged.
+
+- **Root** — every chord plays in root position. Clearest chord identity, easiest for ear training.
+- **Voice-lead** — each chord picks the inversion closest to the previous one. Voice leading flows continuously across all chords and across all Cycle laps.
+- **Voice-lead/loop** — voice leading within each iteration of the progression, but resets to root position at the start of each Cycle lap. Predictable lap-by-lap shape. Same as Voice-lead in Loop mode (only one lap).
+
 ## Built-in presets
 
 Quick-load chips for common shapes:

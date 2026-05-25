@@ -650,7 +650,8 @@
         <label class="field-label">Voicing</label>
         <div class="bars-options" id="voicing-options">
           <button type="button" class="voicing-btn active" data-voicing="root">Root</button>
-          <button type="button" class="voicing-btn" data-voicing="smooth">Smooth</button>
+          <button type="button" class="voicing-btn" data-voicing="voice-lead">Voice-lead</button>
+          <button type="button" class="voicing-btn" data-voicing="voice-lead-loop">Voice-lead/loop</button>
         </div>
       </section>
 
@@ -1013,7 +1014,7 @@
     const STYLE_LABELS = { pop: 'Pop', funk: 'Funk', ballad: 'Ballad', rock: 'Rock' };
     const BASS_OPTIONS = ['simple', 'busy'];
     const BASS_LABELS = { simple: 'Simple', busy: 'Busy' };
-    const VOICING_OPTIONS = ['root', 'smooth'];
+    const VOICING_OPTIONS = ['root', 'voice-lead', 'voice-lead-loop'];
     const CYCLE_LABELS = { none: 'Loop', '4ths': 'Cycle 4ths', '5ths': 'Cycle 5ths' };
 
     let synth = null, reverb = null, part = null;
@@ -1165,12 +1166,14 @@
 
       const semis = CYCLE_SEMIS[cycle] || 0;
       const laps = semis ? 12 : 1;
-      const smooth = voicing === 'smooth';
+      const smooth = voicing === 'voice-lead' || voicing === 'voice-lead-loop';
+      const resetEachLap = voicing === 'voice-lead-loop';
 
       let cumBars = 0;
       const events = [];
       let prevUpper = null;
       for (let lap = 0; lap < laps; lap++) {
+        if (resetEachLap) prevUpper = null;
         const rawShift = semis * lap;
         const audioShift = clampShift(rawShift);
         chords.forEach((c, i) => {
