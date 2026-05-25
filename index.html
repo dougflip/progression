@@ -436,7 +436,7 @@
       display: flex;
       gap: 0.4rem;
     }
-    .bars-btn, .cycle-btn, .style-btn, .bass-btn, .theme-btn {
+    .bars-btn, .cycle-btn, .style-btn, .bass-btn, .voicing-btn, .theme-btn {
       flex: 1;
       padding: 0.6rem;
       background: var(--surface-alt);
@@ -448,7 +448,7 @@
       cursor: pointer;
       font-family: inherit;
     }
-    .bars-btn.active, .cycle-btn.active, .style-btn.active, .bass-btn.active, .theme-btn.active {
+    .bars-btn.active, .cycle-btn.active, .style-btn.active, .bass-btn.active, .voicing-btn.active, .theme-btn.active {
       background: var(--accent);
       color: var(--accent-text);
       border-color: var(--accent);
@@ -646,6 +646,12 @@
           <button type="button" class="bass-btn active" data-bass="simple">Simple</button>
           <button type="button" class="bass-btn" data-bass="busy">Busy</button>
         </div>
+
+        <label class="field-label">Voicing</label>
+        <div class="bars-options" id="voicing-options">
+          <button type="button" class="voicing-btn active" data-voicing="root">Root</button>
+          <button type="button" class="voicing-btn" data-voicing="smooth">Smooth</button>
+        </div>
       </section>
 
       <section class="setup-group">
@@ -840,7 +846,7 @@
       return '?';
     }
 
-    function makeChord(root, quality) {
+    function makeChord(root, quality, prevUpper = null) {
       const intervals = QUALITY_INTERVALS[quality];
       // Drop the whole voicing an octave if the top note sits too high
       // (the synth gets shrill up there). Tighter ceiling on 7ths since
@@ -851,12 +857,41 @@
       while (r + intervals[intervals.length - 1] > topMax && r > 48) {
         r -= 12;
       }
-      const chordNotes = intervals.map(iv => r + iv);
+
+      let chordNotes;
+      if (prevUpper) {
+        // Pick the inversion that minimizes position-wise movement from prev.
+        const candidates = [];
+        for (let inv = 0; inv < intervals.length; inv++) {
+          let notes = [];
+          for (let i = 0; i < intervals.length; i++) {
+            const idx = (inv + i) % intervals.length;
+            const oct = (inv + i) >= intervals.length ? 12 : 0;
+            notes.push(r + intervals[idx] + oct);
+          }
+          while (notes[notes.length - 1] > topMax) {
+            notes = notes.map(n => n - 12);
+          }
+          candidates.push(notes);
+        }
+        let best = candidates[0];
+        let bestScore = Infinity;
+        for (const cand of candidates) {
+          let score = 0;
+          for (let i = 0; i < cand.length; i++) score += Math.abs(cand[i] - prevUpper[i]);
+          if (score < bestScore) { bestScore = score; best = cand; }
+        }
+        chordNotes = best;
+      } else {
+        chordNotes = intervals.map(iv => r + iv);
+      }
+
       const chordBass = r - 12;
       const synthBass = r - 24;
       const isMinor = QUALITY_IS_MINOR[quality];
       return {
         notes: [chordBass, ...chordNotes].map(midiToNote),
+        upperVoicing: chordNotes,
         bassRoot: midiToNote(synthBass),
         bassThird: midiToNote(synthBass + (isMinor ? 3 : 4)),
         bassFifth: midiToNote(synthBass + 7),
@@ -978,6 +1013,7 @@
     const STYLE_LABELS = { pop: 'Pop', funk: 'Funk', ballad: 'Ballad', rock: 'Rock' };
     const BASS_OPTIONS = ['simple', 'busy'];
     const BASS_LABELS = { simple: 'Simple', busy: 'Busy' };
+    const VOICING_OPTIONS = ['root', 'smooth'];
     const CYCLE_LABELS = { none: 'Loop', '4ths': 'Cycle 4ths', '5ths': 'Cycle 5ths' };
 
     let synth = null, reverb = null, part = null;
@@ -1117,7 +1153,7 @@
       applyBassMute();
     }
 
-    function buildPart(chords, cycle, style, bassVariant) {
+    function buildPart(chords, cycle, style, bassVariant, voicing) {
       teardown();
 
       reverb = new Tone.Reverb({ decay: 2.5, wet: 0.25 }).connect(chordChannel);
@@ -1129,14 +1165,20 @@
 
       const semis = CYCLE_SEMIS[cycle] || 0;
       const laps = semis ? 12 : 1;
+      const smooth = voicing === 'smooth';
 
       let cumBars = 0;
       const events = [];
+      let prevUpper = null;
       for (let lap = 0; lap < laps; lap++) {
         const rawShift = semis * lap;
         const audioShift = clampShift(rawShift);
         chords.forEach((c, i) => {
-          const voiced = audioShift ? makeChord(c.root + audioShift, c.quality) : c;
+          const needsRebuild = audioShift || smooth;
+          const voiced = needsRebuild
+            ? makeChord(c.root + audioShift, c.quality, smooth ? prevUpper : null)
+            : c;
+          if (smooth) prevUpper = voiced.upperVoicing;
           events.push({
             time: `${cumBars}m`,
             bars: c.bars,
@@ -1238,6 +1280,7 @@
     const cycleButtons = document.querySelectorAll('.cycle-btn');
     const styleButtons = document.querySelectorAll('.style-btn');
     const bassButtons  = document.querySelectorAll('.bass-btn');
+    const voicingButtons = document.querySelectorAll('.voicing-btn');
 
     function updateReadout() {
       readoutTempo.textContent = clampedTempo();
@@ -1266,6 +1309,11 @@
     function getBassVariant() {
       const active = document.querySelector('.bass-btn.active');
       return active ? active.dataset.bass : 'simple';
+    }
+
+    function getVoicing() {
+      const active = document.querySelector('.voicing-btn.active');
+      return active ? active.dataset.voicing : 'root';
     }
 
     let wakeLock = null;
@@ -1367,7 +1415,7 @@
           if (Tone.Transport.state !== 'started') return;
           try {
             const chords = parseProgression(progEl.value, keyEl.value, getDefaultBars());
-            buildPart(chords, getCycleMode(), STYLES[getStyle()], getBassVariant());
+            buildPart(chords, getCycleMode(), STYLES[getStyle()], getBassVariant(), getVoicing());
           } catch (e) {
             setStatus('Error: ' + e.message);
           }
@@ -1455,6 +1503,15 @@
         bassButtons.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         updateReadout();
+        scheduleRebuild();
+        syncUrl();
+      });
+    });
+
+    voicingButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        voicingButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
         scheduleRebuild();
         syncUrl();
       });
@@ -1552,7 +1609,7 @@
         if ('audioSession' in navigator) navigator.audioSession.type = 'playback';
         initChannels();
         const chords = parseProgression(progEl.value, keyEl.value, getDefaultBars());
-        buildPart(chords, getCycleMode(), STYLES[getStyle()], getBassVariant());
+        buildPart(chords, getCycleMode(), STYLES[getStyle()], getBassVariant(), getVoicing());
         Tone.Transport.bpm.value = clampedTempo();
         Tone.Transport.start();
         if (keepAwakeEl.checked) acquireWakeLock();
@@ -1622,6 +1679,7 @@
       cycle: 'none',
       style: 'pop',
       bass: 'simple',
+      voicing: 'root',
       progression: 'I vi ii V',
       chordVol: 50,
       bassVol: 100,
@@ -1641,6 +1699,7 @@
         cycle: getCycleMode(),
         style: getStyle(),
         bass: getBassVariant(),
+        voicing: getVoicing(),
         progression: progEl.value,
         chordVol: chordVolEl.value,
         bassVol: bassVolEl.value,
@@ -1660,6 +1719,7 @@
       p.set('cycle', s.cycle);
       p.set('style', s.style);
       p.set('bass', s.bass);
+      p.set('voicing', s.voicing);
       p.set('progression', s.progression);
       p.set('chordVol', s.chordVol);
       p.set('bassVol', s.bassVol);
@@ -1689,6 +1749,7 @@
       const cycle = str('cycle', DEFAULTS.cycle);
       const style = str('style', DEFAULTS.style);
       const bass = str('bass', DEFAULTS.bass);
+      const voicing = str('voicing', DEFAULTS.voicing);
       return {
         key: VALID_KEYS.includes(key) ? key : DEFAULTS.key,
         tempo: Math.max(40, Math.min(220, num('tempo', DEFAULTS.tempo))),
@@ -1696,6 +1757,7 @@
         cycle: CYCLE_OPTIONS.includes(cycle) ? cycle : DEFAULTS.cycle,
         style: STYLE_OPTIONS.includes(style) ? style : DEFAULTS.style,
         bass: BASS_OPTIONS.includes(bass) ? bass : DEFAULTS.bass,
+        voicing: VOICING_OPTIONS.includes(voicing) ? voicing : DEFAULTS.voicing,
         progression: str('progression', DEFAULTS.progression),
         chordVol: num('chordVol', DEFAULTS.chordVol),
         bassVol: num('bassVol', DEFAULTS.bassVol),
@@ -1727,6 +1789,9 @@
       });
       bassButtons.forEach(btn => {
         btn.classList.toggle('active', btn.dataset.bass === s.bass);
+      });
+      voicingButtons.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.voicing === s.voicing);
       });
 
       progEl.value = s.progression;
