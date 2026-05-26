@@ -164,6 +164,7 @@
       font-size: 0.9rem;
     }
     #readout strong { color: var(--text); font-weight: 600; }
+    .readout-row-break { flex-basis: 100%; height: 0; }
     .readout-btn {
       background: var(--surface-alt);
       color: var(--text);
@@ -566,6 +567,11 @@
       <span class="beat-dot"></span>
     </div>
     <div id="readout">
+      <button type="button" class="readout-btn" id="readout-style">Pop</button>
+      <button type="button" class="readout-btn" id="readout-bass">Simple</button>
+      <button type="button" class="readout-btn" id="readout-voicing">Root</button>
+      <div class="readout-row-break"></div>
+      <button type="button" class="readout-btn" id="readout-bars">2 bars</button>
       <span class="tempo-group">
         <button type="button" class="readout-btn" id="tempo-toggle"><strong id="readout-tempo">85</strong> BPM</button>
         <div id="tempo-picker" hidden>
@@ -574,9 +580,6 @@
           <button type="button" class="tempo-step" id="tempo-up" aria-label="Increase tempo">+</button>
         </div>
       </span>
-      <button type="button" class="readout-btn" id="readout-style">Pop</button>
-      <button type="button" class="readout-btn" id="readout-bass">Simple</button>
-      <button type="button" class="readout-btn" id="readout-bars">2 bars</button>
       <button type="button" class="readout-btn" id="readout-cycle">Loop</button>
     </div>
     <div id="status"></div>
@@ -1018,6 +1021,7 @@
     const BASS_OPTIONS = ['simple', 'busy'];
     const BASS_LABELS = { simple: 'Simple', busy: 'Busy' };
     const VOICING_OPTIONS = ['root', 'voice-lead', 'voice-lead-loop'];
+    const VOICING_PILL_LABELS = { 'root': 'Root', 'voice-lead': 'Lead', 'voice-lead-loop': 'Lead/loop' };
     const CYCLE_LABELS = { none: 'Loop', '4ths': 'Cycle 4ths', '5ths': 'Cycle 5ths' };
 
     let synth = null, reverb = null, part = null;
@@ -1278,10 +1282,11 @@
     const tempoValueEl = $('tempoValue');
     const readoutKey   = $('key-display');
     const readoutTempo = $('readout-tempo');
-    const readoutStyle = $('readout-style');
-    const readoutBass  = $('readout-bass');
-    const readoutBars  = $('readout-bars');
-    const readoutCycle = $('readout-cycle');
+    const readoutStyle   = $('readout-style');
+    const readoutBass    = $('readout-bass');
+    const readoutVoicing = $('readout-voicing');
+    const readoutBars    = $('readout-bars');
+    const readoutCycle   = $('readout-cycle');
     const barsButtons  = document.querySelectorAll('.bars-btn');
     const cycleButtons = document.querySelectorAll('.cycle-btn');
     const styleButtons = document.querySelectorAll('.style-btn');
@@ -1292,6 +1297,7 @@
       readoutTempo.textContent = clampedTempo();
       readoutStyle.textContent = STYLE_LABELS[getStyle()] || getStyle();
       readoutBass.textContent = BASS_LABELS[getBassVariant()] || getBassVariant();
+      readoutVoicing.textContent = VOICING_PILL_LABELS[getVoicing()] || getVoicing();
       const bars = getDefaultBars();
       readoutBars.textContent = bars + (bars === 1 ? ' bar' : ' bars');
       readoutCycle.textContent = CYCLE_LABELS[getCycleMode()] || getCycleMode();
@@ -1518,6 +1524,7 @@
       btn.addEventListener('click', () => {
         voicingButtons.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+        updateReadout();
         scheduleRebuild();
         syncUrl();
       });
@@ -1530,6 +1537,7 @@
     }
     $('readout-style').addEventListener('click', () => cycleNext(styleButtons));
     $('readout-bass').addEventListener('click', () => cycleNext(bassButtons));
+    $('readout-voicing').addEventListener('click', () => cycleNext(voicingButtons));
     $('readout-bars').addEventListener('click', () => cycleNext(barsButtons));
     $('readout-cycle').addEventListener('click', () => cycleNext(cycleButtons));
 
