@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Spike: Transport.position reseat</title>
+  <style>
+    body { font-family: monospace; background: #111; color: #eee; padding: 2rem; max-width: 620px; }
+    h2 { margin-top: 0; }
+    p { color: #aaa; font-size: 0.85rem; line-height: 1.5; }
+    button { padding: 0.5rem 1rem; margin: 0.25rem; font-size: 0.9rem; cursor: pointer; border-radius: 4px; border: 1px solid #555; background: #222; color: #eee; }
+    button:hover { background: #333; }
+    #play { background: #1a3a1a; border-color: #3a6; font-size: 1rem; padding: 0.6rem 1.5rem; }
+    #play.playing { background: #3a1a1a; border-color: #933; }
+    #status { margin: 1rem 0; font-size: 1.1rem; color: #7df; min-height: 1.5em; }
+    #log { margin-top: 1rem; font-size: 0.78rem; color: #888; max-height: 260px; overflow-y: auto; border-top: 1px solid #333; padding-top: 0.5rem; }
+    .log-jump { color: #fa4; }
+    .log-section { color: #8cf; }
+    .log-info { color: #555; }
+    .log-warn { color: #f66; }
+    hr { border-color: #333; margin: 1.2rem 0; }
+    label { margin-right: 1rem; }
+  </style>
+</head>
+<body>
+  <h2>Spike: Transport.position reseat</h2>
+  <p>
+    <strong>Result: Strategy A works.</strong> Setting <code>Tone.Transport.position</code>
+    directly in the Part's audio callback cleanly reseats a looping Part — no double-notes,
+    no glitches, no rebuild needed.
+  </p>
+  <p>
+    <strong>Critical implementation note:</strong> the <code>pendingJump</code> check must
+    be the <em>first thing</em> in the Part callback, before any
+    <code>triggerAttackRelease</code> call. This ensures the wrong section's note is never
+    committed to the AudioContext scheduler. Doing the jump from <code>Tone.Draw.schedule</code>
+    (the visual thread) does not work — by then the lookahead buffer has already committed
+    the next note.
+  </p>
+  <p>
+    3 sections × 2 bars. C3 = section 1, E3 = section 2, G3 = section 3.
+    Queue a jump while playing; it fires at the next section boundary.
+    Strategies B and C are left here for reference but are not needed.
+  </p>
+
+  <button id="play">▶ Play</button>
+  <div id="status">Stopped</div>
+
+  <hr />
+
+  <p><strong>Jump strategy</strong> (selected before queuing jump):</p>
+  <div style="margin-bottom: 0.75rem;">
+    <label><input type="radio" name="strategy" value="position" checked /> A: position only</label>
+    <label><input type="radio" name="strategy" value="cancel" /> B: releaseAll + cancel + position</label>
+    <label><input type="radio" name="strategy" value="restart" /> C: releaseAll + part stop/start + position</label>
+  </div>
+
+  <p><strong>Queue a jump</strong> (fires at next section boundary):</p>
+  <div style="margin-bottom: 0.5rem;">
+    <button onclick="queueJump(0)">→ Section 1 (C3)</button>
+    <button onclick="queueJump(1)">→ Section 2 (E3)</button>
+    <button onclick="queueJump(2)">→ Section 3 (G3)</button>
+    <button onclick="queueJump(null)">✕ Cancel</button>
+  </div>
+
+  <div id="log"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+  <script>
+    const SECTIONS = [
+      { note: 'C3', label: 'Section 1 (C3)' },
+      { note: 'E3', label: 'Section 2 (E3)' },
+      { note: 'G3', label: 'Section 3 (G3)' },
+    ];
+    const BARS = 2;
+    const OFFSETS = SECTIONS.map((_, i) => i * BARS); // [0, 2, 4]
+    const LOOP_END = SECTIONS.length * BARS;           // 6
+
+    let synth = null;
+    let part = null;
+    let pendingJump = null; // number | null — read in audio callback
+    let currentSection = -1;
+
+    const statusEl = document.getElementById('status');
+    const logEl = document.getElementById('log');
+    const playBtn = document.getElementById('play');
+
+    function getStrategy() {
+      return document.querySelector('input[name=strategy]:checked').value;
+    }
+
+    function log(msg, cls = '') {
+      const d = document.createElement('div');
+      if (cls) d.className = cls;
+      d.textContent = new Date().toISOString().slice(11, 23) + '  ' + msg;
+      logEl.prepend(d);
+    }
+
+    function setStatus(msg) { statusEl.textContent = msg; }
+
+    function queueJump(idx) {
+      if (idx === null) {
+        pendingJump = null;
+        log('✕ Jump cancelled', 'log-info');
+        return;
+      }
+      if (Tone.Transport.state !== 'started') return;
+      pendingJump = idx;
+      log(`⏳ Jump queued → Section ${idx + 1} [strategy: ${getStrategy()}]`, 'log-jump');
+      setStatus(`Section ${currentSection + 1} playing — jump to ${idx + 1} pending`);
+    }
+
+    function buildPart() {
+      synth = new Tone.PolySynth(Tone.Synth, {
+        oscillator: { type: 'triangle' },
+        envelope: { attack: 0.04, decay: 0.3, sustain: 0.5, release: 1.5 },
+      }).toDestination();
+      synth.volume.value = -10;
+
+      const events = SECTIONS.map((s, i) => ({
+        time: `${OFFSETS[i]}m`,
+        sectionIdx: i,
+        note: s.note,
+      }));
+
+      part = new Tone.Part((time, ev) => {
+        const idx = ev.sectionIdx;
+
+        // ── Jump logic runs HERE in the audio callback ──
+        // pendingJump is set from the main thread; reading it here is safe
+        // (JS is single-threaded — no race with the click handlers).
+        if (pendingJump !== null && pendingJump !== idx) {
+          const target = pendingJump;
+          pendingJump = null;
+          const strategy = getStrategy();
+          const targetPos = `${OFFSETS[target]}:0:0`;
+
+          // Do NOT trigger ev.note here — we're skipping this section entirely.
+          // The position change drives what plays next.
+
+          if (strategy === 'position') {
+            Tone.Transport.position = targetPos;
+
+          } else if (strategy === 'cancel') {
+            try { synth.releaseAll(); } catch {}
+            Tone.Transport.cancel(time);   // clear Tone's lookahead queue after now
+            Tone.Transport.position = targetPos;
+
+          } else if (strategy === 'restart') {
+            try { synth.releaseAll(); } catch {}
+            part.stop();
+            Tone.Transport.position = targetPos;
+            part.start(0);
+          }
+
+          Tone.Draw.schedule(() => {
+            currentSection = target;
+            log(`🔀 [${strategy}] Jump fired → Section ${target + 1} (bar ${OFFSETS[target]})`, 'log-jump');
+            setStatus(`Jumped → ${SECTIONS[target].label}`);
+          }, time);
+
+        } else {
+          // Normal: play this section
+          pendingJump = null; // tapping current section = cancel
+          synth.triggerAttackRelease(ev.note, `${BARS - 0.05}m`, time);
+
+          Tone.Draw.schedule(() => {
+            if (currentSection !== idx) {
+              log(`▶ Section ${idx + 1} started (bar ${OFFSETS[idx]})`, 'log-section');
+            }
+            currentSection = idx;
+            setStatus(`▶ ${SECTIONS[idx].label}`);
+          }, time);
+        }
+
+      }, events);
+
+      part.loop = true;
+      part.loopEnd = `${LOOP_END}m`;
+      part.start(0);
+    }
+
+    function teardown() {
+      if (part) { try { part.stop(); part.dispose(); } catch {} part = null; }
+      if (synth) { try { synth.dispose(); } catch {} synth = null; }
+    }
+
+    playBtn.addEventListener('click', async () => {
+      if (Tone.Transport.state === 'started') {
+        Tone.Transport.stop();
+        teardown();
+        pendingJump = null;
+        currentSection = -1;
+        playBtn.textContent = '▶ Play';
+        playBtn.classList.remove('playing');
+        setStatus('Stopped');
+        log('■ Stopped', 'log-info');
+      } else {
+        await Tone.start();
+        teardown();
+        buildPart();
+        Tone.Transport.bpm.value = 80;
+        Tone.Transport.start();
+        playBtn.textContent = '■ Stop';
+        playBtn.classList.add('playing');
+        log('▶ Started at 80 BPM', 'log-info');
+      }
+    });
+  </script>
+</body>
+</html>
