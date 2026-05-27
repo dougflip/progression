@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Multi-Section Progressions — Archive</title>
+<link rel="stylesheet" href="multi-section.css" />
+</head>
+<body>
+<main class="doc">
+
+  <h1>Multi-Section Progressions — Archive</h1>
+  <p class="lede">
+    Design history, deferred features, the runner-up layout, and superseded
+    explorations. The live plan is in
+    <a href="multi-section-design.html">multi-section-design.html</a>.
+  </p>
+  <p class="doc-nav">
+    ← Back to <a href="multi-section-design.html">the plan</a>.
+  </p>
+
+  <div class="iteration-log">
+    <h3 style="margin-top:0">Iteration log</h3>
+    <ol>
+      <li>
+        <strong>v1</strong> — initial sketch: tabs above chord strip, arrangement
+        as a row of square number tiles. Setup section editor.
+      </li>
+      <li>
+        <strong>v2</strong> — data model → array of objects; scheduled section
+        switching; lighter arrangement-strip explorations (alt A/B/C); Setup editor kept.
+      </li>
+      <li>
+        <strong>v3</strong> — direction narrowing: finalists B &amp; D; all editing in
+        Setup; empty arrangement = implicit linear list; single token loops one section.
+      </li>
+      <li>
+        <strong>v4</strong> — doc reorganized: superseded variants collapsed into an Archive.
+      </li>
+      <li>
+        <strong>v5</strong> — playback modes &amp; use cases: Auto/Manual advance toggle,
+        Cycle composition, open decisions listed.
+      </li>
+      <li>
+        <strong>v6</strong> — <strong>Layout D chosen</strong>; Layout B kept as runner-up.
+      </li>
+      <li>
+        <strong>v7</strong> — transition signal designed (layered visual + count-in,
+        drum fills phase 2).
+      </li>
+      <li>
+        <strong>v8</strong> — transition signal <strong>deferred</strong> out of the first pass.
+      </li>
+      <li>
+        <strong>v9</strong> — decisions: <strong>Auto loops forever</strong> +
+        <strong>Play starts at the selected section</strong>. Doc split into the plan
+        (<a href="multi-section-design.html">multi-section-design.html</a>) + this archive.
+      </li>
+    </ol>
+  </div>
+
+
+  <h2>Deferred — transition signal <span class="v-badge stale">later</span></h2>
+  <p>
+    <strong>Not in the first pass.</strong> v1 simply changes sections at the boundary
+    with no cue — good enough to ship. The cue is a polish layer to add once the core
+    multi-section flow is proven. The design is captured here so we don't lose it.
+  </p>
+  <p>
+    When a section is about to change, the player benefits from a heads-up to move
+    their hands (or anticipate the new chords). Matters most in <strong>Manual</strong>
+    mode and with the <strong>foot pedal</strong>; also makes <strong>Auto</strong>
+    playback feel musical instead of abrupt.
+  </p>
+
+  <h3>Layered, each toggleable</h3>
+  <div class="mode-grid">
+    <div class="mode-card">
+      <h4>1. Visual <span class="v-badge current">default on</span></h4>
+      <p style="margin:0">
+        On the last bar before a change, the <strong>next</strong> scrubber segment
+        glows amber ("up next") and the beat dots tint amber — a peripheral "get ready"
+        you can catch without reading.
+      </p>
+    </div>
+    <div class="mode-card">
+      <h4>2. Count-in click <span class="v-badge current">default on</span></h4>
+      <p style="margin:0">
+        An accented click on the remaining beats of the last bar — a count-in feel,
+        distinct from the kit so it reads as a cue. Cheap to build, style-independent.
+      </p>
+    </div>
+    <div class="mode-card">
+      <h4>3. Drum fill <span class="v-badge stale">phase 2</span></h4>
+      <p style="margin:0">
+        Swap the last bar's drum pattern for a style-appropriate fill (snare/tom roll
+        into the downbeat). The musician-native signal — but needs per-style fill
+        patterns + a song-aware drum engine. Defer.
+      </p>
+    </div>
+  </div>
+
+  <h3>Timing</h3>
+  <ul>
+    <li>Lead time = the <strong>last bar</strong> of the current section. The change lands on the next downbeat.</li>
+    <li><strong>Short sections</strong>: a 1-bar section can't give a full bar of lead — degrade to a half-bar / last-two-beats cue. Never longer than the section.</li>
+  </ul>
+
+  <h3>Manual vs Auto</h3>
+  <ul>
+    <li>
+      <strong>Manual</strong>: the cue fires only when a change is actually pending
+      (you tapped Next / queued a jump). Tap during the last bar (too late for a full
+      cue) → switch cleanly with no fill; don't delay.
+    </li>
+    <li>
+      <strong>Auto</strong>: every advance is known, so cue the last bar of each
+      section — but only when advancing to a <em>different</em> section number (skip
+      cues on a repeat like <code>1 1</code>). Toggle off if it feels busy.
+    </li>
+    <li>The cue always targets the <em>actual</em> next section — sequential next, or the queued-jump target if one is set.</li>
+  </ul>
+
+  <h3>Illustration — Layout D, last bar before a change</h3>
+  <div class="two-col" style="max-width: 720px;">
+    <div>
+      <div class="cue-caption">Mid-section (normal)</div>
+      <div class="cue-frame">
+        <div class="scrubber-bar" style="border-top:none;">
+          <span class="scrubber-label">Song</span>
+          <div class="scrubber-track">
+            <div class="scrubber-seg current">1</div>
+            <div class="scrubber-seg">2</div>
+            <div class="scrubber-seg">3</div>
+            <div class="scrubber-seg">2</div>
+          </div>
+        </div>
+        <div class="beat-indicator" style="margin-top:0.7rem;">
+          <span class="beat-dot active"></span>
+          <span class="beat-dot"></span>
+          <span class="beat-dot"></span>
+          <span class="beat-dot"></span>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="cue-caption">Last bar (change coming → section 2)</div>
+      <div class="cue-frame">
+        <div class="scrubber-bar" style="border-top:none;">
+          <span class="scrubber-label">Song</span>
+          <div class="scrubber-track">
+            <div class="scrubber-seg current">1</div>
+            <div class="scrubber-seg upnext">2</div>
+            <div class="scrubber-seg">3</div>
+            <div class="scrubber-seg">2</div>
+          </div>
+        </div>
+        <div class="beat-indicator" style="margin-top:0.7rem;">
+          <span class="beat-dot lastbar active"></span>
+          <span class="beat-dot lastbar"></span>
+          <span class="beat-dot lastbar"></span>
+          <span class="beat-dot lastbar"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <ul class="annotations">
+    <li>Next segment pulses amber; beat dots tint amber for the whole last bar.</li>
+    <li>Count-in click would land on these beats (audio version of the same cue).</li>
+  </ul>
+
+  <h3>Engine implications</h3>
+  <ul>
+    <li>
+      <strong>Drums become song-aware</strong> (for fills) — build a song-length step
+      array with fills on transition bars, mirroring how <code>buildBass</code> already
+      concatenates per-section steps. Today drums loop a 1-bar pattern independent of
+      structure.
+    </li>
+    <li><strong>Count-in click</strong>: a small dedicated click/synth triggered on the last bar's beats; no drum-engine rework needed for this part.</li>
+    <li><strong>Visual</strong>: the Draw callbacks already fire per bar/beat — add an "is last bar / next section" flag to drive the amber scrubber pulse + beat-dot tint.</li>
+  </ul>
+
+
+  <h2>Runner-up layout — B (unified timeline) <span class="v-badge stale">not chosen</span></h2>
+  <p>
+    Strong second choice — conceptually elegant (one row that <em>is</em> the timeline,
+    never two rows of numbers). Set aside because it moves further from today's layout
+    than D, and D's seek-bar metaphor sells tap-to-jump more naturally. Kept for comparison.
+  </p>
+  <div class="mockup-block">
+    <h3>Layout B — one unified timeline</h3>
+    <p>
+      Kill the separate "tabs" row. The single connected pill <em>is</em> the
+      arrangement timeline. When the arrangement is empty, it shows the
+      <strong>implicit linear list</strong> of all sections (1&nbsp;2&nbsp;3&nbsp;…),
+      played in order. Only ever one row of numbers on screen.
+    </p>
+    <div class="mockup-grid">
+      <div>
+        <div class="phone">
+          <div class="phone-screen">
+            <div class="key-display">C</div>
+            <div style="text-align:center; margin: -0.25rem 0 1rem;">
+              <div class="timeline">
+                <span class="block current">1</span>
+                <span class="block">2</span>
+                <span class="block">1</span>
+                <span class="block">2</span>
+                <span class="block queued">3</span>
+                <span class="block">2</span>
+              </div>
+            </div>
+            <div class="chord-strip">
+              <div class="chip active">
+                <div class="numeral">I</div>
+                <div class="name">C</div>
+                <div class="bar-progress">
+                  <div class="bar-dot active"></div>
+                  <div class="bar-dot"></div>
+                </div>
+              </div>
+              <div class="chip">
+                <div class="numeral">vi</div>
+                <div class="name">Am</div>
+              </div>
+              <div class="chip">
+                <div class="numeral">ii</div>
+                <div class="name">Dm</div>
+              </div>
+              <div class="chip">
+                <div class="numeral">V</div>
+                <div class="name">G</div>
+              </div>
+            </div>
+            <div class="beat-indicator">
+              <div class="beat-dot active"></div>
+              <div class="beat-dot"></div>
+              <div class="beat-dot"></div>
+              <div class="beat-dot"></div>
+            </div>
+            <div class="readout">
+              <span class="readout-btn">Pop</span>
+              <span class="readout-btn">Simple</span>
+              <span class="readout-btn">Root</span>
+              <div class="row-break"></div>
+              <span class="readout-btn">2 bars</span>
+              <span class="readout-btn">85 BPM</span>
+              <span class="readout-btn">Loop</span>
+            </div>
+          </div>
+          <div class="action-bar">
+            <div class="bar-btn"><span class="bar-icon">⚙</span><span>Setup</span></div>
+            <div class="play-btn playing">■</div>
+            <div class="bar-btn"><span class="bar-icon">🎚</span><span>Mix</span></div>
+          </div>
+        </div>
+        <ul class="annotations">
+          <li>Section 1 is playing; user tapped the later "3" — it pulses (queued), jumps there at the next section boundary.</li>
+          <li>Connected pill shape reads as a single sequence, not 6 separate buttons.</li>
+          <li>A section not in the arrangement simply doesn't appear here.</li>
+          <li>Empty arrangement reuses the row for the implicit linear list.</li>
+        </ul>
+        <p style="font-size: 0.85rem; color: var(--text-3);">
+          Empty-arrangement variant — implicit linear list, plays 1&nbsp;→&nbsp;2&nbsp;→&nbsp;3 then loops:
+        </p>
+        <div style="text-align:center;">
+          <div class="timeline">
+            <span class="block current">1</span>
+            <span class="block">2</span>
+            <span class="block">3</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <h2>Superseded explorations</h2>
+  <p>Earlier mockups and ideas we moved past. Expand any to view.</p>
+
+  <details class="archive">
+    <summary>v1 data model — sections as bare strings <span class="v-badge stale">v1</span></summary>
+    <div class="archive-body">
+<pre style="opacity: 0.7"><code>sections: ['I vi ii V', 'I V vi IV', 'vi IV I V']</code></pre>
+      <p style="color: var(--text-3); font-size: 0.9rem;">
+        Simpler but locks the data shape. Superseded by the object form (in the plan's Data model).
+      </p>
+    </div>
+  </details>
+
+  <details class="archive">
+    <summary>Mockup 1 — baseline (today, single progression) <span class="v-badge stale">ref</span></summary>
+    <div class="archive-body">
+      <p>Single progression. Included for visual comparison.</p>
+      <div class="mockup-grid">
+        <div>
+          <div class="phone">
+            <div class="phone-screen">
+              <div class="key-display">C</div>
+              <div class="chord-strip">
+                <div class="chip active">
+                  <div class="numeral">I</div>
+                  <div class="name">C</div>
+                  <div class="bar-progress">
+                    <div class="bar-dot active"></div>
+                    <div class="bar-dot"></div>
+                  </div>
+                </div>
+                <div class="chip">
+                  <div class="numeral">vi</div>
+                  <div class="name">Am</div>
+                </div>
+                <div class="chip">
+                  <div class="numeral">ii</div>
+                  <div class="name">Dm</div>
+                </div>
+                <div class="chip">
+                  <div class="numeral">V</div>
+                  <div class="name">G</div>
+                </div>
+              </div>
+              <div class="beat-indicator">
+                <div class="beat-dot active"></div>
+                <div class="beat-dot"></div>
+                <div class="beat-dot"></div>
+                <div class="beat-dot"></div>
+              </div>
+              <div class="readout">
+                <span class="readout-btn">Pop</span>
+                <span class="readout-btn">Simple</span>
+                <span class="readout-btn">Root</span>
+                <div class="row-break"></div>
+                <span class="readout-btn">2 bars</span>
+                <span class="readout-btn">85 BPM</span>
+                <span class="readout-btn">Loop</span>
+              </div>
+            </div>
+            <div class="action-bar">
+              <div class="bar-btn"><span class="bar-icon">⚙</span><span>Setup</span></div>
+              <div class="play-btn playing">■</div>
+              <div class="bar-btn"><span class="bar-icon">🎚</span><span>Mix</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </details>
+
+  <details class="archive">
+    <summary>Mockup 2 — section tabs on the main screen (edit-on-main idea) <span class="v-badge stale">superseded</span></summary>
+    <div class="archive-body">
+      <p>
+        Three sections with a tab row on the main screen. Superseded once we moved
+        all editing to Setup — the main screen no longer needs tabs or a "+".
+      </p>
+      <div class="mockup-grid">
+        <div>
+          <div class="phone">
+            <div class="phone-screen">
+              <div class="key-display">C</div>
+              <div class="section-tabs">
+                <div class="sec-tab active">1</div>
+                <div class="sec-tab">2</div>
+                <div class="sec-tab">3</div>
+                <div class="sec-tab add">+</div>
+              </div>
+              <div class="chord-strip">
+                <div class="chip active">
+                  <div class="numeral">I</div>
+                  <div class="name">C</div>
+                  <div class="bar-progress">
+                    <div class="bar-dot active"></div>
+                    <div class="bar-dot"></div>
+                  </div>
+                </div>
+                <div class="chip">
+                  <div class="numeral">vi</div>
+                  <div class="name">Am</div>
+                </div>
+                <div class="chip">
+                  <div class="numeral">ii</div>
+                  <div class="name">Dm</div>
+                </div>
+                <div class="chip">
+                  <div class="numeral">V</div>
+                  <div class="name">G</div>
+                </div>
+              </div>
+              <div class="beat-indicator">
+                <div class="beat-dot active"></div>
+                <div class="beat-dot"></div>
+                <div class="beat-dot"></div>
+                <div class="beat-dot"></div>
+              </div>
+              <div class="readout">
+                <span class="readout-btn">Pop</span>
+                <span class="readout-btn">Simple</span>
+                <span class="readout-btn">Root</span>
+                <div class="row-break"></div>
+                <span class="readout-btn">2 bars</span>
+                <span class="readout-btn">85 BPM</span>
+                <span class="readout-btn">Loop</span>
+              </div>
+            </div>
+            <div class="action-bar">
+              <div class="bar-btn"><span class="bar-icon">⚙</span><span>Setup</span></div>
+              <div class="play-btn playing">■</div>
+              <div class="bar-btn"><span class="bar-icon">🎚</span><span>Mix</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </details>
+
+  <details class="archive">
+    <summary>Mockup 3 — arrangement-strip explorations (v1 tiles + alts A/B/C) <span class="v-badge stale">superseded</span></summary>
+    <div class="archive-body">
+      <p>
+        Early arrangement renderings, all using "tabs on top, arrangement below."
+        Superseded by Layout D (arrangement moved to a bottom scrubber).
+      </p>
+
+      <h4 style="color: var(--text-3);">3a. Square tile row <span class="v-badge stale">v1</span></h4>
+      <p style="color: var(--text-3); font-size: 0.9rem;">Too many chunky numbers stacked horizontally — competes with the chord strip.</p>
+      <div class="stale-block">
+      <div class="mockup-grid">
+        <div>
+          <div class="phone">
+            <div class="phone-screen">
+              <div class="key-display">C</div>
+              <div class="section-tabs">
+                <div class="sec-tab">1</div>
+                <div class="sec-tab active">2</div>
+                <div class="sec-tab">3</div>
+                <div class="sec-tab add">+</div>
+              </div>
+              <div class="arrangement">
+                <div class="arrangement-label">Arrangement</div>
+                <div class="arrangement-tokens">
+                  <span class="arr-token played">1</span>
+                  <span class="arr-token played">2</span>
+                  <span class="arr-token played">1</span>
+                  <span class="arr-token current">2</span>
+                  <span class="arr-token">3</span>
+                  <span class="arr-token">2</span>
+                </div>
+              </div>
+              <div class="chord-strip">
+                <div class="chip"><div class="numeral">I</div><div class="name">C</div></div>
+                <div class="chip active">
+                  <div class="numeral">V</div>
+                  <div class="name">G</div>
+                  <div class="bar-progress"><div class="bar-dot active"></div><div class="bar-dot"></div></div>
+                </div>
+                <div class="chip"><div class="numeral">vi</div><div class="name">Am</div></div>
+                <div class="chip"><div class="numeral">IV</div><div class="name">F</div></div>
+              </div>
+              <div class="beat-indicator">
+                <div class="beat-dot"></div>
+                <div class="beat-dot active"></div>
+                <div class="beat-dot"></div>
+                <div class="beat-dot"></div>
+              </div>
+              <div class="readout">
+                <span class="readout-btn">Pop</span>
+                <span class="readout-btn">Simple</span>
+                <span class="readout-btn">Root</span>
+                <div class="row-break"></div>
+                <span class="readout-btn">2 bars</span>
+                <span class="readout-btn">85 BPM</span>
+                <span class="readout-btn">Loop</span>
+              </div>
+            </div>
+            <div class="action-bar">
+              <div class="bar-btn"><span class="bar-icon">⚙</span><span>Setup</span></div>
+              <div class="play-btn playing">■</div>
+              <div class="bar-btn"><span class="bar-icon">🎚</span><span>Mix</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </div><!-- /stale-block -->
+
+      <h4>3b. Inline text breadcrumb <span class="v-badge stale">v2 alt A</span></h4>
+      <p>Lighter than tiles — inline text, current token in a small pill.</p>
+      <div class="mockup-grid">
+        <div>
+          <div class="phone">
+            <div class="phone-screen">
+              <div class="key-display">C</div>
+              <div class="section-tabs">
+                <div class="sec-tab">1</div>
+                <div class="sec-tab active">2</div>
+                <div class="sec-tab">3</div>
+                <div class="sec-tab add">+</div>
+              </div>
+              <div class="arrangement">
+                <div class="arrangement-label">Arrangement</div>
+                <div class="arr-inline">
+                  <span class="played">1</span>
+                  <span class="played">2</span>
+                  <span class="played">1</span>
+                  <span class="current">2</span>
+                  <span>3</span>
+                  <span>2</span>
+                </div>
+              </div>
+              <div class="chord-strip">
+                <div class="chip"><div class="numeral">I</div><div class="name">C</div></div>
+                <div class="chip active">
+                  <div class="numeral">V</div>
+                  <div class="name">G</div>
+                  <div class="bar-progress"><div class="bar-dot active"></div><div class="bar-dot"></div></div>
+                </div>
+                <div class="chip"><div class="numeral">vi</div><div class="name">Am</div></div>
+                <div class="chip"><div class="numeral">IV</div><div class="name">F</div></div>
+              </div>
+              <div class="beat-indicator">
+                <div class="beat-dot"></div>
+                <div class="beat-dot active"></div>
+                <div class="beat-dot"></div>
+                <div class="beat-dot"></div>
+              </div>
+              <div class="readout">
+                <span class="readout-btn">Pop</span>
+                <span class="readout-btn">Simple</span>
+                <span class="readout-btn">Root</span>
+                <div class="row-break"></div>
+                <span class="readout-btn">2 bars</span>
+                <span class="readout-btn">85 BPM</span>
+                <span class="readout-btn">Loop</span>
+              </div>
+            </div>
+            <div class="action-bar">
+              <div class="bar-btn"><span class="bar-icon">⚙</span><span>Setup</span></div>
+              <div class="play-btn playing">■</div>
+              <div class="bar-btn"><span class="bar-icon">🎚</span><span>Mix</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h4>3c. Progress dots + status text <span class="v-badge stale">v2 alt B</span></h4>
+      <p>Drop the numbers; dots + a short status line. Loses "what's next."</p>
+      <div class="mockup-grid">
+        <div>
+          <div class="phone">
+            <div class="phone-screen">
+              <div class="key-display">C</div>
+              <div class="section-tabs">
+                <div class="sec-tab">1</div>
+                <div class="sec-tab active">2</div>
+                <div class="sec-tab">3</div>
+                <div class="sec-tab add">+</div>
+              </div>
+              <div class="arrangement">
+                <div class="arr-status"><strong>Section 2</strong> · step 4 of 6</div>
+                <div class="arr-dots" style="margin-top: 0.4rem;">
+                  <span class="dot played"></span>
+                  <span class="dot played"></span>
+                  <span class="dot played"></span>
+                  <span class="dot current"></span>
+                  <span class="dot"></span>
+                  <span class="dot"></span>
+                </div>
+              </div>
+              <div class="chord-strip">
+                <div class="chip"><div class="numeral">I</div><div class="name">C</div></div>
+                <div class="chip active">
+                  <div class="numeral">V</div>
+                  <div class="name">G</div>
+                  <div class="bar-progress"><div class="bar-dot active"></div><div class="bar-dot"></div></div>
+                </div>
+                <div class="chip"><div class="numeral">vi</div><div class="name">Am</div></div>
+                <div class="chip"><div class="numeral">IV</div><div class="name">F</div></div>
+              </div>
+              <div class="beat-indicator">
+                <div class="beat-dot"></div>
+                <div class="beat-dot active"></div>
+                <div class="beat-dot"></div>
+                <div class="beat-dot"></div>
+              </div>
+              <div class="readout">
+                <span class="readout-btn">Pop</span>
+                <span class="readout-btn">Simple</span>
+                <span class="readout-btn">Root</span>
+                <div class="row-break"></div>
+                <span class="readout-btn">2 bars</span>
+                <span class="readout-btn">85 BPM</span>
+                <span class="readout-btn">Loop</span>
+              </div>
+            </div>
+            <div class="action-bar">
+              <div class="bar-btn"><span class="bar-icon">⚙</span><span>Setup</span></div>
+              <div class="play-btn playing">■</div>
+              <div class="bar-btn"><span class="bar-icon">🎚</span><span>Mix</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h4>3d. No arrangement on main screen <span class="v-badge stale">v2 alt C</span></h4>
+      <p>Hide arrangement on main; only the readout shows position. (Closest in spirit to Layout D's minimal indicator.)</p>
+      <div class="mockup-grid">
+        <div>
+          <div class="phone">
+            <div class="phone-screen">
+              <div class="key-display">C</div>
+              <div class="section-tabs">
+                <div class="sec-tab">1</div>
+                <div class="sec-tab active">2</div>
+                <div class="sec-tab">3</div>
+                <div class="sec-tab add">+</div>
+              </div>
+              <div class="chord-strip">
+                <div class="chip"><div class="numeral">I</div><div class="name">C</div></div>
+                <div class="chip active">
+                  <div class="numeral">V</div>
+                  <div class="name">G</div>
+                  <div class="bar-progress"><div class="bar-dot active"></div><div class="bar-dot"></div></div>
+                </div>
+                <div class="chip"><div class="numeral">vi</div><div class="name">Am</div></div>
+                <div class="chip"><div class="numeral">IV</div><div class="name">F</div></div>
+              </div>
+              <div class="beat-indicator">
+                <div class="beat-dot"></div>
+                <div class="beat-dot active"></div>
+                <div class="beat-dot"></div>
+                <div class="beat-dot"></div>
+              </div>
+              <div class="readout">
+                <span class="readout-btn">Pop</span>
+                <span class="readout-btn">Simple</span>
+                <span class="readout-btn">Root</span>
+                <div class="row-break"></div>
+                <span class="readout-btn">2 bars</span>
+                <span class="readout-btn">85 BPM</span>
+                <span class="readout-btn">Arrangement · 4/6</span>
+              </div>
+            </div>
+            <div class="action-bar">
+              <div class="bar-btn"><span class="bar-icon">⚙</span><span>Setup</span></div>
+              <div class="play-btn playing">■</div>
+              <div class="bar-btn"><span class="bar-icon">🎚</span><span>Mix</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </details>
+
+  <details class="archive">
+    <summary>Mockup 5 — 6-section / longer-arrangement edge case (v1 tiles) <span class="v-badge stale">v1</span></summary>
+    <div class="archive-body">
+      <p>
+        Worst case for horizontal space, shown with the old square-tile arrangement.
+        Layout D handles this with a width-filling scrubber that thins as tokens grow.
+      </p>
+      <div class="mockup-grid">
+        <div>
+          <div class="phone">
+            <div class="phone-screen">
+              <div class="key-display">C</div>
+              <div class="section-tabs">
+                <div class="sec-tab">1</div>
+                <div class="sec-tab">2</div>
+                <div class="sec-tab active">3</div>
+                <div class="sec-tab">4</div>
+                <div class="sec-tab">5</div>
+                <div class="sec-tab">6</div>
+                <div class="sec-tab add" style="opacity:0.35">+</div>
+              </div>
+              <div class="arrangement">
+                <div class="arrangement-label">Arrangement</div>
+                <div class="arrangement-tokens">
+                  <span class="arr-token played">1</span>
+                  <span class="arr-token played">2</span>
+                  <span class="arr-token played">3</span>
+                  <span class="arr-token current">3</span>
+                  <span class="arr-token">4</span>
+                  <span class="arr-token">3</span>
+                  <span class="arr-token">5</span>
+                  <span class="arr-token">3</span>
+                  <span class="arr-token">6</span>
+                </div>
+              </div>
+              <div class="chord-strip">
+                <div class="chip active">
+                  <div class="numeral">vi</div>
+                  <div class="name">Am</div>
+                  <div class="bar-progress"><div class="bar-dot active"></div><div class="bar-dot"></div></div>
+                </div>
+                <div class="chip"><div class="numeral">IV</div><div class="name">F</div></div>
+                <div class="chip"><div class="numeral">I</div><div class="name">C</div></div>
+                <div class="chip"><div class="numeral">V</div><div class="name">G</div></div>
+              </div>
+              <div class="beat-indicator">
+                <div class="beat-dot active"></div>
+                <div class="beat-dot"></div>
+                <div class="beat-dot"></div>
+                <div class="beat-dot"></div>
+              </div>
+              <div class="readout">
+                <span class="readout-btn">Pop</span>
+                <span class="readout-btn">Simple</span>
+                <span class="readout-btn">Lead</span>
+                <div class="row-break"></div>
+                <span class="readout-btn">2 bars</span>
+                <span class="readout-btn">85 BPM</span>
+                <span class="readout-btn">Loop</span>
+              </div>
+            </div>
+            <div class="action-bar">
+              <div class="bar-btn"><span class="bar-icon">⚙</span><span>Setup</span></div>
+              <div class="play-btn playing">■</div>
+              <div class="bar-btn"><span class="bar-icon">🎚</span><span>Mix</span></div>
+            </div>
+          </div>
+          <ul class="annotations">
+            <li>Tabs row stays single-line at 6 sections (each tab ≈ 36px, fits in ~360px).</li>
+            <li>Arrangement tokens wrap onto multiple lines as needed.</li>
+            <li>Beyond 6 sections, the tabs row should scroll horizontally.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </details>
+
+  <details class="archive">
+    <summary>Layout E — section carousel (swipe) <span class="v-badge stale">explored</span></summary>
+    <div class="archive-body">
+      <p>
+        Mobile-native: focused section card with neighbors peeking, swipe to move,
+        dots for position. Novel but hides the arrangement shape and can fight
+        playback auto-advance. Not a finalist.
+      </p>
+      <div class="mockup-grid">
+        <div>
+          <div class="phone">
+            <div class="phone-screen">
+              <div class="key-display">C</div>
+              <div class="carousel">
+                <div class="card peek"><span class="card-label">§1</span></div>
+                <div class="card focus">
+                  <div class="card-label">Section 2</div>
+                  <div class="mini-strip">
+                    <div class="mini-chip active"><div class="name">G</div></div>
+                    <div class="mini-chip"><div class="name">D</div></div>
+                    <div class="mini-chip"><div class="name">Em</div></div>
+                    <div class="mini-chip"><div class="name">C</div></div>
+                  </div>
+                </div>
+                <div class="card peek"><span class="card-label">§3</span></div>
+              </div>
+              <div class="carousel-dots">
+                <span class="cd"></span>
+                <span class="cd current"></span>
+                <span class="cd"></span>
+              </div>
+              <div class="beat-indicator">
+                <div class="beat-dot active"></div>
+                <div class="beat-dot"></div>
+                <div class="beat-dot"></div>
+                <div class="beat-dot"></div>
+              </div>
+              <div class="readout">
+                <span class="readout-btn">Pop</span>
+                <span class="readout-btn">Simple</span>
+                <span class="readout-btn">Root</span>
+                <div class="row-break"></div>
+                <span class="readout-btn">2 bars</span>
+                <span class="readout-btn">85 BPM</span>
+                <span class="readout-btn">Arrangement · 4/6</span>
+              </div>
+            </div>
+            <div class="action-bar">
+              <div class="bar-btn"><span class="bar-icon">⚙</span><span>Setup</span></div>
+              <div class="play-btn playing">■</div>
+              <div class="bar-btn"><span class="bar-icon">🎚</span><span>Mix</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </details>
+
+  <details class="archive">
+    <summary>Section-switch timing — v1 (bar boundary, superseded) <span class="v-badge stale">v1</span></summary>
+    <div class="archive-body">
+      <p style="color: var(--text-3); font-size: 0.9rem;">
+        v1 proposed switching at the next bar boundary. Later raised to the next
+        section boundary so a partly-played section doesn't get truncated. Less
+        jarring musically.
+      </p>
+    </div>
+  </details>
+
+</main>
+</body>
+</html>
