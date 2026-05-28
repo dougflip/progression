@@ -751,23 +751,23 @@
 
         <label class="field-label">Style</label>
         <div class="bars-options" id="style-options">
-          <button type="button" class="style-btn active" data-style="pop">Pop</button>
-          <button type="button" class="style-btn" data-style="funk">Funk</button>
+          <button type="button" class="style-btn" data-style="pop">Pop</button>
+          <button type="button" class="style-btn active" data-style="funk">Funk</button>
           <button type="button" class="style-btn" data-style="ballad">Ballad</button>
           <button type="button" class="style-btn" data-style="rock">Rock</button>
         </div>
 
         <label class="field-label">Bass</label>
         <div class="bars-options" id="bass-options">
-          <button type="button" class="bass-btn active" data-bass="simple">Simple</button>
-          <button type="button" class="bass-btn" data-bass="busy">Busy</button>
+          <button type="button" class="bass-btn" data-bass="simple">Simple</button>
+          <button type="button" class="bass-btn active" data-bass="busy">Busy</button>
         </div>
 
         <label class="field-label">Voicing</label>
         <div class="bars-options" id="voicing-options">
-          <button type="button" class="voicing-btn active" data-voicing="root">Root</button>
+          <button type="button" class="voicing-btn" data-voicing="root">Root</button>
           <button type="button" class="voicing-btn" data-voicing="voice-lead">Voice-lead</button>
-          <button type="button" class="voicing-btn" data-voicing="voice-lead-loop">Voice-lead/loop</button>
+          <button type="button" class="voicing-btn active" data-voicing="voice-lead-loop">Voice-lead/loop</button>
         </div>
       </section>
 
@@ -1714,17 +1714,17 @@
 
     function getStyle() {
       const active = document.querySelector('.style-btn.active');
-      return active ? active.dataset.style : 'pop';
+      return active ? active.dataset.style : 'funk';
     }
 
     function getBassVariant() {
       const active = document.querySelector('.bass-btn.active');
-      return active ? active.dataset.bass : 'simple';
+      return active ? active.dataset.bass : 'busy';
     }
 
     function getVoicing() {
       const active = document.querySelector('.voicing-btn.active');
-      return active ? active.dataset.voicing : 'root';
+      return active ? active.dataset.voicing : 'voice-lead-loop';
     }
 
     let wakeLock = null;
@@ -2115,9 +2115,9 @@
       tempo: 85,
       bars: 2,
       cycle: 'none',
-      style: 'pop',
-      bass: 'simple',
-      voicing: 'root',
+      style: 'funk',
+      bass: 'busy',
+      voicing: 'voice-lead-loop',
       sections: [{ progression: 'I vi ii V' }],
       arrangement: '',
       activeSection: 1,
