@@ -440,17 +440,22 @@
       BARS_OPTIONS, PRESETS, tokenize, resolvedChordName, resolvePlayOrder,
       ROMAN, MAX_BARS,
     } from './progression-core.js';
+    import { makeProgressionAudio } from './progression-audio.js';
 
     // ── App instance ────────────────────────────────────────────────────────
 
+    const audio = makeProgressionAudio({ Tone });
+
     const app = makeProgressionPlayer({
+      audio,
       persist: (key, value) => localStorage.setItem(key, value),
       load:    (key) => localStorage.getItem(key),
-      onStateChange:   render,
-      onPlaybackChange: setPlayingUI,
-      onChordTick: () => {},  // Milestone 3
-      onBeatTick:  () => {},  // Milestone 3
-      onBarTick:   () => {},  // Milestone 3
+      onStateChange:    render,
+      onPlaybackChange: onPlaybackChange,
+      onChordTick:      onChordTick,
+      onBeatTick:       onBeatTick,
+      onBarTick:        onBarTick,
+      onError: (msg) => { statusEl.textContent = msg; },
     });
 
     // ── DOM refs ────────────────────────────────────────────────────────────
@@ -501,33 +506,115 @@
     /** @param {import('./progression-core.js').AppState} state */
     function renderChips(state) {
       const progStr = state.sections[state.activeSection - 1]?.progression ?? '';
+      buildChipStructure(progStr);
+      const tokens = tokenize(progStr);
+      updateChipNames(tokens.map(t => {
+        const [numeral] = t.split(':');
+        return resolvedChordName(numeral, 0, state.key, state.cycle);
+      }));
+      keyDisplayEl.textContent = `Key of ${state.key}`;
+      keySelectEl.value = state.key;
+      keyPickerEl.querySelectorAll('.key-chip').forEach(b =>
+        b.classList.toggle('active', b.dataset.key === state.key));
+    }
+
+    /** Builds chip DOM structure (no names). */
+    function buildChipStructure(progStr) {
       stripEl.innerHTML = '';
       tokenize(progStr).forEach(token => {
         const [numeral, durStr] = token.split(':');
-        const durDisplay = durStr ? String(Math.min(parseInt(durStr, 10), MAX_BARS)) : '';
+        const durDisplay   = durStr ? String(Math.min(parseInt(durStr, 10), MAX_BARS)) : '';
         const displayToken = durDisplay ? `${numeral}:${durDisplay}` : numeral;
-        const isAbsolute = !(numeral in ROMAN) && /^[A-G]/.test(numeral);
-
+        const isAbsolute   = !(numeral in ROMAN) && /^[A-G]/.test(numeral);
         const chip = document.createElement('div');
         chip.className = 'chip';
         if (!isAbsolute) {
-          const ne = document.createElement('div');
-          ne.className = 'numeral';
-          ne.textContent = displayToken;
-          chip.appendChild(ne);
+          chip.appendChild(Object.assign(document.createElement('div'),
+            { className: 'numeral', textContent: displayToken }));
         }
-        const name = document.createElement('div');
-        name.className = 'name';
-        name.textContent = resolvedChordName(numeral, 0, state.key, state.cycle);
-        chip.appendChild(name);
+        chip.appendChild(Object.assign(document.createElement('div'), { className: 'name' }));
         chip.appendChild(Object.assign(document.createElement('div'), { className: 'bar-progress' }));
         stripEl.appendChild(chip);
       });
-      keyDisplayEl.textContent = `Key of ${state.key}`;
-      keySelectEl.value = state.key;
-      keyPickerEl.querySelectorAll('.key-chip').forEach(b => {
-        b.classList.toggle('active', b.dataset.key === state.key);
+    }
+
+    /** Updates displayed chord name text without rebuilding chip DOM. */
+    function updateChipNames(names) {
+      stripEl.querySelectorAll('.chip .name').forEach((el, i) => {
+        if (names[i] !== undefined) el.textContent = names[i];
       });
+    }
+
+    /** @param {number} index — pass -1 to clear all */
+    function setActiveChip(index) {
+      stripEl.querySelectorAll('.chip').forEach((c, i) => c.classList.toggle('active', i === index));
+    }
+
+    function clearActiveChip() { setActiveChip(-1); }
+
+    // ── Beat / bar progress helpers ─────────────────────────────────────────
+
+    const beatDots = document.querySelectorAll('.beat-dot');
+
+    function onBeatTick(beat) {
+      if (!audio.isPlaying()) return;
+      beatDots.forEach((d, i) => d.classList.toggle('active', i === beat));
+    }
+
+    function clearBeats() { beatDots.forEach(d => d.classList.remove('active')); }
+
+    function activeBarProgress() {
+      const active = stripEl.querySelector('.chip.active');
+      return active?.querySelector('.bar-progress') ?? null;
+    }
+
+    function renderBarDots(count, activeBar) {
+      clearBars();
+      if (count <= 1) return;
+      const bp = activeBarProgress();
+      if (!bp) return;
+      for (let i = 0; i < count; i++) {
+        bp.appendChild(Object.assign(document.createElement('span'),
+          { className: 'bar-dot' + (i === activeBar ? ' active' : '') }));
+      }
+    }
+
+    function onBarTick(bar) {
+      if (!audio.isPlaying()) return;
+      const bp = activeBarProgress();
+      if (!bp) return;
+      Array.from(bp.children).forEach((d, i) => d.classList.toggle('active', i === bar));
+    }
+
+    function clearBars() {
+      stripEl.querySelectorAll('.bar-progress').forEach(bp => { bp.innerHTML = ''; });
+    }
+
+    // ── Scrubber current position ───────────────────────────────────────────
+
+    function setScrubberCurrent(posIndex) {
+      scrubberTrack.querySelectorAll('.scrubber-seg').forEach(seg => {
+        const sp = parseInt(seg.dataset.posIndex, 10);
+        seg.classList.toggle('current', sp === posIndex);
+        seg.classList.toggle('queued', sp === _pendingJump && sp !== posIndex);
+      });
+    }
+
+    // ── Audio timing callbacks (fast path — no onStateChange) ───────────────
+
+    /** @param {import('./progression-audio.js').ChordTickEvent} ev */
+    function onChordTick({ chipIndex, posIndex, sectionIndex, sectionChanged,
+                           resolvedChipNames, resolvedKey, bars }) {
+      if (sectionChanged) {
+        // Rebuild chip structure for new section then apply names
+        const state = app.getState();
+        buildChipStructure(state.sections[sectionIndex]?.progression ?? '');
+      }
+      setActiveChip(chipIndex);
+      updateChipNames(resolvedChipNames);
+      keyDisplayEl.textContent = `Key of ${resolvedKey}`;
+      setScrubberCurrent(posIndex);
+      renderBarDots(bars, 0);
     }
 
     /** @param {import('./progression-core.js').AppState} state */
@@ -558,7 +645,7 @@
     /** @param {import('./progression-core.js').AppState} state */
     function renderSectionRows(state) {
       const { sections, activeSection } = state;
-      const playing = false; // Milestone 3: always false for now
+      const playing = audio.isPlaying();
       const existing = sectionRowsEl.querySelectorAll('.section-row');
 
       if (existing.length !== sections.length) {
@@ -585,6 +672,9 @@
       sectionCountEl.textContent = `(${sections.length} of 6)`;
     }
 
+    // Host-side pending jump tracker (for scrubber queued animation)
+    let _pendingJump = null;
+
     /** @param {import('./progression-core.js').AppState} state */
     function renderScrubber(state) {
       const order = resolvePlayOrder(state.sections, state.arrangement);
@@ -603,13 +693,31 @@
         seg.className = 'scrubber-seg';
         seg.textContent = sectionRef;
         seg.dataset.posIndex = posIndex;
-        seg.addEventListener('click', () => {
-          const o = resolvePlayOrder(app.getState().sections, app.getState().arrangement);
-          app.setState({ activeSection: o[Math.min(posIndex, o.length - 1)] ?? 1 });
-        });
+        seg.addEventListener('click', () => handleScrubberTap(posIndex));
         scrubberTrack.appendChild(seg);
       });
       syncBodyPadding();
+    }
+
+    function handleScrubberTap(posIndex) {
+      if (!audio.isPlaying()) {
+        const order = resolvePlayOrder(app.getState().sections, app.getState().arrangement);
+        app.setState({ activeSection: order[Math.min(posIndex, order.length - 1)] ?? 1 });
+        return;
+      }
+      // Cancel if tapping the queued segment again
+      if (_pendingJump === posIndex) {
+        _pendingJump = null;
+        app.cancelJump();
+        scrubberTrack.querySelectorAll('.scrubber-seg').forEach(s => s.classList.remove('queued'));
+        return;
+      }
+      _pendingJump = posIndex;
+      app.queueJump(posIndex);
+      scrubberTrack.querySelectorAll('.scrubber-seg').forEach(seg => {
+        const sp = parseInt(seg.dataset.posIndex, 10);
+        seg.classList.toggle('queued', sp === posIndex && !seg.classList.contains('current'));
+      });
     }
 
     /** @param {import('./progression-core.js').AppState} state */
@@ -631,7 +739,7 @@
     /** @param {number} index @param {import('./progression-core.js').AppState} state */
     function makeSectionRow(index, state) {
       const { sections, activeSection } = state;
-      const playing = false;
+      const playing = audio.isPlaying();
       const row = document.createElement('div');
       row.className = 'section-row';
 
@@ -717,13 +825,53 @@
         b.classList.toggle('active', b.dataset.themeOpt === t));
     }
 
-    // ── UI helpers ───────────────────────────────────────────────────────────
+    // ── Playback change ──────────────────────────────────────────────────────
 
-    function setPlayingUI(playing) {
+    /** @param {boolean} playing */
+    function onPlaybackChange(playing) {
       playBtn.textContent = playing ? '■' : '▶';
       playBtn.classList.toggle('playing', playing);
       playBtn.setAttribute('aria-label', playing ? 'Stop' : 'Play');
+      if (playing) {
+        statusEl.textContent = '';
+        if (keepAwakeEl.checked) acquireWakeLock();
+      } else {
+        releaseWakeLock();
+        clearActiveChip();
+        clearBeats();
+        clearBars();
+        _pendingJump = null;
+        scrubberTrack.querySelectorAll('.scrubber-seg')
+          .forEach(s => s.classList.remove('current', 'queued'));
+        renderChips(app.getState());
+      }
     }
+
+    // ── Wake lock ────────────────────────────────────────────────────────────
+
+    let _wakeLock = null;
+    async function acquireWakeLock() {
+      if (_wakeLock || !('wakeLock' in navigator)) return;
+      try {
+        _wakeLock = await navigator.wakeLock.request('screen');
+        _wakeLock.addEventListener('release', () => { _wakeLock = null; });
+      } catch (e) {
+        console.warn('Wake lock failed:', e.message);
+      }
+    }
+    async function releaseWakeLock() {
+      if (!_wakeLock) return;
+      try { await _wakeLock.release(); } catch {}
+      _wakeLock = null;
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && keepAwakeEl.checked && audio.isPlaying()) {
+        acquireWakeLock();
+      }
+    });
+
+    // ── UI helpers ───────────────────────────────────────────────────────────
 
     function syncBodyPadding() {
       const bar = $('action-bar');
@@ -845,13 +993,15 @@
 
     // ── Playback ──────────────────────────────────────────────────────────────
 
-    playBtn.addEventListener('click', () => app.togglePlay());
+    playBtn.addEventListener('click', () => {
+      app.togglePlay().catch(e => { statusEl.textContent = 'Error: ' + e.message; });
+    });
     document.addEventListener('keydown', e => {
       if (e.code !== 'Space') return;
       const t = document.activeElement?.tagName;
       if (t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT') return;
       e.preventDefault();
-      app.togglePlay();
+      app.togglePlay().catch(e => { statusEl.textContent = 'Error: ' + e.message; });
     });
 
     // ── Keep awake ────────────────────────────────────────────────────────────

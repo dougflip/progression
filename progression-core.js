@@ -688,10 +688,98 @@ export function makeProgressionPlayer(config) {
   /** @type {AppState} */
   let _state = { ...DEFAULTS };
 
+  // Keys that require a full audio rebuild when changed during playback
+  const REBUILD_KEYS = new Set(['key', 'bars', 'style', 'bass', 'voicing', 'cycle', 'sections', 'arrangement']);
+
   function _notify() { config.onStateChange({ ..._state }); }
 
   /** @param {Partial<AppState>} partial */
-  function _set(partial) { _state = { ..._state, ...partial }; _notify(); }
+  function _set(partial) {
+    _state = { ..._state, ...partial };
+    _notify();
+    if (!config.audio?.isPlaying()) return;
+
+    // Live updates that don't need a full rebuild
+    if ('tempo'    in partial) config.audio.setTempo(_state.tempo);
+    if ('chordVol' in partial) config.audio.setVolume('chords', _state.chordVol);
+    if ('bassVol'  in partial) config.audio.setVolume('bass',   _state.bassVol);
+    if ('drumVol'  in partial) config.audio.setVolume('drums',  _state.drumVol);
+    if ('masterVol' in partial) config.audio.setVolume('master', _state.masterVol);
+    if ('chordsOn' in partial) config.audio.setMute('chords', !_state.chordsOn);
+    if ('bassOn'   in partial) config.audio.setMute('bass',   !_state.bassOn);
+    if ('drumsOn'  in partial) config.audio.setMute('drums',  !_state.drumsOn);
+    if ('advance'  in partial) config.audio.setAdvance(_state.advance);
+
+    // Debounced rebuild for musical param changes
+    if ([...Object.keys(partial)].some(k => REBUILD_KEYS.has(k))) _scheduleRebuild();
+  }
+
+  let _rebuildTimer = null;
+  function _scheduleRebuild() {
+    clearTimeout(_rebuildTimer);
+    _rebuildTimer = setTimeout(() => {
+      try {
+        const chords = buildSongChords(_state.sections, _state.arrangement, _state.key, _state.bars);
+        config.audio.rebuild({
+          chordSequence: chords,
+          style:         STYLES[_state.style],
+          bassVariant:   _state.bass,
+          voicing:       _state.voicing,
+          key:           _state.key,
+          cycle:         _state.cycle,
+        });
+      } catch (e) {
+        config.onError?.(`Rebuild error: ${e.message}`);
+      }
+    }, 250);
+  }
+
+  async function _startPlayback() {
+    const order  = resolvePlayOrder(_state.sections, _state.arrangement);
+    const chords = buildSongChords(_state.sections, _state.arrangement, _state.key, _state.bars);
+    let startPosIndex = 0;
+    if (order.length >= 2) {
+      const idx = order.findIndex(ref => ref === _state.activeSection);
+      startPosIndex = idx >= 0 ? idx : 0;
+    }
+
+    await config.audio.start({
+      chordSequence: chords,
+      tempo:         _state.tempo,
+      style:         STYLES[_state.style],
+      bassVariant:   _state.bass,
+      voicing:       _state.voicing,
+      advance:       _state.advance,
+      startPosIndex,
+      key:           _state.key,
+      cycle:         _state.cycle,
+      mix: {
+        chordVol:  _state.chordVol,
+        bassVol:   _state.bassVol,
+        drumVol:   _state.drumVol,
+        masterVol: _state.masterVol,
+        chordsOn:  _state.chordsOn,
+        bassOn:    _state.bassOn,
+        drumsOn:   _state.drumsOn,
+      },
+      // Core silently tracks active section; host gets the resolved display data
+      onChordTick: (ev) => {
+        if (ev.sectionChanged) _state.activeSection = ev.sectionIndex + 1;
+        config.onChordTick(ev);
+      },
+      onBeatTick: config.onBeatTick,
+      onBarTick:  config.onBarTick,
+    });
+
+    config.onPlaybackChange(true);
+    _notify(); // re-render so section rows disable, etc.
+  }
+
+  function _stopPlayback() {
+    config.audio.stop();
+    config.onPlaybackChange(false);
+    _notify(); // re-render so section rows re-enable
+  }
 
   function _getUserPresets() {
     try { return /** @type {UserPreset[]} */ (JSON.parse(config.load(PRESETS_STORAGE_KEY) || '[]')); }
@@ -721,7 +809,7 @@ export function makeProgressionPlayer(config) {
     /** @param {number} index */
     removeSection(index) {
       if (_state.sections.length <= 1) return;
-      const sections = _state.sections.filter((_, i) => i !== index);
+      const sections   = _state.sections.filter((_, i) => i !== index);
       const arrangement = remapArrangementDelete(_state.arrangement, index);
       _set({ sections, arrangement, activeSection: Math.min(_state.activeSection, sections.length) });
     },
@@ -732,12 +820,12 @@ export function makeProgressionPlayer(config) {
      */
     moveSection(index, direction) {
       const sections = [..._state.sections];
-      const target = direction === 'up' ? index - 1 : index + 1;
+      const target   = direction === 'up' ? index - 1 : index + 1;
       if (target < 0 || target >= sections.length) return;
       [sections[index], sections[target]] = [sections[target], sections[index]];
       const arrangement = remapArrangementSwap(_state.arrangement, index, target);
       let { activeSection } = _state;
-      if (activeSection === index + 1) activeSection = target + 1;
+      if (activeSection === index + 1)  activeSection = target + 1;
       else if (activeSection === target + 1) activeSection = index + 1;
       _set({ sections, arrangement, activeSection });
     },
@@ -759,10 +847,7 @@ export function makeProgressionPlayer(config) {
     /** @returns {UserPreset[]} */
     getUserPresets: _getUserPresets,
 
-    /**
-     * @param {string} name
-     * @returns {string} id
-     */
+    /** @param {string} name @returns {string} id */
     saveUserPreset(name) {
       const id = Date.now().toString(36);
       config.persist(PRESETS_STORAGE_KEY,
@@ -770,10 +855,7 @@ export function makeProgressionPlayer(config) {
       return id;
     },
 
-    /**
-     * @param {string} id
-     * @param {string} name
-     */
+    /** @param {string} id @param {string} name */
     renameUserPreset(id, name) {
       config.persist(PRESETS_STORAGE_KEY,
         JSON.stringify(_getUserPresets().map(p => p.id === id ? { ...p, name } : p)));
@@ -785,11 +867,23 @@ export function makeProgressionPlayer(config) {
         JSON.stringify(_getUserPresets().filter(p => p.id !== id)));
     },
 
-    // ── Playback (wired in Milestone 3) ───────────────────────────────────
+    // ── Playback ──────────────────────────────────────────────────────────
 
-    togglePlay() { /* Milestone 3 */ },
+    /** @returns {Promise<void>} */
+    togglePlay() {
+      if (!config.audio) return Promise.resolve();
+      if (config.audio.isPlaying()) {
+        _stopPlayback();
+        return Promise.resolve();
+      }
+      return _startPlayback().catch(e => {
+        config.onError?.(`Playback error: ${e.message}`);
+      });
+    },
 
-    /** @param {number} _posIndex */
-    queueJump(_posIndex) { /* Milestone 3 */ },
+    /** @param {number} posIndex */
+    queueJump(posIndex) { config.audio?.queueJump(posIndex); },
+
+    cancelJump() { config.audio?.cancelJump(); },
   };
 }

@@ -323,6 +323,13 @@ Verify feature parity, do a final review, rename `index-core.html` →
 - `onChordTick` / `onBeatTick` / `onBarTick` are audio-timing-sensitive (fast, sync only);
   `onStateChange` is unrestricted
 
+## Known Rough Edges (post-M2)
+
+- **Full re-render on every state change** — `render()` calls all 5 sub-renders on every `setState`, including rapid slider drags. Fine for now; revisit if sluggishness appears.
+- **`Tone` is a global** — loaded via script tag, passed as `makeProgressionAudio({ Tone })`. Works fine; would need to change if we ever adopt a bundler.
+- **`serializeUrl` imported two ways** — directly in host (for `syncUrl`) and via `app.serializeUrl()`. Both correct, slightly redundant. Easy cleanup.
+- **`onChordTick` must NOT go through `setState → onStateChange`** — audio timing callbacks are fast-path only. Core pre-computes `resolvedChipNames` / `resolvedKey` and hands them to the host directly. Host updates DOM without triggering a full re-render. This is the key boundary to enforce in M3.
+
 ## Future Features (architecture must support)
 
 ### Custom Key Cycles
