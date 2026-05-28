@@ -10,16 +10,37 @@ Thought experiment: `index.html` could be replaced by a CLI, a React app, or
 driven headlessly — the lift would be entirely visual. State management lives
 in the core, not the host.
 
+The existing `index.html` is the **proof of concept** — feature complete but
+not well organized. It stays deployed and untouched as a reference and
+fallback. All new work happens in `index-core.html`. When the rewrite is
+complete, `index-core.html` replaces `index.html`.
+
+---
+
+## File Structure
+
+```
+progression-core.js    — pure logic, zero runtime deps
+progression-audio.js   — Tone.js-coupled audio engine
+index-core.html        — rewritten host (work in progress)
+index.html             — original POC, untouched, stays deployed
+```
+
 ---
 
 ## Pattern: Headless Controller
 
-The core is instantiated once with a single config object. Everything in that
-object is a callback — there are no concrete dependency references. Even
-"dependencies" like localStorage are abstracted as behaviors:
+Two objects are created and composed by the host. The audio engine is passed
+into the core as a dep — core is programmed to the audio interface, not to
+Tone.js. This means the audio layer is swappable (different lib, mock for
+testing, etc.) without touching core.
 
 ```js
+const audio = makeProgressionAudio({ Tone });
+
 const app = makeProgressionPlayer({
+  audio,
+
   // Storage — core calls these, host decides where data lives
   persist: (key, value) => localStorage.setItem(key, value),
   load:    (key)        => localStorage.getItem(key),
@@ -214,23 +235,108 @@ renderChips(state);
 
 ---
 
-## What Moves to core vs. Stays in index.html
+## What Lives Where
 
-| Stays in `index.html` | Moves to `progression-core.js` |
-|-----------------------|-------------------------------|
-| CSS + HTML structure | Music theory (parseRoman, buildChord, etc.) |
-| DOM event wiring | Style/pattern data (STYLES, etc.) |
-| Render functions (take state, produce DOM) | State object + all getters |
-| Callback implementations | URL serialization / parsing |
-| | Audio engine (buildPart, teardown, etc.) |
-| | Preset management |
-| | Advance/loop logic |
+| `index-core.html` | `progression-core.js` | `progression-audio.js` |
+|-------------------|-----------------------|------------------------|
+| CSS + HTML structure | Music theory (parseRoman, buildChord, etc.) | buildPart, teardown |
+| DOM event wiring | Style/pattern data (STYLES, etc.) | buildDrums, buildBass |
+| Render functions (take state, produce DOM) | State object + all getters | Channel/volume management |
+| Callback implementations | URL serialization / parsing | Audio-timing callbacks |
+| | makeProgressionPlayer factory | makeProgressionAudio factory |
+| | Preset management | Tone.js — only dep |
+| | Advance/loop logic | |
+
+## Audio Interface Contract
+
+`progression-audio.js` exports `makeProgressionAudio({ Tone })` which returns:
+
+```js
+{
+  start({ chordSequence, tempo, style, bass, voicing, advance, startOffset,
+          onChordTick, onBeatTick, onBarTick }),
+  stop(),
+  rebuild({ chordSequence, style, bass, voicing }),  // hot-swap mid-play
+  setTempo(bpm),
+  setVolume(channel, db),   // channel: 'chords' | 'bass' | 'drums' | 'master'
+  setMute(channel, bool),
+  queueJump(posIndex),
+}
+```
+
+Core calls this interface. It never imports Tone directly.
 
 ---
 
-## Open Questions (for when we start coding)
+## Milestones
 
-1. Should Tone.js itself be injected as a callback/behavior, or accepted as a named dep? Abstracting it fully is a big lift — probably not worth it now.
-2. Split `progression-core.js` into `progression-core.js` (pure logic) + `progression-audio.js` (Tone-coupled)? Given their size difference and testability profile, a split may be cleaner.
-3. JSDoc/TS types for the public API surface? Probably worth it for the config object shape and state type at minimum.
-4. Callback distinction: document clearly that `onChordTick` / `onBeatTick` are audio-timing-sensitive (fast, sync only) vs. `onStateChange` (unrestricted).
+These are broad phases, not strict steps. Leave room to iterate within each.
+
+### 1. Music Theory Foundation
+Get `progression-core.js` started as an ES module. Move all pure functions and
+constants in: parsing, chord building, `STYLES` data, `resolvePlayOrder`,
+arrangement parsing. No state, no audio, no DOM.
+
+Surface it in `index-core.html` early with something minimal — e.g. a text
+input that resolves and displays chord names — just enough to confirm the
+module loads and the functions work correctly.
+
+Establish JSDoc/TS-syntax type conventions here that carry through the rest.
+
+### 2. State + Core Factory
+Add the state object, `DEFAULTS`, `parseUrl`, `serializeUrl`, preset logic.
+Build the `makeProgressionPlayer(config)` factory — it initializes state,
+wires callbacks, exposes the public API. No audio yet; playback methods are
+stubs that no-op.
+
+`index-core.html` should now be driveable: load from URL, change settings,
+save presets, sync URL — all working without any sound.
+
+### 3. Audio Engine
+Build `progression-audio.js` as a separate ES module exporting
+`makeProgressionAudio({ Tone })`. Port the existing Tone.js code, expose the
+interface contract (start, stop, rebuild, setTempo, setVolume, setMute,
+queueJump). Audio-timing callbacks (`onChordTick`, `onBeatTick`, `onBarTick`)
+fire into core, which resolves display state and fires `onStateChange` to host.
+
+Wire it into the factory. At the end of this milestone the app plays music.
+
+### 4. Feature Completion + index-core.html Polish
+Bring all remaining features to parity with `index.html`: sections, scrubber,
+manual/auto advance, theme, mix sheet, keep-awake, share link. Clean up CSS
+along the way — treat this as the production version, not a port.
+
+### 5. Replace
+Verify feature parity, do a final review, rename `index-core.html` →
+`index.html`. Archive or delete the old POC.
+
+## Settled Decisions
+
+- Audio engine passed as dep to core (Option A) — core programmed to interface
+- Two files: `progression-core.js` (pure) + `progression-audio.js` (Tone-coupled)
+- ES modules (`type="module"`) throughout — requires a local server, not `file://`
+- JSDoc types using TS syntax throughout
+- Working file is `index-core.html`; `index.html` stays deployed and untouched
+- Rewrite from scratch (using existing as reference), not incremental refactor
+- Host receives only resolved, display-ready data — no raw `shift` values or music theory math
+- Cycle mode key changes resolved in core; host gets updated state via `onStateChange`
+- `onChordTick` / `onBeatTick` / `onBarTick` are audio-timing-sensitive (fast, sync only);
+  `onStateChange` is unrestricted
+
+## Future Features (architecture must support)
+
+### Custom Key Cycles
+User defines their own key cycle sequence (e.g. `A → E → D → G`) instead of
+the built-in 4ths/5ths. Fits cleanly: core expands the full chord sequence
+across each key in the list before handing it to the audio engine. Audio engine
+has no awareness of cycle mode — it just plays what it's given. State shape:
+
+```js
+// Named preset
+cycle: { type: '5ths' }
+
+// Custom sequence
+cycle: { type: 'custom', keys: ['A', 'E', 'D', 'G'] }
+```
+
+No changes required to the audio interface or host rendering logic.
