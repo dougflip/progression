@@ -2020,18 +2020,20 @@
         const order = resolvePlayOrder();
         const chords = buildSongChords(appSections, appArrangement, key, bars);
         buildPart(chords, getCycleMode(), STYLES[getStyle()], getBassVariant(), getVoicing());
-        if (appAdvance === 'manual' && order.length >= 2) {
+        if (order.length >= 2) {
           const startIdx = order.findIndex(ref => ref === appActiveSection);
-          appCurrentPosIndex = startIdx >= 0 ? startIdx : 0;
-          manualLap = 0;
-          // Compute posOffsets from single-lap chords to find starting bar
+          const startPos = startIdx >= 0 ? startIdx : 0;
           let barAcc = 0;
           const offs = {};
           for (const c of chords) {
             if (!(c.posIndex in offs)) offs[c.posIndex] = barAcc;
             barAcc += c.bars;
           }
-          Tone.Transport.position = `${offs[appCurrentPosIndex] ?? 0}:0:0`;
+          if (appAdvance === 'manual') {
+            appCurrentPosIndex = startPos;
+            manualLap = 0;
+          }
+          Tone.Transport.position = `${offs[startPos] ?? 0}:0:0`;
         }
         Tone.Transport.bpm.value = clampedTempo();
         Tone.Transport.start();
