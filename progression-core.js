@@ -1,0 +1,530 @@
+/**
+ * progression-core.js
+ * Pure music theory layer — no DOM, no audio, no runtime dependencies.
+ */
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+/** @typedef {{ progression: string }} Section */
+
+/** @typedef {'major'|'minor'|'maj7'|'m7'|'dom7'} ChordQuality */
+
+/**
+ * @typedef {{
+ *   notes: string[],
+ *   upperVoicing: number[],
+ *   bassRoot: string,
+ *   bassThird: string,
+ *   bassFifth: string,
+ *   isMinor: boolean,
+ *   root: number,
+ *   quality: ChordQuality,
+ * }} ChordVoicing
+ */
+
+/**
+ * @typedef {ChordVoicing & {
+ *   token: string,
+ *   numeral: string,
+ *   bars: number,
+ * }} ParsedChord
+ */
+
+/**
+ * @typedef {ParsedChord & {
+ *   sectionIndex: number,
+ *   posIndex: number,
+ *   chipIndex: number,
+ * }} SongChord
+ */
+
+// ─── Constants ───────────────────────────────────────────────────────────────
+
+export const BARS_OPTIONS = [1, 2, 4];
+export const MAX_BARS = 16;
+export const MAX_CHORDS = 24;
+
+export const MAJOR_SCALE = [0, 2, 4, 5, 7, 9, 11];
+
+export const ROMAN = {
+  I: 0, II: 1, III: 2, IV: 3, V: 4, VI: 5, VII: 6,
+  i: 0, ii: 1, iii: 2, iv: 3, v: 4, vi: 5, vii: 6,
+};
+
+/** @type {Record<string, number>} */
+export const KEY_MIDI = {
+  C: 60, 'C#': 61, Db: 61, D: 62, 'D#': 63, Eb: 63, E: 64, F: 65,
+  'F#': 66, Gb: 66, G: 67, 'G#': 68, Ab: 68, A: 69, 'A#': 70, Bb: 70, B: 71,
+};
+
+export const SHARP_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+export const FLAT_NAMES  = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
+export const FLAT_KEYS   = new Set(['F','Bb','Eb','Ab','Db','Gb']);
+
+const PITCH_CLASS = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+const CHORD_NAME_RE = /^([A-G])([#b]?)(.*)$/;
+const NOTE_RE = /^([A-G])([#b]?)(-?\d+)$/;
+
+export const CYCLE_SEMIS   = { none: 0, '4ths': 5, '5ths': 7 };
+export const CYCLE_OPTIONS = ['none', '4ths', '5ths'];
+export const CYCLE_LABELS  = { none: 'Loop', '4ths': 'Cycle 4ths', '5ths': 'Cycle 5ths' };
+
+const ROMAN_NUMERALS = ['III','VII','iii','vii','II','IV','VI','ii','iv','vi','I','V','i','v'];
+
+/** @type {Record<ChordQuality, number[]>} */
+const QUALITY_INTERVALS = {
+  major: [0, 4, 7],
+  minor: [0, 3, 7],
+  // 7ths omit the 5th (jazz shell voicing) — bass + chord context imply it
+  maj7:  [0, 4, 11],
+  m7:    [0, 3, 10],
+  dom7:  [0, 4, 10],
+};
+
+/** @type {Record<ChordQuality, boolean>} */
+const QUALITY_IS_MINOR = {
+  major: false, minor: true,
+  maj7:  false, m7:    true, dom7: false,
+};
+
+/** @type {Record<ChordQuality, string>} */
+export const QUALITY_DISPLAY = {
+  major: '', minor: 'm',
+  maj7: 'maj7', m7: 'm7', dom7: '7',
+};
+
+export const STYLE_OPTIONS       = ['pop', 'funk', 'ballad', 'rock'];
+export const STYLE_LABELS        = { pop: 'Pop', funk: 'Funk', ballad: 'Ballad', rock: 'Rock' };
+export const BASS_OPTIONS        = ['simple', 'busy'];
+export const BASS_LABELS         = { simple: 'Simple', busy: 'Busy' };
+export const VOICING_OPTIONS     = ['root', 'voice-lead', 'voice-lead-loop'];
+export const VOICING_PILL_LABELS = { 'root': 'Root', 'voice-lead': 'Lead', 'voice-lead-loop': 'Lead/loop' };
+
+// ─── Style Patterns ──────────────────────────────────────────────────────────
+
+// 16-step patterns (one bar of 16th notes).
+// Drums: 1 = hit, 0 = rest.
+// Bass: 'R' = root, '3' = third, '5' = fifth, 0 = rest.
+export const STYLES = {
+  pop: {
+    kick:  [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
+    snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+    hat:   [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
+    bass: {
+      simple: {
+        major: ['R',0,0,0, 'R',0,0,0, '5',0,0,0, 'R',0,0,0],
+        minor: ['R',0,0,0, 'R',0,0,0, 'R',0,0,0, 'R',0,0,0],
+      },
+      busy: {
+        major: ['R',0,0,0, '5',0,0,0, '3',0,0,0, '5',0,'R',0],
+        minor: ['R',0,0,0, '5',0,0,0, '3',0,0,0, '5',0,'R',0],
+      },
+    },
+  },
+  funk: {
+    kick:  [1,0,0,0, 0,0,1,0, 0,0,1,0, 0,0,1,0],
+    snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+    hat:   [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
+    bass: {
+      simple: {
+        major: ['R',0,0,0, 0,0,'R',0, 0,0,'R',0, 0,0,'5',0],
+        minor: ['R',0,0,0, 0,0,'R',0, 0,0,'R',0, 0,0,'R',0],
+      },
+      busy: {
+        major: ['R',0,0,'R', 0,0,'R',0, 0,'3',0,'R', 0,'3',0,'5'],
+        minor: ['R',0,0,'R', 0,0,'R',0, 0,'3',0,'R', 0,'3',0,'R'],
+      },
+    },
+  },
+  ballad: {
+    kick:  [1,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+    snare: [0,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
+    hat:   [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0],
+    bass: {
+      simple: {
+        major: ['R',0,0,0, 0,0,0,0, '5',0,0,0, 0,0,0,0],
+        minor: ['R',0,0,0, 0,0,0,0, 'R',0,0,0, 0,0,0,0],
+      },
+      busy: {
+        major: ['R',0,0,0, 0,0,0,0, '3',0,'5',0, '3',0,'R',0],
+        minor: ['R',0,0,0, 0,0,0,0, '3',0,'5',0, '3',0,'R',0],
+      },
+    },
+  },
+  rock: {
+    kick:  [1,0,0,0, 0,0,1,0, 1,0,0,0, 0,0,0,0],
+    snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+    hat:   [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
+    bass: {
+      simple: {
+        major: ['R',0,0,0, 0,0,'R',0, 'R',0,0,0, '5',0,0,0],
+        minor: ['R',0,0,0, 0,0,'R',0, 'R',0,0,0, 'R',0,0,0],
+      },
+      busy: {
+        major: ['R',0,'R',0, '3',0,'R',0, 'R',0,'R',0, '5',0,'3',0],
+        minor: ['R',0,'R',0, '3',0,'R',0, 'R',0,'R',0, '5',0,'3',0],
+      },
+    },
+  },
+};
+
+// ─── Built-in Presets ────────────────────────────────────────────────────────
+
+export const PRESETS = [
+  { label: 'I V vi IV',        state: { sections: [{ progression: 'I V vi IV' }],                      arrangement: '', cycle: 'none' } },
+  { label: 'I vi ii V',        state: { sections: [{ progression: 'I vi ii V' }],                      arrangement: '', cycle: 'none' } },
+  { label: 'ii V I',           state: { sections: [{ progression: 'ii V I' }],                         arrangement: '', cycle: 'none' } },
+  { label: 'iim7 V7 Imaj7',    state: { sections: [{ progression: 'iim7 V7 Imaj7' }],                  arrangement: '', cycle: 'none' } },
+  { label: 'I IV V',           state: { sections: [{ progression: 'I IV V' }],                         arrangement: '', cycle: 'none' } },
+  { label: 'i iv v',           state: { sections: [{ progression: 'i iv v' }],                         arrangement: '', cycle: 'none' } },
+  { label: '12-bar blues',     state: { sections: [{ progression: 'I:4 IV:2 I:2 V:1 IV:1 I:1 V:1' }], arrangement: '', cycle: 'none' } },
+  { label: 'Cycle 5ths',       state: { sections: [{ progression: 'I' }],                              arrangement: '', cycle: '5ths' } },
+  { label: 'Cycle 4ths',       state: { sections: [{ progression: 'I' }],                              arrangement: '', cycle: '4ths' } },
+  { label: 'Cycle 5ths (min)', state: { sections: [{ progression: 'i' }],                              arrangement: '', cycle: '5ths' } },
+  { label: 'Cycle 4ths (min)', state: { sections: [{ progression: 'i' }],                              arrangement: '', cycle: '4ths' } },
+];
+
+// ─── Token utilities ─────────────────────────────────────────────────────────
+
+/**
+ * @param {string} input
+ * @returns {string[]}
+ */
+export function tokenize(input) {
+  return input.trim().split(/\s+/).filter(Boolean).slice(0, MAX_CHORDS);
+}
+
+/**
+ * @param {string} token
+ * @returns {{ numeral: string, suffix: string } | null}
+ */
+function parseRoman(token) {
+  for (const r of ROMAN_NUMERALS) {
+    if (token.startsWith(r)) return { numeral: r, suffix: token.slice(r.length) };
+  }
+  return null;
+}
+
+/**
+ * @param {string} suffix
+ * @param {boolean} isLowerCase
+ * @returns {ChordQuality | null}
+ */
+function suffixToQuality(suffix, isLowerCase) {
+  if (suffix === '')     return isLowerCase ? 'minor' : 'major';
+  if (suffix === 'm')    return 'minor';
+  if (suffix === 'maj7') return 'maj7';
+  if (suffix === 'm7')   return 'm7';
+  if (suffix === '7')    return isLowerCase ? 'm7' : 'dom7';
+  return null;
+}
+
+// ─── Note / MIDI utilities ───────────────────────────────────────────────────
+
+/**
+ * @param {number} m - MIDI note number
+ * @returns {string}
+ */
+export function midiToNote(m) {
+  return SHARP_NAMES[m % 12] + (Math.floor(m / 12) - 1);
+}
+
+/**
+ * @param {number} shift
+ * @returns {number}
+ */
+export function clampShift(shift) {
+  const s = ((shift % 12) + 12) % 12;
+  return s > 6 ? s - 12 : s;
+}
+
+/**
+ * @param {string} noteName
+ * @param {number} semis
+ * @returns {string}
+ */
+export function transposeNote(noteName, semis) {
+  if (!semis) return noteName;
+  const m = NOTE_RE.exec(noteName);
+  if (!m) return noteName;
+  const [, letter, acc, octave] = m;
+  const acci = acc === '#' ? 1 : acc === 'b' ? -1 : 0;
+  const midi = PITCH_CLASS[letter] + acci + (parseInt(octave, 10) + 1) * 12 + semis;
+  return SHARP_NAMES[((midi % 12) + 12) % 12] + (Math.floor(midi / 12) - 1);
+}
+
+// ─── Key / cycle display utilities ───────────────────────────────────────────
+
+/**
+ * @param {string} cycle
+ * @param {string} key
+ * @returns {boolean}
+ */
+export function cycleUsesFlats(cycle, key) {
+  if (cycle === '4ths') return true;
+  if (cycle === '5ths') return false;
+  return FLAT_KEYS.has(key);
+}
+
+/**
+ * Returns the display name of a chord numeral at a given cycle shift.
+ * @param {string} numeral
+ * @param {number} shift - semitones from base key
+ * @param {string} key
+ * @param {string} cycle
+ * @returns {string}
+ */
+export function resolvedChordName(numeral, shift, key, cycle) {
+  const useFlats = cycleUsesFlats(cycle, key);
+  const names = useFlats ? FLAT_NAMES : SHARP_NAMES;
+
+  const roman = parseRoman(numeral);
+  if (roman && roman.numeral in ROMAN) {
+    const isLowerCase = roman.numeral === roman.numeral.toLowerCase();
+    const quality = suffixToQuality(roman.suffix, isLowerCase);
+    if (quality) {
+      const degree = ROMAN[roman.numeral];
+      const rootPc = (((KEY_MIDI[key] + MAJOR_SCALE[degree] + shift) % 12) + 12) % 12;
+      return names[rootPc] + QUALITY_DISPLAY[quality];
+    }
+  }
+
+  const m = CHORD_NAME_RE.exec(numeral);
+  if (m) {
+    const [, letter, acc, suffix] = m;
+    if (suffixToQuality(suffix, false) === null) return '?';
+    if (shift === 0) return numeral;
+    const acci = acc === '#' ? 1 : acc === 'b' ? -1 : 0;
+    const pc = (((PITCH_CLASS[letter] + acci + shift) % 12) + 12) % 12;
+    return names[pc] + suffix;
+  }
+  return '?';
+}
+
+/**
+ * Returns the display key name at a given cycle shift.
+ * @param {string} key
+ * @param {number} shift
+ * @param {string} cycle
+ * @returns {string}
+ */
+export function resolvedKeyName(key, shift, cycle) {
+  const baseKeyPc = KEY_MIDI[key] % 12;
+  const curPc = (((baseKeyPc + shift) % 12) + 12) % 12;
+  const names = cycleUsesFlats(cycle, key) ? FLAT_NAMES : SHARP_NAMES;
+  return names[curPc];
+}
+
+// ─── Chord building ──────────────────────────────────────────────────────────
+
+/**
+ * @param {number} root - MIDI root note
+ * @param {ChordQuality} quality
+ * @param {number[] | null} [prevUpper] - previous upper voicing for voice leading
+ * @returns {ChordVoicing}
+ */
+export function makeChord(root, quality, prevUpper = null) {
+  const intervals = QUALITY_INTERVALS[quality];
+  const has7th = quality === 'maj7' || quality === 'm7' || quality === 'dom7';
+  const topMax = has7th ? 72 : 76;
+  let r = root;
+  while (r + intervals[intervals.length - 1] > topMax && r > 48) r -= 12;
+
+  let chordNotes;
+  if (prevUpper) {
+    const candidates = [];
+    for (let inv = 0; inv < intervals.length; inv++) {
+      let notes = [];
+      for (let i = 0; i < intervals.length; i++) {
+        const idx = (inv + i) % intervals.length;
+        const oct = (inv + i) >= intervals.length ? 12 : 0;
+        notes.push(r + intervals[idx] + oct);
+      }
+      while (notes[notes.length - 1] > topMax) notes = notes.map(n => n - 12);
+      candidates.push(notes);
+    }
+    let best = candidates[0];
+    let bestScore = Infinity;
+    for (const cand of candidates) {
+      let score = 0;
+      for (let i = 0; i < cand.length; i++) score += Math.abs(cand[i] - prevUpper[i]);
+      if (score < bestScore) { bestScore = score; best = cand; }
+    }
+    chordNotes = best;
+  } else {
+    chordNotes = intervals.map(iv => r + iv);
+  }
+
+  const chordBass = r - 12;
+  const synthBass = r - 24;
+  const isMinor = QUALITY_IS_MINOR[quality];
+  return {
+    notes: [chordBass, ...chordNotes].map(midiToNote),
+    upperVoicing: chordNotes,
+    bassRoot:  midiToNote(synthBass),
+    bassThird: midiToNote(synthBass + (isMinor ? 3 : 4)),
+    bassFifth: midiToNote(synthBass + 7),
+    isMinor,
+    root,
+    quality,
+  };
+}
+
+/**
+ * @param {string} token
+ * @param {number} keyMidi
+ * @returns {ChordVoicing}
+ */
+export function buildChord(token, keyMidi) {
+  const roman = parseRoman(token);
+  if (roman && roman.numeral in ROMAN) {
+    const isLowerCase = roman.numeral === roman.numeral.toLowerCase();
+    const quality = suffixToQuality(roman.suffix, isLowerCase);
+    if (quality) {
+      const degree = ROMAN[roman.numeral];
+      return makeChord(keyMidi + MAJOR_SCALE[degree], quality);
+    }
+  }
+  const m = CHORD_NAME_RE.exec(token);
+  if (m) {
+    const [, letter, acc, suffix] = m;
+    const quality = suffixToQuality(suffix, false);
+    if (quality) {
+      const acci = acc === '#' ? 1 : acc === 'b' ? -1 : 0;
+      const pc = ((PITCH_CLASS[letter] + acci) % 12 + 12) % 12;
+      return makeChord(60 + pc, quality);
+    }
+  }
+  throw new Error(`Unknown chord: ${token}`);
+}
+
+// ─── Progression parsing ─────────────────────────────────────────────────────
+
+/**
+ * @param {string} token
+ * @param {number} defaultBars
+ * @returns {{ numeral: string, bars: number }}
+ */
+export function parseToken(token, defaultBars) {
+  const [numeral, durStr] = token.split(':');
+  let bars = defaultBars;
+  if (durStr !== undefined) {
+    const n = parseInt(durStr, 10);
+    if (Number.isFinite(n) && n > 0) bars = Math.min(n, MAX_BARS);
+  }
+  return { numeral, bars };
+}
+
+/**
+ * @param {string} input
+ * @param {string} key
+ * @param {number} defaultBars
+ * @returns {ParsedChord[]}
+ */
+export function parseProgression(input, key, defaultBars) {
+  const keyMidi = KEY_MIDI[key];
+  const tokens = tokenize(input);
+  if (tokens.length === 0) throw new Error('Progression is empty');
+  return tokens.map(t => {
+    const { numeral, bars } = parseToken(t, defaultBars);
+    return { token: t, numeral, bars, ...buildChord(numeral, keyMidi) };
+  });
+}
+
+/**
+ * @param {string} str
+ * @param {number} count - number of sections
+ * @returns {number[]}
+ */
+export function parseArrangement(str, count) {
+  const out = [];
+  for (const tok of str.trim().split(/\s+/).filter(Boolean)) {
+    const [refStr, repStr] = tok.split(':');
+    const ref = parseInt(refStr, 10);
+    if (!Number.isInteger(ref) || ref < 1 || ref > count) continue;
+    const reps = repStr === undefined ? 1 : parseInt(repStr, 10);
+    if (!Number.isInteger(reps) || reps < 1) continue;
+    for (let i = 0; i < reps && out.length < 16; i++) out.push(ref);
+  }
+  return out;
+}
+
+/**
+ * Returns the ordered list of 1-based section references for playback.
+ * @param {Section[]} sections
+ * @param {string} arrangement
+ * @returns {number[]}
+ */
+export function resolvePlayOrder(sections, arrangement) {
+  const count = sections.length;
+  if (count < 2) return [];
+  const validRefs = sections
+    .map((s, i) => tokenize(s.progression).length > 0 ? i + 1 : null)
+    .filter(/** @type {(v: number | null) => v is number} */ Boolean);
+  if (validRefs.length < 2) return [];
+  const parsed = parseArrangement(arrangement, count).filter(ref => validRefs.includes(ref));
+  return parsed.length ? parsed : validRefs;
+}
+
+/**
+ * Builds the full ordered chord sequence for a song, expanding all sections
+ * and the arrangement into a flat list of SongChords.
+ * @param {Section[]} sections
+ * @param {string} arrangementStr
+ * @param {string} key
+ * @param {number} bars
+ * @returns {SongChord[]}
+ */
+export function buildSongChords(sections, arrangementStr, key, bars) {
+  const count = sections.length;
+  const parsed = parseArrangement(arrangementStr, count);
+  const order = parsed.length ? parsed : Array.from({ length: count }, (_, i) => i + 1);
+  /** @type {SongChord[]} */
+  const chords = [];
+  order.forEach((ref, posIndex) => {
+    const sec = sections[ref - 1];
+    const secChords = parseProgression(sec.progression, key, bars);
+    secChords.forEach((c, chipIndex) => {
+      chords.push({ ...c, sectionIndex: ref - 1, posIndex, chipIndex });
+    });
+  });
+  return chords;
+}
+
+// ─── Arrangement mutation helpers ────────────────────────────────────────────
+
+/**
+ * Rewrites an arrangement string after a section is deleted.
+ * @param {string} str
+ * @param {number} deletedIdx - 0-based index of deleted section
+ * @returns {string}
+ */
+export function remapArrangementDelete(str, deletedIdx) {
+  const deleted = deletedIdx + 1;
+  return str.trim().split(/\s+/).filter(Boolean).map(tok => {
+    const [refStr, repStr] = tok.split(':');
+    const ref = parseInt(refStr, 10);
+    if (!Number.isInteger(ref)) return tok;
+    if (ref === deleted) return null;
+    const newRef = ref > deleted ? ref - 1 : ref;
+    return repStr !== undefined ? `${newRef}:${repStr}` : String(newRef);
+  }).filter(Boolean).join(' ');
+}
+
+/**
+ * Rewrites an arrangement string after two sections are swapped.
+ * @param {string} str
+ * @param {number} idxA - 0-based index
+ * @param {number} idxB - 0-based index
+ * @returns {string}
+ */
+export function remapArrangementSwap(str, idxA, idxB) {
+  const a = idxA + 1, b = idxB + 1;
+  return str.trim().split(/\s+/).filter(Boolean).map(tok => {
+    const [refStr, repStr] = tok.split(':');
+    const ref = parseInt(refStr, 10);
+    if (!Number.isInteger(ref)) return tok;
+    const newRef = ref === a ? b : ref === b ? a : ref;
+    return repStr !== undefined ? `${newRef}:${repStr}` : String(newRef);
+  }).join(' ');
+}

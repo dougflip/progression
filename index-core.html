@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Progression — Dev</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 600px; margin: 2rem auto; padding: 0 1rem; color: #222; }
+    label { display: block; font-weight: 600; font-size: 0.9rem; margin-bottom: 0.25rem; }
+    select, input { font-size: 1rem; padding: 0.4rem 0.6rem; width: 100%; margin-bottom: 1.25rem; box-sizing: border-box; }
+    .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+    .chip {
+      background: #f1f1f1; border: 1px solid #ddd; border-radius: 0.5rem;
+      padding: 0.5rem 0.85rem; font-weight: 600; font-size: 1.1rem;
+    }
+    .chip .numeral { font-size: 0.7rem; color: #888; display: block; }
+    .error { color: #c00; font-size: 0.9rem; }
+    h2 { margin-bottom: 0.25rem; }
+    small { font-weight: 400; color: #888; }
+  </style>
+</head>
+<body>
+  <h2>Chord Resolver <small>— milestone 1 smoke test</small></h2>
+
+  <label for="key">Key</label>
+  <select id="key">
+    <option>C</option><option>Db</option><option>D</option><option>Eb</option>
+    <option>E</option><option>F</option><option>F#</option><option>G</option>
+    <option>Ab</option><option>A</option><option>Bb</option><option>B</option>
+  </select>
+
+  <label for="prog">Progression</label>
+  <input id="prog" value="I vi ii V" autocomplete="off" spellcheck="false" />
+
+  <div id="output"></div>
+
+  <script type="module">
+    import { parseProgression, resolvedChordName } from './progression-core.js';
+
+    const keyEl    = document.getElementById('key');
+    const progEl   = document.getElementById('prog');
+    const outputEl = document.getElementById('output');
+
+    function resolve() {
+      const key  = keyEl.value;
+      const prog = progEl.value;
+      outputEl.innerHTML = '';
+      try {
+        const chords = parseProgression(prog, key, 2);
+        const strip = document.createElement('div');
+        strip.className = 'chips';
+        chords.forEach(c => {
+          const chip = document.createElement('div');
+          chip.className = 'chip';
+          const numeral = document.createElement('span');
+          numeral.className = 'numeral';
+          numeral.textContent = c.token;
+          const name = document.createElement('span');
+          name.textContent = resolvedChordName(c.numeral, 0, key, 'none');
+          chip.append(numeral, name);
+          strip.appendChild(chip);
+        });
+        outputEl.appendChild(strip);
+      } catch (e) {
+        outputEl.innerHTML = `<p class="error">${e.message}</p>`;
+      }
+    }
+
+    keyEl.addEventListener('change', resolve);
+    progEl.addEventListener('input', resolve);
+    resolve();
+  </script>
+</body>
+</html>
