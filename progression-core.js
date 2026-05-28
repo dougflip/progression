@@ -528,3 +528,268 @@ export function remapArrangementSwap(str, idxA, idxB) {
     return repStr !== undefined ? `${newRef}:${repStr}` : String(newRef);
   }).join(' ');
 }
+
+// ─── App State ───────────────────────────────────────────────────────────────
+
+export const VALID_KEYS = ['C','Db','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
+
+/**
+ * @typedef {{
+ *   key: string,
+ *   tempo: number,
+ *   bars: number,
+ *   cycle: string,
+ *   style: string,
+ *   bass: string,
+ *   voicing: string,
+ *   sections: Section[],
+ *   arrangement: string,
+ *   activeSection: number,
+ *   advance: string,
+ *   chordVol: number,
+ *   bassVol: number,
+ *   drumVol: number,
+ *   masterVol: number,
+ *   chordsOn: boolean,
+ *   bassOn: boolean,
+ *   drumsOn: boolean,
+ * }} AppState
+ */
+
+/** @type {AppState} */
+export const DEFAULTS = {
+  key:          'C',
+  tempo:        85,
+  bars:         2,
+  cycle:        'none',
+  style:        'funk',
+  bass:         'busy',
+  voicing:      'voice-lead-loop',
+  sections:     [{ progression: 'I vi ii V' }],
+  arrangement:  '',
+  activeSection: 1,
+  advance:      'auto',
+  chordVol:     50,
+  bassVol:      100,
+  drumVol:      100,
+  masterVol:    100,
+  chordsOn:     true,
+  bassOn:       true,
+  drumsOn:      true,
+};
+
+// ─── URL serialization ───────────────────────────────────────────────────────
+
+/**
+ * @param {string} searchString - window.location.search
+ * @returns {AppState}
+ */
+export function parseUrl(searchString) {
+  const p    = new URLSearchParams(searchString);
+  const num  = (k, def) => { const v = parseInt(p.get(k), 10); return Number.isFinite(v) ? v : def; };
+  const bool = (k, def) => { const v = p.get(k); if (v === '1') return true; if (v === '0') return false; return def; };
+  const str  = (k, def) => p.get(k) ?? def;
+
+  const key     = str('key',     DEFAULTS.key);
+  const bars    = num('bars',    DEFAULTS.bars);
+  const cycle   = str('cycle',   DEFAULTS.cycle);
+  const style   = str('style',   DEFAULTS.style);
+  const bass    = str('bass',    DEFAULTS.bass);
+  const voicing = str('voicing', DEFAULTS.voicing);
+  const advance = str('advance', DEFAULTS.advance);
+  const rawSections = p.getAll('section');
+  const sections = rawSections.length
+    ? rawSections.map(prog => ({ progression: prog }))
+    : DEFAULTS.sections;
+  const rawActive = num('activeSection', DEFAULTS.activeSection);
+
+  return {
+    key:     VALID_KEYS.includes(key) ? key : DEFAULTS.key,
+    tempo:   Math.max(40, Math.min(220, num('tempo', DEFAULTS.tempo))),
+    bars:    BARS_OPTIONS.includes(bars) ? bars : DEFAULTS.bars,
+    cycle:   CYCLE_OPTIONS.includes(cycle) ? cycle : DEFAULTS.cycle,
+    style:   STYLE_OPTIONS.includes(style) ? style : DEFAULTS.style,
+    bass:    BASS_OPTIONS.includes(bass) ? bass : DEFAULTS.bass,
+    voicing: VOICING_OPTIONS.includes(voicing) ? voicing : DEFAULTS.voicing,
+    sections,
+    arrangement:   str('arrangement', DEFAULTS.arrangement),
+    activeSection: (Number.isInteger(rawActive) && rawActive >= 1 && rawActive <= sections.length)
+      ? rawActive : 1,
+    advance: ['auto', 'manual'].includes(advance) ? advance : DEFAULTS.advance,
+    chordVol:  num('chordVol',  DEFAULTS.chordVol),
+    bassVol:   num('bassVol',   DEFAULTS.bassVol),
+    drumVol:   num('drumVol',   DEFAULTS.drumVol),
+    masterVol: num('masterVol', DEFAULTS.masterVol),
+    chordsOn:  bool('chordsOn', DEFAULTS.chordsOn),
+    bassOn:    bool('bassOn',   DEFAULTS.bassOn),
+    drumsOn:   bool('drumsOn',  DEFAULTS.drumsOn),
+  };
+}
+
+/**
+ * @param {AppState} state
+ * @returns {string} query string (no leading ?)
+ */
+export function serializeUrl(state) {
+  const p = new URLSearchParams();
+  p.set('key',     state.key);
+  p.set('tempo',   String(state.tempo));
+  p.set('bars',    String(state.bars));
+  p.set('cycle',   state.cycle);
+  p.set('style',   state.style);
+  p.set('bass',    state.bass);
+  p.set('voicing', state.voicing);
+  state.sections.forEach(sec => p.append('section', sec.progression));
+  p.set('arrangement',   state.arrangement);
+  p.set('activeSection', String(state.activeSection));
+  p.set('advance',       state.advance);
+  p.set('chordVol',      String(state.chordVol));
+  p.set('bassVol',       String(state.bassVol));
+  p.set('drumVol',       String(state.drumVol));
+  p.set('masterVol',     String(state.masterVol));
+  p.set('chordsOn',  state.chordsOn  ? '1' : '0');
+  p.set('bassOn',    state.bassOn    ? '1' : '0');
+  p.set('drumsOn',   state.drumsOn   ? '1' : '0');
+  return p.toString();
+}
+
+// ─── Player Factory ──────────────────────────────────────────────────────────
+
+const PRESETS_STORAGE_KEY = 'progression-presets-v2';
+
+/** @typedef {{ id: string, name: string, state: AppState }} UserPreset */
+
+/**
+ * @typedef {{
+ *   chipIndex: number,
+ *   posIndex: number,
+ *   resolvedChipNames: string[],
+ *   resolvedKey: string,
+ * }} ChordTickEvent
+ */
+
+/**
+ * @typedef {{
+ *   audio?: object,
+ *   persist: (key: string, value: string) => void,
+ *   load: (key: string) => string | null,
+ *   onStateChange: (state: AppState) => void,
+ *   onPlaybackChange: (playing: boolean) => void,
+ *   onChordTick: (ev: ChordTickEvent) => void,
+ *   onBeatTick: (beat: number) => void,
+ *   onBarTick: (bar: number) => void,
+ * }} PlayerConfig
+ */
+
+/**
+ * @param {PlayerConfig} config
+ */
+export function makeProgressionPlayer(config) {
+  /** @type {AppState} */
+  let _state = { ...DEFAULTS };
+
+  function _notify() { config.onStateChange({ ..._state }); }
+
+  /** @param {Partial<AppState>} partial */
+  function _set(partial) { _state = { ..._state, ...partial }; _notify(); }
+
+  function _getUserPresets() {
+    try { return /** @type {UserPreset[]} */ (JSON.parse(config.load(PRESETS_STORAGE_KEY) || '[]')); }
+    catch { return []; }
+  }
+
+  return {
+    /** @returns {AppState} */
+    getState: () => ({ ..._state }),
+
+    /** @param {Partial<AppState>} partial */
+    setState: (partial) => _set(partial),
+
+    /** Initializes state from a URL search string and notifies. */
+    applyUrl(searchString) { _state = parseUrl(searchString); _notify(); },
+
+    /** @returns {string} */
+    serializeUrl: () => serializeUrl(_state),
+
+    // ── Sections ──────────────────────────────────────────────────────────
+
+    addSection() {
+      if (_state.sections.length >= 6) return;
+      _set({ sections: [..._state.sections, { progression: '' }] });
+    },
+
+    /** @param {number} index */
+    removeSection(index) {
+      if (_state.sections.length <= 1) return;
+      const sections = _state.sections.filter((_, i) => i !== index);
+      const arrangement = remapArrangementDelete(_state.arrangement, index);
+      _set({ sections, arrangement, activeSection: Math.min(_state.activeSection, sections.length) });
+    },
+
+    /**
+     * @param {number} index
+     * @param {'up'|'down'} direction
+     */
+    moveSection(index, direction) {
+      const sections = [..._state.sections];
+      const target = direction === 'up' ? index - 1 : index + 1;
+      if (target < 0 || target >= sections.length) return;
+      [sections[index], sections[target]] = [sections[target], sections[index]];
+      const arrangement = remapArrangementSwap(_state.arrangement, index, target);
+      let { activeSection } = _state;
+      if (activeSection === index + 1) activeSection = target + 1;
+      else if (activeSection === target + 1) activeSection = index + 1;
+      _set({ sections, arrangement, activeSection });
+    },
+
+    /**
+     * @param {number} index
+     * @param {string} progression
+     */
+    updateSection(index, progression) {
+      const sections = _state.sections.map((s, i) => i === index ? { ...s, progression } : s);
+      _set({ sections });
+    },
+
+    // ── Presets ───────────────────────────────────────────────────────────
+
+    /** @param {Partial<AppState>} presetState */
+    loadPreset(presetState) { _state = { ...DEFAULTS, ...presetState }; _notify(); },
+
+    /** @returns {UserPreset[]} */
+    getUserPresets: _getUserPresets,
+
+    /**
+     * @param {string} name
+     * @returns {string} id
+     */
+    saveUserPreset(name) {
+      const id = Date.now().toString(36);
+      config.persist(PRESETS_STORAGE_KEY,
+        JSON.stringify([..._getUserPresets(), { id, name, state: { ..._state } }]));
+      return id;
+    },
+
+    /**
+     * @param {string} id
+     * @param {string} name
+     */
+    renameUserPreset(id, name) {
+      config.persist(PRESETS_STORAGE_KEY,
+        JSON.stringify(_getUserPresets().map(p => p.id === id ? { ...p, name } : p)));
+    },
+
+    /** @param {string} id */
+    deleteUserPreset(id) {
+      config.persist(PRESETS_STORAGE_KEY,
+        JSON.stringify(_getUserPresets().filter(p => p.id !== id)));
+    },
+
+    // ── Playback (wired in Milestone 3) ───────────────────────────────────
+
+    togglePlay() { /* Milestone 3 */ },
+
+    /** @param {number} _posIndex */
+    queueJump(_posIndex) { /* Milestone 3 */ },
+  };
+}

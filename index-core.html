@@ -3,72 +3,895 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Progression — Dev</title>
+  <title>Chord Progression Player</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');</script>
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 600px; margin: 2rem auto; padding: 0 1rem; color: #222; }
-    label { display: block; font-weight: 600; font-size: 0.9rem; margin-bottom: 0.25rem; }
-    select, input { font-size: 1rem; padding: 0.4rem 0.6rem; width: 100%; margin-bottom: 1.25rem; box-sizing: border-box; }
-    .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
-    .chip {
-      background: #f1f1f1; border: 1px solid #ddd; border-radius: 0.5rem;
-      padding: 0.5rem 0.85rem; font-weight: 600; font-size: 1.1rem;
+    :root {
+      --bg: #fafafa; --surface: #ffffff; --surface-alt: #f1f1f1;
+      --surface-alt-active: #e1e1e1; --border: #dddddd; --border-faint: #eeeeee;
+      --border-input: #cccccc; --text: #222222; --text-2: #555555;
+      --text-3: #888888; --text-4: #aaaaaa; --accent: #222222;
+      --accent-text: #ffffff; --accent-hover: #444444; --playing: #b91c1c;
+      --shadow-top: 0 -2px 12px rgba(0,0,0,0.05); --backdrop: rgba(0,0,0,0.4);
+      --rename-border: #888888;
     }
-    .chip .numeral { font-size: 0.7rem; color: #888; display: block; }
-    .error { color: #c00; font-size: 0.9rem; }
-    h2 { margin-bottom: 0.25rem; }
-    small { font-weight: 400; color: #888; }
+    [data-theme="dark"] {
+      --bg: #121212; --surface: #1e1e1e; --surface-alt: #2a2a2a;
+      --surface-alt-active: #353535; --border: #333333; --border-faint: #262626;
+      --border-input: #3a3a3a; --text: #f0f0f0; --text-2: #b8b8b8;
+      --text-3: #888888; --text-4: #666666; --accent: #f0f0f0;
+      --accent-text: #121212; --accent-hover: #cccccc; --playing: #ef4444;
+      --shadow-top: 0 -4px 12px rgba(0,0,0,0.4); --backdrop: rgba(0,0,0,0.6);
+      --rename-border: #666666;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, sans-serif;
+      color: var(--text);
+      margin: 0;
+      padding-bottom: calc(96px + env(safe-area-inset-bottom));
+      background: var(--bg);
+    }
+    main { max-width: 600px; margin: 0 auto; padding: 1.25rem 1rem; }
+
+    /* ── Key display ── */
+    h1#key-display {
+      font-size: 3rem; font-weight: 700; margin: 0.25rem 0 1rem;
+      text-align: center; letter-spacing: -0.02em; line-height: 1;
+      cursor: pointer; user-select: none; transition: opacity 0.1s;
+    }
+    h1#key-display:hover { opacity: 0.85; }
+    #key-picker { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.4rem; max-width: 18rem; margin: -0.5rem auto 1rem; }
+    #key-picker[hidden] { display: none; }
+    #scrubber-bar[hidden] { display: none; }
+    .key-chip {
+      padding: 0.5rem 0.25rem; background: var(--surface-alt); border: 1px solid var(--border);
+      color: var(--text); border-radius: 0.5rem; font-size: 0.95rem; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+    }
+    .key-chip:active { background: var(--surface-alt-active); }
+    .key-chip.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+
+    /* ── Chord strip ── */
+    #chord-strip {
+      display: flex; flex-wrap: wrap; justify-content: center;
+      gap: 0.5rem; margin-bottom: 1.25rem; min-height: 4.5rem;
+    }
+    .chip {
+      flex: 1 1 4.5rem; min-width: 4.5rem; max-width: 8rem; min-height: 3.8rem;
+      padding: 0.6rem 0.5rem; border-radius: 0.5rem; background: var(--surface);
+      border: 1px solid var(--border); text-align: center; display: flex;
+      flex-direction: column; justify-content: center; position: relative;
+      transition: background 0.1s, color 0.1s, border-color 0.1s;
+    }
+    .chip .numeral { font-size: 0.75rem; color: var(--text-3); line-height: 1; }
+    .chip .name    { font-size: 1.25rem; font-weight: 600; line-height: 1.3; margin-top: 0.15rem; }
+    .chip.active   { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+    .chip.active .numeral { color: var(--text-3); }
+    .bar-progress {
+      position: absolute; left: 0.4rem; right: 0.4rem; bottom: 0.3rem;
+      display: flex; justify-content: center; gap: 0.25rem; pointer-events: none;
+    }
+    .chip:not(.active) .bar-progress { display: none; }
+    .bar-dot {
+      flex: 0 1 0.6rem; min-width: 0; height: 0.2rem; border-radius: 0.1rem;
+      background: var(--accent-text); opacity: 0.3; transition: opacity 0.08s;
+    }
+    .bar-dot.active { opacity: 1; }
+
+    /* ── Beat indicator ── */
+    #beat-indicator {
+      display: flex; justify-content: center; align-items: center;
+      gap: 0.7rem; min-height: 0.75rem;
+    }
+    .beat-dot {
+      width: 0.5rem; height: 0.5rem; border-radius: 50%;
+      background: var(--surface-alt); transition: background 0.08s, transform 0.08s;
+    }
+    .beat-dot.active { background: var(--accent); transform: scale(1.5); }
+
+    /* ── Readout ── */
+    #readout {
+      display: flex; justify-content: center; align-items: center;
+      flex-wrap: wrap; gap: 0.4rem 0.6rem; margin-top: 1rem;
+      color: var(--text-2); font-size: 0.9rem;
+    }
+    #readout strong { color: var(--text); font-weight: 600; }
+    .readout-row-break { flex-basis: 100%; height: 0; }
+    .readout-btn {
+      background: var(--surface-alt); color: var(--text); padding: 0.2rem 0.65rem;
+      border-radius: 999px; border: none; font-size: 0.85rem; font-family: inherit;
+      font-weight: 500; cursor: pointer; transition: background 0.1s;
+    }
+    .readout-btn:hover, .readout-btn:active { background: var(--surface-alt-active); }
+    .tempo-group { position: relative; display: inline-flex; align-items: center; }
+    #tempo-picker {
+      position: absolute; top: calc(100% + 0.55rem); left: 50%; transform: translateX(-50%);
+      display: flex; align-items: center; gap: 0.6rem; background: var(--surface-alt);
+      border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.55rem 0.7rem;
+      min-width: 15rem; box-shadow: 0 4px 12px rgba(0,0,0,0.12); z-index: 5;
+    }
+    [data-theme="dark"] #tempo-picker { box-shadow: 0 4px 14px rgba(0,0,0,0.5); }
+    #tempo-picker::before {
+      content: ''; position: absolute; top: -0.35rem; left: 50%;
+      transform: translateX(-50%) rotate(45deg); width: 0.6rem; height: 0.6rem;
+      background: var(--surface-alt); border-left: 1px solid var(--border);
+      border-top: 1px solid var(--border);
+    }
+    #tempo-picker[hidden] { display: none; }
+    #tempo-picker input[type=range] { flex: 1; min-width: 0; }
+    .tempo-step {
+      flex: 0 0 auto; width: 1.85rem; height: 1.85rem; padding: 0; border-radius: 50%;
+      border: none; background: var(--surface); color: var(--text); font-size: 1rem;
+      font-family: inherit; font-weight: 500; line-height: 1; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .tempo-step:hover, .tempo-step:active { background: var(--surface-alt-active); }
+
+    #status { margin-top: 0.75rem; text-align: center; font-family: monospace; color: var(--text-3); font-size: 0.85rem; min-height: 1.2em; }
+
+    /* ── Action bar ── */
+    #action-bar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      display: flex; flex-direction: column; background: var(--surface);
+      border-top: 1px solid var(--border); box-shadow: var(--shadow-top); z-index: 10;
+    }
+    .action-buttons {
+      display: flex; align-items: center; justify-content: space-around;
+      gap: 0.5rem; padding: 0.75rem 1rem;
+      padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+    }
+    .bar-btn {
+      flex: 1; max-width: 140px; background: none; border: none; padding: 0.5rem;
+      font-size: 0.85rem; color: var(--text-2); cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; gap: 0.15rem;
+    }
+    .bar-btn:active { color: var(--text); }
+    .bar-icon { font-size: 1.4rem; line-height: 1; }
+    #play {
+      flex: 0 0 auto; width: 64px; height: 64px; border-radius: 50%;
+      background: var(--accent); color: var(--accent-text); border: none;
+      font-size: 1.5rem; cursor: pointer; display: flex;
+      align-items: center; justify-content: center;
+    }
+    #play.playing { background: var(--playing); color: #fff; }
+
+    /* ── Scrubber ── */
+    #scrubber-bar { border-bottom: 1px solid var(--border); }
+    .scrubber-inner {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.75rem 1rem 0.65rem; max-width: 600px; margin: 0 auto;
+    }
+    .scrubber-label { font-size: 0.85rem; color: var(--text-3); white-space: nowrap; }
+    #scrubber-track { flex: 1; display: flex; gap: 0.4rem; overflow-x: auto; align-items: center; }
+    .scrubber-seg {
+      flex: 0 0 auto; width: 2.85rem; padding: 0.7rem 0.25rem; background: none;
+      border: 1px solid var(--border); border-radius: 0.45rem; color: var(--text-2);
+      font-size: 1rem; font-weight: 600; text-align: center; cursor: pointer;
+      transition: background 0.1s;
+    }
+    .scrubber-seg.current { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+
+    /* ── Dialogs / sheets ── */
+    dialog {
+      border: none; border-radius: 1rem 1rem 0 0; padding: 0; margin: 0;
+      background: var(--surface); color: var(--text);
+      min-height: 50vh; min-height: 50dvh; max-height: 85vh; max-height: 85dvh; overflow: hidden;
+    }
+    dialog[open] {
+      position: fixed; inset: auto 0 0 0; margin: 0 auto; width: 100%;
+      max-width: 600px; display: flex; flex-direction: column;
+    }
+    dialog::backdrop { background: var(--backdrop); }
+    .sheet-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 0.75rem 1rem; flex-shrink: 0;
+      border-bottom: 1px solid var(--border-faint); background: var(--surface);
+    }
+    .sheet-header h2 { margin: 0; font-size: 1.1rem; }
+    .sheet-body { padding: 0.5rem 1rem calc(1.25rem + env(safe-area-inset-bottom)); overflow-y: auto; flex: 1; min-height: 0; }
+    .close-btn { background: none; border: none; font-size: 1.6rem; line-height: 1; cursor: pointer; color: var(--text-2); padding: 0.25rem 0.5rem; }
+
+    /* ── Setup sheet sections ── */
+    .setup-group { padding-top: 1.75rem; margin-top: 1.75rem; border-top: 1px solid var(--border-faint); }
+    .setup-group:first-child { padding-top: 0; margin-top: 0; border-top: none; }
+    .setup-group-title { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-3); margin: 0 0 0.4rem; }
+    .field-label { display: block; margin: 1rem 0 0.4rem; font-weight: 600; font-size: 0.9rem; }
+    .hint { font-size: 0.8rem; color: var(--text-3); margin-top: 0.25rem; }
+    .hint code { background: var(--surface-alt); padding: 0 0.25rem; border-radius: 0.25rem; }
+
+    /* ── Form controls ── */
+    input[type=text], select {
+      font-size: 1rem; padding: 0.6rem; width: 100%;
+      border-radius: 0.5rem; border: 1px solid var(--border-input);
+      background: var(--surface); color: var(--text); font-family: inherit;
+    }
+    input[type=range] { width: 100%; }
+    .toggle { display: flex; align-items: center; gap: 0.5rem; font-weight: 600; margin-top: 1.25rem; }
+    .toggle input { width: auto; transform: scale(1.2); }
+
+    /* ── Option button groups (replaces bars-btn, cycle-btn, style-btn, etc.) ── */
+    .option-group { display: flex; gap: 0.4rem; }
+    .option-btn {
+      flex: 1; padding: 0.6rem; background: var(--surface-alt); border: 1px solid var(--border);
+      color: var(--text); border-radius: 0.5rem; font-size: 0.95rem; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+    }
+    .option-btn.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+
+    /* ── Preset buttons ── */
+    .presets { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+    .preset-btn {
+      padding: 0.45rem 0.8rem; background: var(--surface-alt); border: 1px solid var(--border);
+      color: var(--text); border-radius: 999px; font-size: 0.85rem;
+      cursor: pointer; font-family: inherit;
+    }
+    .preset-btn:active { background: var(--surface-alt-active); }
+    .save-current-btn { width: 100%; border-style: dashed; color: var(--text-2); background: transparent; margin-top: 0.2rem; }
+
+    /* ── User preset rows ── */
+    .user-presets { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.4rem; }
+    .user-preset-row { display: flex; gap: 0.4rem; }
+    .user-preset-name { flex: 1; text-align: left; }
+    .icon-btn {
+      padding: 0.4rem 0.7rem; background: var(--surface-alt); border: 1px solid var(--border);
+      border-radius: 999px; font-size: 0.95rem; cursor: pointer; font-family: inherit;
+      color: var(--text-2); min-width: 2.4rem;
+    }
+    .icon-btn:active { background: var(--surface-alt-active); color: var(--text); }
+    .icon-btn:disabled { opacity: 0.3; cursor: default; }
+    .rename-input {
+      flex: 1; padding: 0.4rem 0.85rem; font-size: 0.9rem;
+      border-radius: 999px; border: 1px solid var(--rename-border);
+      background: var(--surface); color: var(--text); font-family: inherit;
+    }
+    .empty-presets { font-size: 0.8rem; color: var(--text-3); padding: 0.25rem 0; }
+
+    /* ── Section rows ── */
+    .section-rows { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.25rem; }
+    .section-row { display: flex; align-items: center; gap: 0.4rem; }
+    .section-num {
+      flex: 0 0 auto; width: 1.5rem; height: 1.5rem; border-radius: 50%;
+      background: var(--surface-alt); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.72rem; font-weight: 700; color: var(--text-3);
+    }
+    .section-num.active-section { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+    .section-prog-input { flex: 1; min-width: 0; padding: 0.45rem 0.6rem; font-size: 0.9rem; }
+    .add-section-btn { width: 100%; border-style: dashed; color: var(--text-2); background: transparent; margin-top: 0.2rem; }
+    .add-section-btn:disabled { opacity: 0.4; cursor: default; }
+
+    /* ── Mix sheet ── */
+    .mix-row {
+      display: grid; grid-template-columns: minmax(6rem, 1fr) 2fr auto;
+      gap: 0.75rem; align-items: center; padding: 0.75rem 0;
+      border-bottom: 1px solid var(--border-faint);
+    }
+    .mix-row:last-child { border-bottom: none; }
+    .mix-row label, .mix-row .mix-label { display: flex; align-items: center; gap: 0.5rem; font-weight: 600; }
+    .mix-row input[type=checkbox] { transform: scale(1.2); }
+    .mix-row .val { font-variant-numeric: tabular-nums; color: var(--text-3); font-size: 0.85rem; min-width: 2.5rem; text-align: right; }
+
+    /* ── Share button ── */
+    .share-btn {
+      display: block; width: 100%; margin-top: 1.5rem; padding: 0.75rem;
+      background: var(--accent); color: var(--accent-text); border: none;
+      border-radius: 0.5rem; font-size: 0.95rem; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+    }
+    .share-btn:active { background: var(--accent-hover); }
   </style>
 </head>
 <body>
-  <h2>Chord Resolver <small>— milestone 1 smoke test</small></h2>
+  <main>
+    <h1 id="key-display">C</h1>
+    <div id="key-picker" hidden></div>
+    <div id="chord-strip"></div>
+    <div id="beat-indicator">
+      <span class="beat-dot"></span><span class="beat-dot"></span>
+      <span class="beat-dot"></span><span class="beat-dot"></span>
+    </div>
+    <div id="readout">
+      <button type="button" class="readout-btn" id="readout-style">Funk</button>
+      <button type="button" class="readout-btn" id="readout-bass">Busy</button>
+      <button type="button" class="readout-btn" id="readout-voicing">Lead/loop</button>
+      <div class="readout-row-break"></div>
+      <button type="button" class="readout-btn" id="readout-bars">2 bars</button>
+      <span class="tempo-group">
+        <button type="button" class="readout-btn" id="tempo-toggle"><strong id="readout-tempo">85</strong> BPM</button>
+        <div id="tempo-picker" hidden>
+          <button type="button" class="tempo-step" id="tempo-down">−</button>
+          <input id="tempo-quick" type="range" min="40" max="220" step="1" />
+          <button type="button" class="tempo-step" id="tempo-up">+</button>
+        </div>
+      </span>
+      <button type="button" class="readout-btn" id="readout-cycle">Loop</button>
+      <button type="button" class="readout-btn" id="readout-advance">Auto</button>
+    </div>
+    <div id="status"></div>
+  </main>
 
-  <label for="key">Key</label>
-  <select id="key">
-    <option>C</option><option>Db</option><option>D</option><option>Eb</option>
-    <option>E</option><option>F</option><option>F#</option><option>G</option>
-    <option>Ab</option><option>A</option><option>Bb</option><option>B</option>
-  </select>
+  <nav id="action-bar">
+    <div id="scrubber-bar" hidden>
+      <div class="scrubber-inner">
+        <span class="scrubber-label">SONG</span>
+        <div id="scrubber-track"></div>
+      </div>
+    </div>
+    <div class="action-buttons">
+      <button class="bar-btn" id="open-setup" type="button"><span class="bar-icon">⚙</span><span>Setup</span></button>
+      <button id="play" type="button" aria-label="Play">▶</button>
+      <button class="bar-btn" id="open-mix" type="button"><span class="bar-icon">🎚</span><span>Mix</span></button>
+    </div>
+  </nav>
 
-  <label for="prog">Progression</label>
-  <input id="prog" value="I vi ii V" autocomplete="off" spellcheck="false" />
+  <dialog id="setup-sheet">
+    <div class="sheet-header">
+      <h2>Setup</h2>
+      <button class="close-btn" type="button" data-close="setup-sheet">×</button>
+    </div>
+    <div class="sheet-body">
+      <section class="setup-group">
+        <h3 class="setup-group-title">Playback</h3>
+        <label class="field-label" for="key-select">Key (major)</label>
+        <select id="key-select">
+          <option>C</option><option>Db</option><option>D</option><option>Eb</option>
+          <option>E</option><option>F</option><option>F#</option><option>G</option>
+          <option>Ab</option><option>A</option><option>Bb</option><option>B</option>
+        </select>
+        <label class="field-label" for="tempo-slider">Tempo <span id="tempo-display" style="font-weight:400;color:var(--text-2);font-size:0.85rem">85 BPM</span></label>
+        <input id="tempo-slider" type="range" min="40" max="220" step="1" value="85" />
+        <label class="field-label">Bars per chord</label>
+        <div class="option-group" id="bars-group">
+          <button type="button" class="option-btn" data-bars="1">1</button>
+          <button type="button" class="option-btn active" data-bars="2">2</button>
+          <button type="button" class="option-btn" data-bars="4">4</button>
+        </div>
+        <label class="field-label">Loop mode</label>
+        <div class="option-group" id="cycle-group">
+          <button type="button" class="option-btn active" data-cycle="none">Loop</button>
+          <button type="button" class="option-btn" data-cycle="4ths">Cycle 4ths</button>
+          <button type="button" class="option-btn" data-cycle="5ths">Cycle 5ths</button>
+        </div>
+        <label class="field-label">Style</label>
+        <div class="option-group" id="style-group">
+          <button type="button" class="option-btn" data-style="pop">Pop</button>
+          <button type="button" class="option-btn active" data-style="funk">Funk</button>
+          <button type="button" class="option-btn" data-style="ballad">Ballad</button>
+          <button type="button" class="option-btn" data-style="rock">Rock</button>
+        </div>
+        <label class="field-label">Bass</label>
+        <div class="option-group" id="bass-group">
+          <button type="button" class="option-btn" data-bass="simple">Simple</button>
+          <button type="button" class="option-btn active" data-bass="busy">Busy</button>
+        </div>
+        <label class="field-label">Voicing</label>
+        <div class="option-group" id="voicing-group">
+          <button type="button" class="option-btn" data-voicing="root">Root</button>
+          <button type="button" class="option-btn" data-voicing="voice-lead">Voice-lead</button>
+          <button type="button" class="option-btn active" data-voicing="voice-lead-loop">Voice-lead/loop</button>
+        </div>
+      </section>
 
-  <div id="output"></div>
+      <section class="setup-group">
+        <h3 class="setup-group-title">Progression</h3>
+        <label class="field-label">Sections <span id="section-count-label"></span></label>
+        <div id="section-rows" class="section-rows"></div>
+        <button id="add-section" type="button" class="preset-btn add-section-btn">+ Add section</button>
+        <label class="field-label" for="arrangement">Arrangement</label>
+        <input id="arrangement" type="text" placeholder="empty = all sections in order" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
+        <div class="hint">Section numbers (e.g. <code>1 2 1 3</code>). <code>2:4</code> = section&nbsp;2 four times.</div>
+        <label class="field-label">My presets</label>
+        <div id="user-presets" class="user-presets"></div>
+        <button id="save-preset" type="button" class="preset-btn save-current-btn">+ Save current</button>
+        <label class="field-label">Presets</label>
+        <div class="presets" id="presets"></div>
+      </section>
 
+      <section class="setup-group">
+        <h3 class="setup-group-title">App</h3>
+        <label class="field-label">Theme</label>
+        <div class="option-group" id="theme-group">
+          <button type="button" class="option-btn" data-theme-opt="light">Light</button>
+          <button type="button" class="option-btn" data-theme-opt="dark">Dark</button>
+        </div>
+        <label class="toggle"><input id="keep-awake" type="checkbox" /> Keep screen on while playing</label>
+        <button id="copy-share" class="share-btn" type="button">Copy share link</button>
+      </section>
+    </div>
+  </dialog>
+
+  <dialog id="mix-sheet">
+    <div class="sheet-header">
+      <h2>Mix</h2>
+      <button class="close-btn" type="button" data-close="mix-sheet">×</button>
+    </div>
+    <div class="sheet-body">
+      <div class="mix-row">
+        <label><input id="chords-on" type="checkbox" checked /> Chords</label>
+        <input id="chord-vol" type="range" min="0" max="100" step="1" value="50" />
+        <span class="val" id="chord-vol-val">50</span>
+      </div>
+      <div class="mix-row">
+        <label><input id="bass-on" type="checkbox" checked /> Bass</label>
+        <input id="bass-vol" type="range" min="0" max="100" step="1" value="100" />
+        <span class="val" id="bass-vol-val">100</span>
+      </div>
+      <div class="mix-row">
+        <label><input id="drums-on" type="checkbox" checked /> Drums</label>
+        <input id="drum-vol" type="range" min="0" max="100" step="1" value="100" />
+        <span class="val" id="drum-vol-val">100</span>
+      </div>
+      <div class="mix-row">
+        <span class="mix-label">Master</span>
+        <input id="master-vol" type="range" min="0" max="100" step="1" value="100" />
+        <span class="val" id="master-vol-val">100</span>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
   <script type="module">
-    import { parseProgression, resolvedChordName } from './progression-core.js';
+    import {
+      makeProgressionPlayer, serializeUrl,
+      STYLE_OPTIONS, STYLE_LABELS, BASS_OPTIONS, BASS_LABELS,
+      VOICING_OPTIONS, VOICING_PILL_LABELS, CYCLE_OPTIONS, CYCLE_LABELS,
+      BARS_OPTIONS, PRESETS, tokenize, resolvedChordName, resolvePlayOrder,
+      ROMAN, MAX_BARS,
+    } from './progression-core.js';
 
-    const keyEl    = document.getElementById('key');
-    const progEl   = document.getElementById('prog');
-    const outputEl = document.getElementById('output');
+    // ── App instance ────────────────────────────────────────────────────────
 
-    function resolve() {
-      const key  = keyEl.value;
-      const prog = progEl.value;
-      outputEl.innerHTML = '';
-      try {
-        const chords = parseProgression(prog, key, 2);
-        const strip = document.createElement('div');
-        strip.className = 'chips';
-        chords.forEach(c => {
-          const chip = document.createElement('div');
-          chip.className = 'chip';
-          const numeral = document.createElement('span');
-          numeral.className = 'numeral';
-          numeral.textContent = c.token;
-          const name = document.createElement('span');
-          name.textContent = resolvedChordName(c.numeral, 0, key, 'none');
-          chip.append(numeral, name);
-          strip.appendChild(chip);
-        });
-        outputEl.appendChild(strip);
-      } catch (e) {
-        outputEl.innerHTML = `<p class="error">${e.message}</p>`;
-      }
+    const app = makeProgressionPlayer({
+      persist: (key, value) => localStorage.setItem(key, value),
+      load:    (key) => localStorage.getItem(key),
+      onStateChange:   render,
+      onPlaybackChange: setPlayingUI,
+      onChordTick: () => {},  // Milestone 3
+      onBeatTick:  () => {},  // Milestone 3
+      onBarTick:   () => {},  // Milestone 3
+    });
+
+    // ── DOM refs ────────────────────────────────────────────────────────────
+
+    const $ = id => document.getElementById(id);
+    const keyDisplayEl    = $('key-display');
+    const keyPickerEl     = $('key-picker');
+    const stripEl         = $('chord-strip');
+    const statusEl        = $('status');
+    const playBtn         = $('play');
+    const keySelectEl     = $('key-select');
+    const tempoSliderEl   = $('tempo-slider');
+    const tempoDisplayEl  = $('tempo-display');
+    const arrangementEl   = $('arrangement');
+    const sectionRowsEl   = $('section-rows');
+    const sectionCountEl  = $('section-count-label');
+    const addSectionEl    = $('add-section');
+    const userPresetsEl   = $('user-presets');
+    const scrubberBar     = $('scrubber-bar');
+    const scrubberTrack   = $('scrubber-track');
+    const readoutTempoEl  = $('readout-tempo');
+    const readoutStyleEl  = $('readout-style');
+    const readoutBassEl   = $('readout-bass');
+    const readoutVoicingEl = $('readout-voicing');
+    const readoutBarsEl   = $('readout-bars');
+    const readoutCycleEl  = $('readout-cycle');
+    const readoutAdvanceEl = $('readout-advance');
+    const chordVolEl      = $('chord-vol');
+    const bassVolEl       = $('bass-vol');
+    const drumVolEl       = $('drum-vol');
+    const masterVolEl     = $('master-vol');
+    const chordsOnEl      = $('chords-on');
+    const bassOnEl        = $('bass-on');
+    const drumsOnEl       = $('drums-on');
+
+    // ── Render ──────────────────────────────────────────────────────────────
+
+    /** @param {import('./progression-core.js').AppState} state */
+    function render(state) {
+      renderChips(state);
+      renderReadout(state);
+      renderSectionRows(state);
+      renderScrubber(state);
+      renderMix(state);
+      syncUrl(state);
     }
 
-    keyEl.addEventListener('change', resolve);
-    progEl.addEventListener('input', resolve);
-    resolve();
+    /** @param {import('./progression-core.js').AppState} state */
+    function renderChips(state) {
+      const progStr = state.sections[state.activeSection - 1]?.progression ?? '';
+      stripEl.innerHTML = '';
+      tokenize(progStr).forEach(token => {
+        const [numeral, durStr] = token.split(':');
+        const durDisplay = durStr ? String(Math.min(parseInt(durStr, 10), MAX_BARS)) : '';
+        const displayToken = durDisplay ? `${numeral}:${durDisplay}` : numeral;
+        const isAbsolute = !(numeral in ROMAN) && /^[A-G]/.test(numeral);
+
+        const chip = document.createElement('div');
+        chip.className = 'chip';
+        if (!isAbsolute) {
+          const ne = document.createElement('div');
+          ne.className = 'numeral';
+          ne.textContent = displayToken;
+          chip.appendChild(ne);
+        }
+        const name = document.createElement('div');
+        name.className = 'name';
+        name.textContent = resolvedChordName(numeral, 0, state.key, state.cycle);
+        chip.appendChild(name);
+        chip.appendChild(Object.assign(document.createElement('div'), { className: 'bar-progress' }));
+        stripEl.appendChild(chip);
+      });
+      keyDisplayEl.textContent = `Key of ${state.key}`;
+      keySelectEl.value = state.key;
+      keyPickerEl.querySelectorAll('.key-chip').forEach(b => {
+        b.classList.toggle('active', b.dataset.key === state.key);
+      });
+    }
+
+    /** @param {import('./progression-core.js').AppState} state */
+    function renderReadout(state) {
+      readoutTempoEl.textContent  = state.tempo;
+      tempoDisplayEl.textContent  = `${state.tempo} BPM`;
+      readoutStyleEl.textContent  = STYLE_LABELS[state.style]   ?? state.style;
+      readoutBassEl.textContent   = BASS_LABELS[state.bass]      ?? state.bass;
+      readoutVoicingEl.textContent = VOICING_PILL_LABELS[state.voicing] ?? state.voicing;
+      readoutBarsEl.textContent   = `${state.bars} ${state.bars === 1 ? 'bar' : 'bars'}`;
+      readoutCycleEl.textContent  = CYCLE_LABELS[state.cycle]   ?? state.cycle;
+      readoutAdvanceEl.textContent = state.advance === 'manual' ? 'Manual' : 'Auto';
+
+      if (document.activeElement !== tempoSliderEl) tempoSliderEl.value = String(state.tempo);
+
+      document.querySelectorAll('[data-bars]').forEach(btn =>
+        btn.classList.toggle('active', parseInt(btn.dataset.bars, 10) === state.bars));
+      document.querySelectorAll('[data-cycle]').forEach(btn =>
+        btn.classList.toggle('active', btn.dataset.cycle === state.cycle));
+      document.querySelectorAll('[data-style]').forEach(btn =>
+        btn.classList.toggle('active', btn.dataset.style === state.style));
+      document.querySelectorAll('[data-bass]').forEach(btn =>
+        btn.classList.toggle('active', btn.dataset.bass === state.bass));
+      document.querySelectorAll('[data-voicing]').forEach(btn =>
+        btn.classList.toggle('active', btn.dataset.voicing === state.voicing));
+    }
+
+    /** @param {import('./progression-core.js').AppState} state */
+    function renderSectionRows(state) {
+      const { sections, activeSection } = state;
+      const playing = false; // Milestone 3: always false for now
+      const existing = sectionRowsEl.querySelectorAll('.section-row');
+
+      if (existing.length !== sections.length) {
+        sectionRowsEl.innerHTML = '';
+        sections.forEach((_, i) => sectionRowsEl.appendChild(makeSectionRow(i, state)));
+      } else {
+        existing.forEach((row, i) => {
+          const numEl = row.querySelector('.section-num');
+          numEl.className = 'section-num' + (activeSection === i + 1 ? ' active-section' : '');
+          numEl.textContent = i + 1;
+          const inp = row.querySelector('.section-prog-input');
+          if (document.activeElement !== inp) inp.value = sections[i].progression;
+          inp.disabled = playing;
+          const [upBtn, downBtn, delBtn] = row.querySelectorAll('.icon-btn');
+          upBtn.disabled  = playing || i === 0;
+          downBtn.disabled = playing || i === sections.length - 1;
+          delBtn.disabled = playing || sections.length <= 1;
+        });
+      }
+
+      addSectionEl.disabled = playing || sections.length >= 6;
+      if (document.activeElement !== arrangementEl) arrangementEl.value = state.arrangement;
+      arrangementEl.disabled = playing;
+      sectionCountEl.textContent = `(${sections.length} of 6)`;
+    }
+
+    /** @param {import('./progression-core.js').AppState} state */
+    function renderScrubber(state) {
+      const order = resolvePlayOrder(state.sections, state.arrangement);
+      if (order.length < 2) {
+        scrubberBar.hidden = true;
+        readoutAdvanceEl.hidden = true;
+        syncBodyPadding();
+        return;
+      }
+      scrubberBar.hidden = false;
+      readoutAdvanceEl.hidden = false;
+      scrubberTrack.innerHTML = '';
+      order.forEach((sectionRef, posIndex) => {
+        const seg = document.createElement('button');
+        seg.type = 'button';
+        seg.className = 'scrubber-seg';
+        seg.textContent = sectionRef;
+        seg.dataset.posIndex = posIndex;
+        seg.addEventListener('click', () => {
+          const o = resolvePlayOrder(app.getState().sections, app.getState().arrangement);
+          app.setState({ activeSection: o[Math.min(posIndex, o.length - 1)] ?? 1 });
+        });
+        scrubberTrack.appendChild(seg);
+      });
+      syncBodyPadding();
+    }
+
+    /** @param {import('./progression-core.js').AppState} state */
+    function renderMix(state) {
+      const ae = document.activeElement;
+      if (ae !== chordVolEl)  chordVolEl.value  = String(state.chordVol);
+      if (ae !== bassVolEl)   bassVolEl.value    = String(state.bassVol);
+      if (ae !== drumVolEl)   drumVolEl.value    = String(state.drumVol);
+      if (ae !== masterVolEl) masterVolEl.value  = String(state.masterVol);
+      $('chord-vol-val').textContent  = state.chordVol;
+      $('bass-vol-val').textContent   = state.bassVol;
+      $('drum-vol-val').textContent   = state.drumVol;
+      $('master-vol-val').textContent = state.masterVol;
+      chordsOnEl.checked = state.chordsOn;
+      bassOnEl.checked   = state.bassOn;
+      drumsOnEl.checked  = state.drumsOn;
+    }
+
+    /** @param {number} index @param {import('./progression-core.js').AppState} state */
+    function makeSectionRow(index, state) {
+      const { sections, activeSection } = state;
+      const playing = false;
+      const row = document.createElement('div');
+      row.className = 'section-row';
+
+      const num = document.createElement('div');
+      num.className = 'section-num' + (activeSection === index + 1 ? ' active-section' : '');
+      num.textContent = index + 1;
+
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.className = 'section-prog-input';
+      inp.value = sections[index].progression;
+      inp.autocomplete = 'off';
+      inp.autocapitalize = 'off';
+      inp.setAttribute('autocorrect', 'off');
+      inp.spellcheck = false;
+      inp.disabled = playing;
+      inp.addEventListener('focus', () => {
+        sectionRowsEl.querySelectorAll('.section-num').forEach((n, j) =>
+          n.classList.toggle('active-section', j === index));
+      });
+      inp.addEventListener('input', () => app.updateSection(index, inp.value));
+
+      const upBtn = Object.assign(document.createElement('button'), { type: 'button', className: 'icon-btn', textContent: '↑', disabled: playing || index === 0 });
+      upBtn.addEventListener('click', () => app.moveSection(index, 'up'));
+
+      const downBtn = Object.assign(document.createElement('button'), { type: 'button', className: 'icon-btn', textContent: '↓', disabled: playing || index === sections.length - 1 });
+      downBtn.addEventListener('click', () => app.moveSection(index, 'down'));
+
+      const delBtn = Object.assign(document.createElement('button'), { type: 'button', className: 'icon-btn', textContent: '×', disabled: playing || sections.length <= 1 });
+      delBtn.addEventListener('click', () => app.removeSection(index));
+
+      row.append(num, inp, upBtn, downBtn, delBtn);
+      return row;
+    }
+
+    function renderUserPresets(focusId = null) {
+      userPresetsEl.innerHTML = '';
+      const list = app.getUserPresets();
+      if (!list.length) {
+        userPresetsEl.appendChild(Object.assign(document.createElement('div'), { className: 'empty-presets', textContent: 'No saved presets yet.' }));
+        return;
+      }
+      list.forEach(p => {
+        const row = document.createElement('div');
+        row.className = 'user-preset-row';
+
+        const nameBtn = Object.assign(document.createElement('button'), { type: 'button', className: 'preset-btn user-preset-name', textContent: p.name });
+        nameBtn.addEventListener('click', () => app.loadPreset(p.state));
+
+        const editBtn = Object.assign(document.createElement('button'), { type: 'button', className: 'icon-btn', textContent: '✎' });
+        editBtn.setAttribute('aria-label', `Rename ${p.name}`);
+        editBtn.addEventListener('click', () => enterRename(row, p));
+
+        const delBtn = Object.assign(document.createElement('button'), { type: 'button', className: 'icon-btn', textContent: '×' });
+        delBtn.setAttribute('aria-label', `Delete ${p.name}`);
+        delBtn.addEventListener('click', () => { app.deleteUserPreset(p.id); renderUserPresets(); });
+
+        row.append(nameBtn, editBtn, delBtn);
+        userPresetsEl.appendChild(row);
+        if (focusId === p.id) enterRename(row, p);
+      });
+    }
+
+    function enterRename(row, preset) {
+      row.innerHTML = '';
+      const inp = Object.assign(document.createElement('input'), { type: 'text', className: 'rename-input', value: preset.name, autocomplete: 'off', spellcheck: false });
+      let done = false;
+      const commit = () => { if (done) return; done = true; app.renameUserPreset(preset.id, inp.value.trim() || preset.name); renderUserPresets(); };
+      const cancel = () => { if (done) return; done = true; renderUserPresets(); };
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); commit(); } if (e.key === 'Escape') { e.preventDefault(); cancel(); } });
+      inp.addEventListener('blur', commit);
+      row.appendChild(inp);
+      inp.focus();
+      inp.select();
+    }
+
+    // ── Theme ────────────────────────────────────────────────────────────────
+
+    function applyTheme(t) {
+      document.documentElement.setAttribute('data-theme', t);
+      localStorage.setItem('theme', t);
+      document.querySelectorAll('[data-theme-opt]').forEach(b =>
+        b.classList.toggle('active', b.dataset.themeOpt === t));
+    }
+
+    // ── UI helpers ───────────────────────────────────────────────────────────
+
+    function setPlayingUI(playing) {
+      playBtn.textContent = playing ? '■' : '▶';
+      playBtn.classList.toggle('playing', playing);
+      playBtn.setAttribute('aria-label', playing ? 'Stop' : 'Play');
+    }
+
+    function syncBodyPadding() {
+      const bar = $('action-bar');
+      if (bar) document.body.style.paddingBottom = bar.offsetHeight + 'px';
+    }
+
+    let _urlTimer = null;
+    function syncUrl(state) {
+      clearTimeout(_urlTimer);
+      _urlTimer = setTimeout(() => {
+        history.replaceState(null, '', '?' + serializeUrl(state));
+      }, 200);
+    }
+
+    // ── Key picker ───────────────────────────────────────────────────────────
+
+    ['C','Db','D','Eb','E','F','F#','G','Ab','A','Bb','B'].forEach(k => {
+      const btn = Object.assign(document.createElement('button'), { type: 'button', className: 'key-chip', textContent: k });
+      btn.dataset.key = k;
+      btn.addEventListener('click', () => { app.setState({ key: k }); keyPickerEl.hidden = true; });
+      keyPickerEl.appendChild(btn);
+    });
+
+    keyDisplayEl.addEventListener('click', () => { keyPickerEl.hidden = !keyPickerEl.hidden; });
+    document.addEventListener('click', e => {
+      if (keyPickerEl.hidden) return;
+      if (keyDisplayEl.contains(e.target) || keyPickerEl.contains(e.target)) return;
+      keyPickerEl.hidden = true;
+    });
+
+    // ── Tempo picker ─────────────────────────────────────────────────────────
+
+    const tempoPickerEl = $('tempo-picker');
+    const tempoQuickEl  = $('tempo-quick');
+
+    $('tempo-toggle').addEventListener('click', () => {
+      if (tempoPickerEl.hidden) { tempoQuickEl.value = String(app.getState().tempo); tempoPickerEl.hidden = false; }
+      else tempoPickerEl.hidden = true;
+    });
+    tempoQuickEl.addEventListener('input', () => app.setState({ tempo: Math.max(40, Math.min(220, parseInt(tempoQuickEl.value, 10))) }));
+    $('tempo-down').addEventListener('click', () => app.setState({ tempo: Math.max(40, app.getState().tempo - 1) }));
+    $('tempo-up').addEventListener('click',   () => app.setState({ tempo: Math.min(220, app.getState().tempo + 1) }));
+    document.addEventListener('click', e => {
+      if (tempoPickerEl.hidden) return;
+      if ($('tempo-toggle').contains(e.target) || tempoPickerEl.contains(e.target)) return;
+      tempoPickerEl.hidden = true;
+    });
+
+    tempoSliderEl.addEventListener('input', () =>
+      app.setState({ tempo: parseInt(tempoSliderEl.value, 10) }));
+
+    // ── Setup sheet option groups ─────────────────────────────────────────────
+
+    keySelectEl.addEventListener('change', () => app.setState({ key: keySelectEl.value }));
+
+    document.querySelectorAll('[data-bars]').forEach(btn =>
+      btn.addEventListener('click', () => app.setState({ bars: parseInt(btn.dataset.bars, 10) })));
+    document.querySelectorAll('[data-cycle]').forEach(btn =>
+      btn.addEventListener('click', () => app.setState({ cycle: btn.dataset.cycle })));
+    document.querySelectorAll('[data-style]').forEach(btn =>
+      btn.addEventListener('click', () => app.setState({ style: btn.dataset.style })));
+    document.querySelectorAll('[data-bass]').forEach(btn =>
+      btn.addEventListener('click', () => app.setState({ bass: btn.dataset.bass })));
+    document.querySelectorAll('[data-voicing]').forEach(btn =>
+      btn.addEventListener('click', () => app.setState({ voicing: btn.dataset.voicing })));
+    document.querySelectorAll('[data-theme-opt]').forEach(btn =>
+      btn.addEventListener('click', () => applyTheme(btn.dataset.themeOpt)));
+
+    // ── Readout pill cycling ──────────────────────────────────────────────────
+
+    const cycleOpt = (opts, cur) => opts[(opts.indexOf(cur) + 1) % opts.length];
+    readoutStyleEl.addEventListener('click',   () => app.setState({ style:   cycleOpt(STYLE_OPTIONS,   app.getState().style) }));
+    readoutBassEl.addEventListener('click',    () => app.setState({ bass:    cycleOpt(BASS_OPTIONS,    app.getState().bass) }));
+    readoutVoicingEl.addEventListener('click', () => app.setState({ voicing: cycleOpt(VOICING_OPTIONS, app.getState().voicing) }));
+    readoutBarsEl.addEventListener('click',    () => app.setState({ bars:    cycleOpt(BARS_OPTIONS,    app.getState().bars) }));
+    readoutCycleEl.addEventListener('click',   () => app.setState({ cycle:   cycleOpt(CYCLE_OPTIONS,   app.getState().cycle) }));
+    readoutAdvanceEl.addEventListener('click', () => app.setState({ advance: app.getState().advance === 'auto' ? 'manual' : 'auto' }));
+
+    // ── Sections ──────────────────────────────────────────────────────────────
+
+    addSectionEl.addEventListener('click', () => {
+      app.addSection();
+      const rows = sectionRowsEl.querySelectorAll('.section-prog-input');
+      if (rows.length) rows[rows.length - 1].focus();
+    });
+
+    arrangementEl.addEventListener('input', () => app.setState({ arrangement: arrangementEl.value }));
+
+    // ── Presets ───────────────────────────────────────────────────────────────
+
+    PRESETS.forEach(p => {
+      const btn = Object.assign(document.createElement('button'), { type: 'button', className: 'preset-btn', textContent: p.label });
+      btn.addEventListener('click', () => app.loadPreset({ ...app.getState(), ...p.state }));
+      $('presets').appendChild(btn);
+    });
+
+    $('save-preset').addEventListener('click', () => {
+      const n = app.getUserPresets().length + 1;
+      const id = app.saveUserPreset(`Preset ${n}`);
+      renderUserPresets(id);
+    });
+
+    // ── Mix ───────────────────────────────────────────────────────────────────
+
+    const wireVol = (el, valId, key) => {
+      el.addEventListener('input', () => {
+        $(valId).textContent = el.value;
+        app.setState({ [key]: parseInt(el.value, 10) });
+      });
+    };
+    wireVol(chordVolEl,  'chord-vol-val',  'chordVol');
+    wireVol(bassVolEl,   'bass-vol-val',   'bassVol');
+    wireVol(drumVolEl,   'drum-vol-val',   'drumVol');
+    wireVol(masterVolEl, 'master-vol-val', 'masterVol');
+
+    chordsOnEl.addEventListener('change', () => app.setState({ chordsOn: chordsOnEl.checked }));
+    bassOnEl.addEventListener('change',   () => app.setState({ bassOn:   bassOnEl.checked }));
+    drumsOnEl.addEventListener('change',  () => app.setState({ drumsOn:  drumsOnEl.checked }));
+
+    // ── Playback ──────────────────────────────────────────────────────────────
+
+    playBtn.addEventListener('click', () => app.togglePlay());
+    document.addEventListener('keydown', e => {
+      if (e.code !== 'Space') return;
+      const t = document.activeElement?.tagName;
+      if (t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT') return;
+      e.preventDefault();
+      app.togglePlay();
+    });
+
+    // ── Keep awake ────────────────────────────────────────────────────────────
+
+    const keepAwakeEl = $('keep-awake');
+    keepAwakeEl.checked = localStorage.getItem('keep-awake') === '1';
+    keepAwakeEl.addEventListener('change', () =>
+      localStorage.setItem('keep-awake', keepAwakeEl.checked ? '1' : '0'));
+
+    // ── Sheets ────────────────────────────────────────────────────────────────
+
+    $('open-setup').addEventListener('click', () => $('setup-sheet').showModal());
+    $('open-mix').addEventListener('click',   () => $('mix-sheet').showModal());
+    document.querySelectorAll('[data-close]').forEach(btn =>
+      btn.addEventListener('click', () => $(btn.dataset.close).close()));
+    document.querySelectorAll('dialog').forEach(d =>
+      d.addEventListener('click', e => { if (e.target === d) d.close(); }));
+
+    // ── Share link ────────────────────────────────────────────────────────────
+
+    $('copy-share').addEventListener('click', async () => {
+      clearTimeout(_urlTimer);
+      history.replaceState(null, '', '?' + app.serializeUrl());
+      const btn = $('copy-share');
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        btn.textContent = 'Copied!';
+      } catch {
+        btn.textContent = 'Copy failed';
+      }
+      setTimeout(() => { btn.textContent = 'Copy share link'; }, 1500);
+    });
+
+    window.addEventListener('resize', syncBodyPadding);
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+
+    app.applyUrl(location.search);
+    renderUserPresets();
+    applyTheme(localStorage.getItem('theme') || 'dark');
   </script>
 </body>
 </html>
