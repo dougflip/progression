@@ -270,15 +270,63 @@
       left: 0;
       right: 0;
       display: flex;
+      flex-direction: column;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      box-shadow: var(--shadow-top);
+      z-index: 10;
+    }
+    .action-buttons {
+      display: flex;
       align-items: center;
       justify-content: space-around;
       gap: 0.5rem;
       padding: 0.75rem 1rem;
       padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
-      background: var(--surface);
-      border-top: 1px solid var(--border);
-      box-shadow: var(--shadow-top);
-      z-index: 10;
+    }
+    #scrubber-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem 0.375rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .scrubber-label {
+      font-size: 0.7rem;
+      color: var(--text-3);
+      white-space: nowrap;
+    }
+    #scrubber-track {
+      flex: 1;
+      display: flex;
+      gap: 3px;
+      overflow-x: auto;
+    }
+    .scrubber-seg {
+      flex: 1;
+      min-width: 1.5rem;
+      padding: 0.2rem 0.1rem;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text-2);
+      font-size: 0.7rem;
+      text-align: center;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .scrubber-seg.current {
+      background: var(--accent, #4a9eff);
+      color: #fff;
+      border-color: var(--accent, #4a9eff);
+    }
+    .scrubber-seg.queued {
+      border-color: var(--accent, #4a9eff);
+      animation: scrub-pulse 0.7s ease-in-out infinite;
+    }
+    @keyframes scrub-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
     }
     .bar-btn {
       flex: 1;
@@ -553,6 +601,52 @@
       min-width: 2.5rem;
       text-align: right;
     }
+
+    .section-rows {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      margin-bottom: 0.25rem;
+    }
+    .section-row {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .section-num {
+      flex: 0 0 auto;
+      width: 1.5rem;
+      height: 1.5rem;
+      border-radius: 50%;
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--text-3);
+    }
+    .section-num.active-section {
+      background: var(--accent);
+      color: var(--accent-text);
+      border-color: var(--accent);
+    }
+    .section-prog-input {
+      flex: 1;
+      min-width: 0;
+      padding: 0.45rem 0.6rem;
+      font-size: 0.9rem;
+    }
+    .icon-btn:disabled { opacity: 0.3; cursor: default; }
+    .add-section-btn {
+      width: 100%;
+      border-style: dashed;
+      color: var(--text-2);
+      background: transparent;
+      margin-top: 0.2rem;
+    }
+    .add-section-btn:disabled { opacity: 0.4; cursor: default; }
   </style>
 </head>
 <body>
@@ -581,20 +675,27 @@
         </div>
       </span>
       <button type="button" class="readout-btn" id="readout-cycle">Loop</button>
+      <button type="button" class="readout-btn" id="readout-advance" hidden>Auto</button>
     </div>
     <div id="status"></div>
   </main>
 
   <nav id="action-bar">
-    <button class="bar-btn" id="open-setup" type="button">
-      <span class="bar-icon">⚙</span>
-      <span>Setup</span>
-    </button>
-    <button id="play" type="button" aria-label="Play">▶</button>
-    <button class="bar-btn" id="open-mix" type="button">
-      <span class="bar-icon">🎚</span>
-      <span>Mix</span>
-    </button>
+    <div id="scrubber-bar" hidden>
+      <span class="scrubber-label">Song</span>
+      <div id="scrubber-track"></div>
+    </div>
+    <div class="action-buttons">
+      <button class="bar-btn" id="open-setup" type="button">
+        <span class="bar-icon">⚙</span>
+        <span>Setup</span>
+      </button>
+      <button id="play" type="button" aria-label="Play">▶</button>
+      <button class="bar-btn" id="open-mix" type="button">
+        <span class="bar-icon">🎚</span>
+        <span>Mix</span>
+      </button>
+    </div>
   </nav>
 
   <dialog id="setup-sheet">
@@ -664,9 +765,13 @@
       <section class="setup-group">
         <h3 class="setup-group-title">Progression</h3>
 
-        <label class="field-label" for="progression">Progression</label>
-        <input id="progression" type="text" value="I vi ii V" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
-        <div class="hint">Roman numerals (<code>I</code>, <code>vi</code>) or chord names (<code>C</code>, <code>Am</code>, <code>F#</code>). Upper = major, lower = minor. 7ths: <code>Imaj7</code>, <code>V7</code>, <code>iim7</code>. Repeat to extend or use <code>:n</code> for n bars (e.g. <code>V:4</code>).</div>
+        <label class="field-label">Sections <span id="section-count-label"></span></label>
+        <div id="section-rows" class="section-rows"></div>
+        <button id="add-section" type="button" class="preset-btn add-section-btn">+ Add section</button>
+
+        <label class="field-label" for="arrangement">Arrangement</label>
+        <input id="arrangement" type="text" placeholder="empty = all sections in order" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
+        <div class="hint">Section numbers (e.g. <code>1 2 1 3</code>). <code>2:4</code> = section&nbsp;2 four times. Empty = all sections in order.</div>
 
         <label class="field-label">My presets</label>
         <div id="user-presets" class="user-presets"></div>
@@ -788,17 +893,17 @@
     }
 
     const PRESETS = [
-      { label: 'I V vi IV',         state: { progression: 'I V vi IV',                        cycle: 'none' } },
-      { label: 'I vi ii V',         state: { progression: 'I vi ii V',                        cycle: 'none' } },
-      { label: 'ii V I',            state: { progression: 'ii V I',                           cycle: 'none' } },
-      { label: 'iim7 V7 Imaj7',     state: { progression: 'iim7 V7 Imaj7',                    cycle: 'none' } },
-      { label: 'I IV V',            state: { progression: 'I IV V',                           cycle: 'none' } },
-      { label: 'i iv v',            state: { progression: 'i iv v',                           cycle: 'none' } },
-      { label: '12-bar blues',      state: { progression: 'I:4 IV:2 I:2 V:1 IV:1 I:1 V:1',    cycle: 'none' } },
-      { label: 'Cycle 5ths',        state: { progression: 'I',                                cycle: '5ths' } },
-      { label: 'Cycle 4ths',        state: { progression: 'I',                                cycle: '4ths' } },
-      { label: 'Cycle 5ths (min)',  state: { progression: 'i',                                cycle: '5ths' } },
-      { label: 'Cycle 4ths (min)',  state: { progression: 'i',                                cycle: '4ths' } },
+      { label: 'I V vi IV',         state: { sections: [{ progression: 'I V vi IV' }],                      arrangement: '', cycle: 'none' } },
+      { label: 'I vi ii V',         state: { sections: [{ progression: 'I vi ii V' }],                      arrangement: '', cycle: 'none' } },
+      { label: 'ii V I',            state: { sections: [{ progression: 'ii V I' }],                         arrangement: '', cycle: 'none' } },
+      { label: 'iim7 V7 Imaj7',     state: { sections: [{ progression: 'iim7 V7 Imaj7' }],                  arrangement: '', cycle: 'none' } },
+      { label: 'I IV V',            state: { sections: [{ progression: 'I IV V' }],                         arrangement: '', cycle: 'none' } },
+      { label: 'i iv v',            state: { sections: [{ progression: 'i iv v' }],                         arrangement: '', cycle: 'none' } },
+      { label: '12-bar blues',      state: { sections: [{ progression: 'I:4 IV:2 I:2 V:1 IV:1 I:1 V:1' }], arrangement: '', cycle: 'none' } },
+      { label: 'Cycle 5ths',        state: { sections: [{ progression: 'I' }],                              arrangement: '', cycle: '5ths' } },
+      { label: 'Cycle 4ths',        state: { sections: [{ progression: 'I' }],                              arrangement: '', cycle: '4ths' } },
+      { label: 'Cycle 5ths (min)',  state: { sections: [{ progression: 'i' }],                              arrangement: '', cycle: '5ths' } },
+      { label: 'Cycle 4ths (min)',  state: { sections: [{ progression: 'i' }],                              arrangement: '', cycle: '4ths' } },
     ];
 
     function midiToNote(m) {
@@ -951,6 +1056,226 @@
       });
     }
 
+    function parseArrangement(str, count) {
+      const out = [];
+      for (const tok of str.trim().split(/\s+/).filter(Boolean)) {
+        const [refStr, repStr] = tok.split(':');
+        const ref = parseInt(refStr, 10);
+        if (!Number.isInteger(ref) || ref < 1 || ref > count) continue;
+        const reps = repStr === undefined ? 1 : parseInt(repStr, 10);
+        if (!Number.isInteger(reps) || reps < 1) continue;
+        for (let i = 0; i < reps && out.length < 16; i++) out.push(ref);
+      }
+      return out;
+    }
+
+    function buildSongChords(sections, arrangementStr, key, bars) {
+      const count = sections.length;
+      const parsed = parseArrangement(arrangementStr, count);
+      const order = parsed.length ? parsed : Array.from({ length: count }, (_, i) => i + 1);
+      const chords = [];
+      order.forEach((ref, posIndex) => {
+        const sec = sections[ref - 1];
+        const secChords = parseProgression(sec.progression, key, bars);
+        secChords.forEach((c, chipIndex) => {
+          chords.push({ ...c, sectionIndex: ref - 1, posIndex, chipIndex });
+        });
+      });
+      return chords;
+    }
+
+    function buildManualChords(posIndex, key, bars) {
+      const order = resolvePlayOrder();
+      const idx = order.length ? Math.min(posIndex, order.length - 1) : 0;
+      const sectionRef = order.length ? order[idx] : 1;
+      const sec = appSections[sectionRef - 1] || { progression: '' };
+      return parseProgression(sec.progression, key, bars).map((c, chipIndex) => ({
+        ...c, sectionIndex: sectionRef - 1, posIndex: idx, chipIndex,
+      }));
+    }
+
+    function remapArrangementDelete(str, deletedIdx) {
+      const deleted = deletedIdx + 1;
+      return str.trim().split(/\s+/).filter(Boolean).map(tok => {
+        const [refStr, repStr] = tok.split(':');
+        const ref = parseInt(refStr, 10);
+        if (!Number.isInteger(ref)) return tok;
+        if (ref === deleted) return null;
+        const newRef = ref > deleted ? ref - 1 : ref;
+        return repStr !== undefined ? `${newRef}:${repStr}` : String(newRef);
+      }).filter(Boolean).join(' ');
+    }
+
+    function remapArrangementSwap(str, idxA, idxB) {
+      const a = idxA + 1, b = idxB + 1;
+      return str.trim().split(/\s+/).filter(Boolean).map(tok => {
+        const [refStr, repStr] = tok.split(':');
+        const ref = parseInt(refStr, 10);
+        if (!Number.isInteger(ref)) return tok;
+        let newRef = ref === a ? b : ref === b ? a : ref;
+        return repStr !== undefined ? `${newRef}:${repStr}` : String(newRef);
+      }).join(' ');
+    }
+
+    function renderSectionRows() {
+      const playing = Tone.Transport.state === 'started';
+      const count = appSections.length;
+      const countLabel = $('section-count-label');
+      if (countLabel) countLabel.textContent = `(${count} of 6)`;
+
+      const container = $('section-rows');
+      if (!container) return;
+      container.innerHTML = '';
+
+      appSections.forEach((sec, i) => {
+        const row = document.createElement('div');
+        row.className = 'section-row';
+
+        const num = document.createElement('div');
+        num.className = 'section-num' + (appActiveSection === i + 1 ? ' active-section' : '');
+        num.textContent = i + 1;
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'section-prog-input';
+        input.value = sec.progression;
+        input.autocomplete = 'off';
+        input.autocapitalize = 'off';
+        input.setAttribute('autocorrect', 'off');
+        input.spellcheck = false;
+        input.disabled = playing;
+        input.addEventListener('focus', () => {
+          container.querySelectorAll('.section-num').forEach((n, j) => {
+            n.classList.toggle('active-section', j === i);
+          });
+        });
+        input.addEventListener('input', () => {
+          appSections[i] = { ...appSections[i], progression: input.value };
+          if (appActiveSection === i + 1) renderChips();
+          syncUrl();
+        });
+
+        const upBtn = document.createElement('button');
+        upBtn.type = 'button';
+        upBtn.className = 'icon-btn';
+        upBtn.textContent = '↑';
+        upBtn.disabled = playing || i === 0;
+        upBtn.addEventListener('click', () => {
+          [appSections[i - 1], appSections[i]] = [appSections[i], appSections[i - 1]];
+          appArrangement = remapArrangementSwap(appArrangement, i - 1, i);
+          if (appActiveSection === i) appActiveSection = i + 1;
+          else if (appActiveSection === i + 1) appActiveSection = i;
+          renderSectionRows();
+          renderChips();
+          syncUrl();
+        });
+
+        const downBtn = document.createElement('button');
+        downBtn.type = 'button';
+        downBtn.className = 'icon-btn';
+        downBtn.textContent = '↓';
+        downBtn.disabled = playing || i === count - 1;
+        downBtn.addEventListener('click', () => {
+          [appSections[i], appSections[i + 1]] = [appSections[i + 1], appSections[i]];
+          appArrangement = remapArrangementSwap(appArrangement, i, i + 1);
+          if (appActiveSection === i + 1) appActiveSection = i + 2;
+          else if (appActiveSection === i + 2) appActiveSection = i + 1;
+          renderSectionRows();
+          renderChips();
+          syncUrl();
+        });
+
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'icon-btn';
+        delBtn.textContent = '×';
+        delBtn.disabled = playing || count <= 1;
+        delBtn.addEventListener('click', () => {
+          appArrangement = remapArrangementDelete(appArrangement, i);
+          appSections.splice(i, 1);
+          if (appActiveSection > appSections.length) appActiveSection = appSections.length;
+          renderSectionRows();
+          renderChips();
+          syncUrl();
+        });
+
+        row.append(num, input, upBtn, downBtn, delBtn);
+        container.appendChild(row);
+      });
+
+      const addBtn = $('add-section');
+      if (addBtn) addBtn.disabled = playing || count >= 6;
+
+      if (arrangementEl) arrangementEl.disabled = playing;
+      renderScrubber();
+    }
+
+    function resolvePlayOrder() {
+      const count = appSections.length;
+      if (count < 2) return [];
+      const parsed = parseArrangement(appArrangement, count);
+      return parsed.length ? parsed : Array.from({ length: count }, (_, i) => i + 1);
+    }
+
+    function renderScrubber() {
+      const order = resolvePlayOrder();
+      const scrubberBar = $('scrubber-bar');
+      const track = $('scrubber-track');
+      const advanceBtn = $('readout-advance');
+      if (!scrubberBar || !track) return;
+      if (order.length < 2) {
+        scrubberBar.hidden = true;
+        if (advanceBtn) advanceBtn.hidden = true;
+        syncBodyPadding();
+        return;
+      }
+      scrubberBar.hidden = false;
+      if (advanceBtn) advanceBtn.hidden = false;
+      track.innerHTML = '';
+      order.forEach((sectionRef, posIndex) => {
+        const seg = document.createElement('button');
+        seg.type = 'button';
+        seg.className = 'scrubber-seg';
+        seg.textContent = sectionRef;
+        seg.dataset.posIndex = posIndex;
+        seg.addEventListener('click', () => handleScrubberTap(posIndex));
+        track.appendChild(seg);
+      });
+      syncBodyPadding();
+    }
+
+    function setScrubberCurrent(posIndex) {
+      document.querySelectorAll('.scrubber-seg').forEach((seg, i) => {
+        seg.classList.toggle('current', i === posIndex);
+        seg.classList.toggle('queued', i !== posIndex && pendingJump === i);
+      });
+    }
+
+    function handleScrubberTap(posIndex) {
+      if (Tone.Transport.state !== 'started') {
+        const order = resolvePlayOrder();
+        if (order.length) {
+          appActiveSection = order[Math.min(posIndex, order.length - 1)] ?? appActiveSection;
+          renderChips();
+        }
+        return;
+      }
+      if (pendingJump === posIndex) {
+        pendingJump = null;
+        document.querySelectorAll('.scrubber-seg').forEach(s => s.classList.remove('queued'));
+        return;
+      }
+      pendingJump = posIndex;
+      document.querySelectorAll('.scrubber-seg').forEach((seg, i) => {
+        seg.classList.toggle('queued', i === posIndex && !seg.classList.contains('current'));
+      });
+    }
+
+    function syncBodyPadding() {
+      const bar = document.getElementById('action-bar');
+      if (bar) document.body.style.paddingBottom = bar.offsetHeight + 'px';
+    }
+
     // Style patterns are 16-step (one bar of 16th notes).
     // Drums: 1 = hit, 0 = rest.
     // Bass: 'R' = root, '5' = fifth, 0 = rest.
@@ -1030,6 +1355,13 @@
     let bass = null, bassSeq = null;
     let beatSeq = null;
     let chordChannel = null, bassChannel = null, drumChannel = null, masterChannel = null;
+
+    let appSections = [{ progression: 'I vi ii V' }];
+    let appArrangement = '';
+    let appActiveSection = 1;
+    let appAdvance = 'auto';
+    let pendingJump = null;
+    let appCurrentPosIndex = 0;
 
     function sliderToDb(v) {
       const n = parseInt(v, 10);
@@ -1176,6 +1508,14 @@
       const smooth = voicing === 'voice-lead' || voicing === 'voice-lead-loop';
       const resetEachLap = voicing === 'voice-lead-loop';
 
+      const songBars = chords.reduce((sum, c) => sum + c.bars, 0);
+      const posOffsets = {};
+      let offsetAcc = 0;
+      for (const c of chords) {
+        if (!(c.posIndex in posOffsets)) posOffsets[c.posIndex] = offsetAcc;
+        offsetAcc += c.bars;
+      }
+
       let cumBars = 0;
       const events = [];
       let prevUpper = null;
@@ -1183,7 +1523,7 @@
         if (resetEachLap) prevUpper = null;
         const rawShift = semis * lap;
         const audioShift = clampShift(rawShift);
-        chords.forEach((c, i) => {
+        chords.forEach((c) => {
           const needsRebuild = audioShift || smooth;
           const voiced = needsRebuild
             ? makeChord(c.root + audioShift, c.quality, smooth ? prevUpper : null)
@@ -1194,7 +1534,9 @@
             bars: c.bars,
             notes: voiced.notes,
             token: c.token,
-            chipIndex: i,
+            chipIndex: c.chipIndex,
+            sectionIndex: c.sectionIndex,
+            posIndex: c.posIndex,
             shift: rawShift,
             total: chords.length,
           });
@@ -1202,12 +1544,48 @@
         });
       }
 
+      let lastPos = -1;
       part = new Tone.Part((time, ev) => {
+        // Manual: intercept every section boundary — either loop back or advance
+        if (appAdvance === 'manual' && ev.posIndex !== appCurrentPosIndex) {
+          const ticksPerBar = Tone.Transport.PPQ * 4;
+          const currentBar = Tone.Transport.ticks / ticksPerBar;
+          if (pendingJump !== null) {
+            const target = pendingJump;
+            pendingJump = null;
+            const order = resolvePlayOrder();
+            appCurrentPosIndex = Math.min(target, order.length - 1);
+            appActiveSection = order[appCurrentPosIndex] ?? appActiveSection;
+            // Jump to lap 0 of target (resets cycle key per design)
+            Tone.Transport.position = `${Math.round(posOffsets[appCurrentPosIndex] ?? 0)}:0:0`;
+          } else {
+            // Loop back — next lap of the same section (key climbs in cycle mode)
+            const singleLapStart = Math.floor(currentBar / songBars) * songBars;
+            Tone.Transport.position = `${Math.round(singleLapStart + songBars + (posOffsets[appCurrentPosIndex] ?? 0))}:0:0`;
+          }
+          return;
+        }
+        // Auto: jump on demand
+        if (pendingJump !== null && appAdvance !== 'manual') {
+          const target = pendingJump;
+          pendingJump = null;
+          const ticksPerBar = Tone.Transport.PPQ * 4;
+          const currentBar = Tone.Transport.ticks / ticksPerBar;
+          const lapStart = Math.floor(currentBar / songBars) * songBars;
+          Tone.Transport.position = `${Math.round(lapStart + (posOffsets[target] ?? 0))}:0:0`;
+          return;
+        }
         if (synth) safeTrigger(() => synth.triggerAttackRelease(ev.notes, `${ev.bars}m`, time));
         Tone.Draw.schedule(() => {
+          if (ev.posIndex !== lastPos) {
+            appActiveSection = ev.sectionIndex + 1;
+            renderChips();
+            lastPos = ev.posIndex;
+          }
           setActiveChip(ev.chipIndex);
           updateChipsForShift(ev.shift);
           renderBarDots(ev.bars, 0);
+          setScrubberCurrent(ev.posIndex);
         }, time);
         const measureSec = Tone.Time('1m').toSeconds();
         for (let b = 1; b < ev.bars; b++) {
@@ -1268,7 +1646,7 @@
     const playBtn      = $('play');
     const keyEl        = $('key');
     const tempoEl      = $('tempo');
-    const progEl       = $('progression');
+    const arrangementEl = $('arrangement');
     const chordsEl     = $('chords');
     const drumsEl      = $('drums');
     const bassEl       = $('bass');
@@ -1287,6 +1665,7 @@
     const readoutVoicing = $('readout-voicing');
     const readoutBars    = $('readout-bars');
     const readoutCycle   = $('readout-cycle');
+    const readoutAdvance = $('readout-advance');
     const barsButtons  = document.querySelectorAll('.bars-btn');
     const cycleButtons = document.querySelectorAll('.cycle-btn');
     const styleButtons = document.querySelectorAll('.style-btn');
@@ -1301,6 +1680,7 @@
       const bars = getDefaultBars();
       readoutBars.textContent = bars + (bars === 1 ? ' bar' : ' bars');
       readoutCycle.textContent = CYCLE_LABELS[getCycleMode()] || getCycleMode();
+      if (readoutAdvance) readoutAdvance.textContent = appAdvance === 'manual' ? 'Manual' : 'Auto';
     }
 
     function getDefaultBars() {
@@ -1362,8 +1742,9 @@
     });
 
     function renderChips() {
+      const progStr = appSections[appActiveSection - 1]?.progression ?? '';
       stripEl.innerHTML = '';
-      const tokens = tokenize(progEl.value);
+      const tokens = tokenize(progStr);
       tokens.forEach(token => {
         const [numeral, durStr] = token.split(':');
         let displayDur = '';
@@ -1426,7 +1807,7 @@
         Tone.Transport.scheduleOnce(() => {
           if (Tone.Transport.state !== 'started') return;
           try {
-            const chords = parseProgression(progEl.value, keyEl.value, getDefaultBars());
+            const chords = buildSongChords(appSections, appArrangement, keyEl.value, getDefaultBars());
             buildPart(chords, getCycleMode(), STYLES[getStyle()], getBassVariant(), getVoicing());
           } catch (e) {
             setStatus('Error: ' + e.message);
@@ -1474,10 +1855,6 @@
       scheduleRebuild();
     });
 
-    progEl.addEventListener('input', () => {
-      renderChips();
-      scheduleRebuild();
-    });
 
     barsButtons.forEach(btn => {
       btn.addEventListener('click', () => {
@@ -1540,6 +1917,11 @@
     $('readout-voicing').addEventListener('click', () => cycleNext(voicingButtons));
     $('readout-bars').addEventListener('click', () => cycleNext(barsButtons));
     $('readout-cycle').addEventListener('click', () => cycleNext(cycleButtons));
+    readoutAdvance.addEventListener('click', () => {
+      appAdvance = appAdvance === 'auto' ? 'manual' : 'auto';
+      updateReadout();
+      syncUrl();
+    });
 
     const tempoToggle = $('tempo-toggle');
     const tempoPickerEl = $('tempo-picker');
@@ -1622,12 +2004,28 @@
         await Tone.start();
         if ('audioSession' in navigator) navigator.audioSession.type = 'playback';
         initChannels();
-        const chords = parseProgression(progEl.value, keyEl.value, getDefaultBars());
+        const key = keyEl.value;
+        const bars = getDefaultBars();
+        const order = resolvePlayOrder();
+        const chords = buildSongChords(appSections, appArrangement, key, bars);
         buildPart(chords, getCycleMode(), STYLES[getStyle()], getBassVariant(), getVoicing());
+        if (appAdvance === 'manual' && order.length >= 2) {
+          const startIdx = order.findIndex(ref => ref === appActiveSection);
+          appCurrentPosIndex = startIdx >= 0 ? startIdx : 0;
+          // Compute posOffsets from single-lap chords to find starting bar
+          let barAcc = 0;
+          const offs = {};
+          for (const c of chords) {
+            if (!(c.posIndex in offs)) offs[c.posIndex] = barAcc;
+            barAcc += c.bars;
+          }
+          Tone.Transport.position = `${offs[appCurrentPosIndex] ?? 0}:0:0`;
+        }
         Tone.Transport.bpm.value = clampedTempo();
         Tone.Transport.start();
         if (keepAwakeEl.checked) acquireWakeLock();
         setPlayingUI(true);
+        renderSectionRows();
       } catch (e) {
         setStatus('Error: ' + e.message);
       }
@@ -1641,7 +2039,10 @@
       updateChipsForShift(0);
       clearBeats();
       clearBars();
+      pendingJump = null;
+      document.querySelectorAll('.scrubber-seg').forEach(s => s.classList.remove('current', 'queued'));
       setPlayingUI(false);
+      renderSectionRows();
       setStatus('');
     }
 
@@ -1694,7 +2095,10 @@
       style: 'pop',
       bass: 'simple',
       voicing: 'root',
-      progression: 'I vi ii V',
+      sections: [{ progression: 'I vi ii V' }],
+      arrangement: '',
+      activeSection: 1,
+      advance: 'auto',
       chordVol: 50,
       bassVol: 100,
       drumVol: 100,
@@ -1714,7 +2118,10 @@
         style: getStyle(),
         bass: getBassVariant(),
         voicing: getVoicing(),
-        progression: progEl.value,
+        sections: appSections,
+        arrangement: appArrangement,
+        activeSection: appActiveSection,
+        advance: appAdvance,
         chordVol: chordVolEl.value,
         bassVol: bassVolEl.value,
         drumVol: drumVolEl.value,
@@ -1734,7 +2141,10 @@
       p.set('style', s.style);
       p.set('bass', s.bass);
       p.set('voicing', s.voicing);
-      p.set('progression', s.progression);
+      (s.sections || []).forEach(sec => p.append('section', sec.progression));
+      p.set('arrangement', s.arrangement ?? '');
+      p.set('activeSection', s.activeSection ?? 1);
+      p.set('advance', s.advance ?? 'auto');
       p.set('chordVol', s.chordVol);
       p.set('bassVol', s.bassVol);
       p.set('drumVol', s.drumVol);
@@ -1764,6 +2174,12 @@
       const style = str('style', DEFAULTS.style);
       const bass = str('bass', DEFAULTS.bass);
       const voicing = str('voicing', DEFAULTS.voicing);
+      const rawSections = p.getAll('section');
+      const sections = rawSections.length
+        ? rawSections.map(prog => ({ progression: prog }))
+        : DEFAULTS.sections;
+      const rawAdvance = str('advance', DEFAULTS.advance);
+      const rawActive = num('activeSection', DEFAULTS.activeSection);
       return {
         key: VALID_KEYS.includes(key) ? key : DEFAULTS.key,
         tempo: Math.max(40, Math.min(220, num('tempo', DEFAULTS.tempo))),
@@ -1772,7 +2188,10 @@
         style: STYLE_OPTIONS.includes(style) ? style : DEFAULTS.style,
         bass: BASS_OPTIONS.includes(bass) ? bass : DEFAULTS.bass,
         voicing: VOICING_OPTIONS.includes(voicing) ? voicing : DEFAULTS.voicing,
-        progression: str('progression', DEFAULTS.progression),
+        sections,
+        arrangement: str('arrangement', DEFAULTS.arrangement),
+        activeSection: (Number.isInteger(rawActive) && rawActive >= 1 && rawActive <= sections.length) ? rawActive : 1,
+        advance: ['auto', 'manual'].includes(rawAdvance) ? rawAdvance : DEFAULTS.advance,
         chordVol: num('chordVol', DEFAULTS.chordVol),
         bassVol: num('bassVol', DEFAULTS.bassVol),
         drumVol: num('drumVol', DEFAULTS.drumVol),
@@ -1808,7 +2227,11 @@
         btn.classList.toggle('active', btn.dataset.voicing === s.voicing);
       });
 
-      progEl.value = s.progression;
+      appSections = (s.sections && s.sections.length) ? s.sections : DEFAULTS.sections;
+      appArrangement = s.arrangement ?? DEFAULTS.arrangement;
+      appActiveSection = s.activeSection ?? DEFAULTS.activeSection;
+      appAdvance = s.advance ?? DEFAULTS.advance;
+      if (arrangementEl) arrangementEl.value = appArrangement;
 
       chordVolEl.value  = s.chordVol;  $('chordVolValue').textContent  = s.chordVol;
       bassVolEl.value   = s.bassVol;   $('bassVolValue').textContent   = s.bassVol;
@@ -1826,7 +2249,9 @@
       bassEl.dispatchEvent(new Event('change'));
       drumsEl.dispatchEvent(new Event('change'));
 
+      renderSectionRows();
       renderChips();
+      updateReadout();
     }
 
     let urlSyncTimer = null;
@@ -1864,7 +2289,7 @@
     });
 
     // User presets (localStorage)
-    const PRESETS_KEY = 'progression-presets-v1';
+    const PRESETS_KEY = 'progression-presets-v2';
     const userPresetsEl = $('user-presets');
 
     function loadUserPresets() {
@@ -1982,15 +2407,32 @@
 
     renderUserPresets();
 
+    $('add-section').addEventListener('click', () => {
+      if (appSections.length >= 6) return;
+      appSections.push({ progression: '' });
+      renderSectionRows();
+      renderChips();
+      syncUrl();
+      const rows = $('section-rows').querySelectorAll('.section-prog-input');
+      if (rows.length) rows[rows.length - 1].focus();
+    });
+
+    arrangementEl.addEventListener('input', () => {
+      appArrangement = arrangementEl.value;
+      renderScrubber();
+      syncUrl();
+    });
+
     // Initial render
     applyState(parseUrlState());
     updateReadout();
     syncUrl();
-    [keyEl, tempoEl, progEl, chordVolEl, bassVolEl, drumVolEl, masterVolEl,
+    [keyEl, tempoEl, chordVolEl, bassVolEl, drumVolEl, masterVolEl,
      chordsEl, bassEl, drumsEl].forEach(el => {
       el.addEventListener('input', syncUrl);
       el.addEventListener('change', syncUrl);
     });
+    window.addEventListener('resize', syncBodyPadding);
   </script>
 </body>
 </html>
