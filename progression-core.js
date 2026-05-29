@@ -171,17 +171,19 @@ export const STYLES = {
 // ─── Built-in Presets ────────────────────────────────────────────────────────
 
 export const PRESETS = [
-  { label: 'I V vi IV',        state: { sections: [{ progression: 'I V vi IV' }],                      arrangement: '', cycle: 'none' } },
-  { label: 'I vi ii V',        state: { sections: [{ progression: 'I vi ii V' }],                      arrangement: '', cycle: 'none' } },
-  { label: 'ii V I',           state: { sections: [{ progression: 'ii V I' }],                         arrangement: '', cycle: 'none' } },
-  { label: 'iim7 V7 Imaj7',    state: { sections: [{ progression: 'iim7 V7 Imaj7' }],                  arrangement: '', cycle: 'none' } },
-  { label: 'I IV V',           state: { sections: [{ progression: 'I IV V' }],                         arrangement: '', cycle: 'none' } },
-  { label: 'i iv v',           state: { sections: [{ progression: 'i iv v' }],                         arrangement: '', cycle: 'none' } },
-  { label: '12-bar blues',     state: { sections: [{ progression: 'I:4 IV:2 I:2 V:1 IV:1 I:1 V:1' }], arrangement: '', cycle: 'none' } },
-  { label: 'Cycle 5ths',       state: { sections: [{ progression: 'I' }],                              arrangement: '', cycle: '5ths' } },
-  { label: 'Cycle 4ths',       state: { sections: [{ progression: 'I' }],                              arrangement: '', cycle: '4ths' } },
-  { label: 'Cycle 5ths (min)', state: { sections: [{ progression: 'i' }],                              arrangement: '', cycle: '5ths' } },
-  { label: 'Cycle 4ths (min)', state: { sections: [{ progression: 'i' }],                              arrangement: '', cycle: '4ths' } },
+  { label: 'I vi ii V',    state: { sections: [{ progression: 'I vi ii V' }],                      arrangement: '', cycle: 'none' } },
+  { label: '12-bar blues', state: { sections: [{ progression: 'I:4 IV:2 I:2 V:1 IV:1 I:1 V:1' }], arrangement: '', cycle: 'none' } },
+  { label: 'Sample Song',  state: {
+    sections: [
+      { progression: 'I V vi IV' },   // verse
+      { progression: 'IV V I vi' },   // chorus
+      { progression: 'ii V I I' },    // bridge
+    ],
+    arrangement: '1 2 1 2 3 2',
+    cycle: 'none',
+  }},
+  { label: 'Cycle 4ths',  state: { sections: [{ progression: 'I' }], arrangement: '', cycle: '4ths' } },
+  { label: 'Cycle 5ths',  state: { sections: [{ progression: 'I' }], arrangement: '', cycle: '5ths' } },
 ];
 
 // ─── Token utilities ─────────────────────────────────────────────────────────
