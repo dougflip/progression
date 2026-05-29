@@ -8,7 +8,7 @@ A small single-page web app for practicing.
 
 ## Run
 
-No build step. Open `index.html` directly in a browser, or serve the folder locally:
+No build step, but does require a server
 
 ```
 npx serve
@@ -20,4 +20,4 @@ See [features](./features.md) for mor details.
 
 ## Stack
 
-Plain HTML + [Tone.js](https://tonejs.github.io/) loaded from a CDN. All logic lives in `index.html`.
+HTML + CSS + JS + [Tone.js](https://tonejs.github.io/) loaded from a CDN.
