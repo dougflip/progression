@@ -172,7 +172,7 @@ export const STYLES = {
 
 export const PRESETS = [
   { label: 'I vi ii V',    state: { sections: [{ progression: 'I vi ii V' }],                      arrangement: '', cycle: 'none' } },
-  { label: '12-bar blues', state: { sections: [{ progression: 'I:4 IV:2 I:2 V:1 IV:1 I:1 V:1' }], arrangement: '', cycle: 'none' } },
+  { label: '12-bar blues', state: { sections: [{ progression: 'I7:4 IV7:2 I7:2 V7:1 IV7:1 I7:1 V7:1' }], arrangement: '', cycle: 'none' } },
   { label: 'Sample Song',  state: {
     sections: [
       { progression: 'I V vi IV' },   // verse
