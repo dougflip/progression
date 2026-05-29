@@ -118,11 +118,14 @@ export function makeProgressionAudio({ Tone }) {
       offsetAcc += c.bars;
     }
 
-    // All chord numerals per posIndex (for resolving chip names in Draw callbacks)
+    // Per posIndex: numerals (for name resolution) and raw tokens (for chip structure)
     const posSectionNumerals = {};
+    const posSectionTokens   = {};
     for (const c of chords) {
       if (!posSectionNumerals[c.posIndex]) posSectionNumerals[c.posIndex] = [];
+      if (!posSectionTokens[c.posIndex])   posSectionTokens[c.posIndex]   = [];
       posSectionNumerals[c.posIndex].push(c.numeral);
+      posSectionTokens[c.posIndex].push(c.token);
     }
 
     let cumBars = 0;
@@ -149,6 +152,7 @@ export function makeProgressionAudio({ Tone }) {
           posIndex:         c.posIndex,
           shift:            rawShift,
           sectionNumerals:  posSectionNumerals[c.posIndex],
+          sectionTokens:    posSectionTokens[c.posIndex],
         });
         cumBars += c.bars;
       }
@@ -196,13 +200,14 @@ export function makeProgressionAudio({ Tone }) {
           const resolvedChipNames = (ev.sectionNumerals || []).map(n =>
             resolvedChordName(n, ev.shift, _key, _cycle));
           _onChordTick({
-            chipIndex:     ev.chipIndex,
-            posIndex:      ev.posIndex,
-            sectionIndex:  ev.sectionIndex,
+            chipIndex:        ev.chipIndex,
+            posIndex:         ev.posIndex,
+            sectionIndex:     ev.sectionIndex,
             sectionChanged,
             resolvedChipNames,
-            resolvedKey:   resolvedKeyName(_key, ev.shift, _cycle),
-            bars:          ev.bars,
+            resolvedKey:      resolvedKeyName(_key, ev.shift, _cycle),
+            bars:             ev.bars,
+            sectionTokens:    sectionChanged ? ev.sectionTokens : null,
           });
         }
       }, time);

@@ -508,8 +508,8 @@
     /** @param {import('./progression-core.js').AppState} state */
     function renderChips(state) {
       const progStr = state.sections[state.activeSection - 1]?.progression ?? '';
-      buildChipStructure(progStr);
-      const tokens = tokenize(progStr);
+      const tokens  = tokenize(progStr);
+      buildChipStructure(tokens);
       updateChipNames(tokens.map(t => {
         const [numeral] = t.split(':');
         return resolvedChordName(numeral, 0, state.key, state.cycle);
@@ -520,10 +520,13 @@
         b.classList.toggle('active', b.dataset.key === state.key));
     }
 
-    /** Builds chip DOM structure (no names). */
-    function buildChipStructure(progStr) {
+    /**
+     * Builds chip DOM structure from token strings — no name resolution.
+     * @param {string[]} tokens
+     */
+    function buildChipStructure(tokens) {
       stripEl.innerHTML = '';
-      tokenize(progStr).forEach(token => {
+      tokens.forEach(token => {
         const [numeral, durStr] = token.split(':');
         const durDisplay   = durStr ? String(Math.min(parseInt(durStr, 10), MAX_BARS)) : '';
         const displayToken = durDisplay ? `${numeral}:${durDisplay}` : numeral;
@@ -606,11 +609,9 @@
 
     /** @param {import('./progression-audio.js').ChordTickEvent} ev */
     function onChordTick({ chipIndex, posIndex, sectionIndex, sectionChanged,
-                           resolvedChipNames, resolvedKey, bars }) {
-      if (sectionChanged) {
-        // Rebuild chip structure for new section then apply names
-        const state = app.getState();
-        buildChipStructure(state.sections[sectionIndex]?.progression ?? '');
+                           resolvedChipNames, resolvedKey, bars, sectionTokens }) {
+      if (sectionChanged && sectionTokens) {
+        buildChipStructure(sectionTokens);
       }
       setActiveChip(chipIndex);
       updateChipNames(resolvedChipNames);

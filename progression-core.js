@@ -663,8 +663,12 @@ const PRESETS_STORAGE_KEY = 'progression-presets-v2';
  * @typedef {{
  *   chipIndex: number,
  *   posIndex: number,
+ *   sectionIndex: number,
+ *   sectionChanged: boolean,
  *   resolvedChipNames: string[],
  *   resolvedKey: string,
+ *   bars: number,
+ *   sectionTokens: string[] | null,
  * }} ChordTickEvent
  */
 
