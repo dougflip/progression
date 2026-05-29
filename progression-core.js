@@ -181,6 +181,8 @@ export const PRESETS = [
     ],
     arrangement: '1 2 1 2 3 2',
     cycle: 'none',
+    tempo: 120,
+    style: 'pop',
   }},
   { label: 'Cycle 4ths',  state: { sections: [{ progression: 'I' }], arrangement: '', cycle: '4ths' } },
   { label: 'Cycle 5ths',  state: { sections: [{ progression: 'I' }], arrangement: '', cycle: '5ths' } },
