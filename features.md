@@ -29,6 +29,18 @@ The progression input accepts space-separated tokens:
 
 Chord chips show the resolved chord names below each token (or the literal name for absolute chords). The current chord highlights during playback. Very long progressions and oversized `:n` values are silently capped.
 
+## Sections and arrangement
+
+A song can have up to 6 sections, each with its own progression. A single section is the default — just a progression that loops. Add more to build song structure.
+
+- **Sections** — each section has its own progression input. Reorder with ↑↓, delete with ×.
+- **Arrangement** — optional sequence of section numbers that controls playback order, e.g. `1 2 1 3` or `1:4 2:2` (section 1 four times, then section 2 twice). Empty = all sections in order.
+- **Scrubber** — when the arrangement resolves to two or more steps, a scrubber strip appears above the action bar showing the playback order. Tap a segment to navigate.
+- **Auto advance** (default) — sections advance through the arrangement automatically.
+- **Manual advance** — the current section loops until you tap the scrubber. Useful for practicing a section before moving on.
+
+The Auto/Manual pill appears on the main screen alongside the other controls when multiple sections are active.
+
 ## Loop modes
 
 - **Loop** — repeat the progression in the configured key.
