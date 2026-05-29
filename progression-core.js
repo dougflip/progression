@@ -850,7 +850,14 @@ export function makeProgressionPlayer(config) {
     // ── Presets ───────────────────────────────────────────────────────────
 
     /** @param {Partial<AppState>} presetState */
-    loadPreset(presetState) { _state = { ...DEFAULTS, ...presetState }; _notify(); },
+    loadPreset(presetState) {
+      _state = { ...DEFAULTS, ...presetState };
+      _notify();
+      if (!config.audio?.isPlaying()) return;
+      config.audio.setTempo(_state.tempo);
+      config.audio.setAdvance(_state.advance);
+      _scheduleRebuild();
+    },
 
     /** @returns {UserPreset[]} */
     getUserPresets: _getUserPresets,
