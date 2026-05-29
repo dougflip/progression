@@ -90,6 +90,29 @@ schema becomes the superpower.
 
 ---
 
+## UI Representation of Agent-Set Config
+
+Some settings produced by an agent won't have a visual control in the UI.
+Three approaches worth considering when we get there:
+
+- **Surface depth only when present.** UI renders controls for non-default values
+  only. A per-section tempo override shows a small indicator on that section; a
+  custom bass pattern replaces the Simple/Busy toggle with a "custom" badge.
+  The common case stays clean.
+
+- **Read-only summary + raw view.** Agent-produced config renders as a plain-text
+  summary ("Section 2: Rock, 140 BPM, busy bass") with an edit button that
+  opens a raw JSON view for power users. The agent is the editor for complex
+  config; the UI is the editor for simple config.
+
+- **Round-trip through the agent.** "Modify this" sends current state + change
+  request back to the agent, which produces a new state. No UI needed for deep
+  settings at all — the agent handles mutations to fields the UI doesn't expose.
+  This is the most interesting option: the UI handles what it's good at, the
+  agent handles what it's good at, and they don't overlap.
+
+---
+
 ## The Core Insight
 
 Most configurable apps are hard to use because configuration lives in a UI.
