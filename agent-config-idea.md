@@ -111,6 +111,20 @@ Three approaches worth considering when we get there:
   This is the most interesting option: the UI handles what it's good at, the
   agent handles what it's good at, and they don't overlap.
 
+The read-only summary and round-trip approaches compose well. Each section
+could render a single descriptive string for any overrides it carries:
+
+```
+Section 1 (Verse)   I V vi IV    Rock · 95 BPM · Simple bass
+Section 2 (Chorus)  IV V I vi    Rock · 110 BPM · Busy bass
+Section 3 (Bridge)  ii V I I     Ballad · 90 BPM · Voice-lead
+```
+
+Human-readable at a glance. Agent-ready as context for mutations. No form
+fields needed — the string IS the UI for that layer. To change something,
+describe it; the agent receives the current state + the request and produces
+a new state.
+
 ---
 
 ## The Core Insight
