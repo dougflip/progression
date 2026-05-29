@@ -8,43 +8,21 @@
   <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');</script>
   <style>
     :root {
-      --bg: #fafafa;
-      --surface: #ffffff;
-      --surface-alt: #f1f1f1;
-      --surface-alt-active: #e1e1e1;
-      --border: #dddddd;
-      --border-faint: #eeeeee;
-      --border-input: #cccccc;
-      --text: #222222;
-      --text-2: #555555;
-      --text-3: #888888;
-      --text-4: #aaaaaa;
-      --accent: #222222;
-      --accent-text: #ffffff;
-      --accent-hover: #444444;
-      --playing: #b91c1c;
-      --shadow-top: 0 -2px 12px rgba(0,0,0,0.05);
-      --backdrop: rgba(0, 0, 0, 0.4);
+      --bg: #fafafa; --surface: #ffffff; --surface-alt: #f1f1f1;
+      --surface-alt-active: #e1e1e1; --border: #dddddd; --border-faint: #eeeeee;
+      --border-input: #cccccc; --text: #222222; --text-2: #555555;
+      --text-3: #888888; --text-4: #aaaaaa; --accent: #222222;
+      --accent-text: #ffffff; --accent-hover: #444444; --playing: #b91c1c;
+      --shadow-top: 0 -2px 12px rgba(0,0,0,0.05); --backdrop: rgba(0,0,0,0.4);
       --rename-border: #888888;
     }
     [data-theme="dark"] {
-      --bg: #121212;
-      --surface: #1e1e1e;
-      --surface-alt: #2a2a2a;
-      --surface-alt-active: #353535;
-      --border: #333333;
-      --border-faint: #262626;
-      --border-input: #3a3a3a;
-      --text: #f0f0f0;
-      --text-2: #b8b8b8;
-      --text-3: #888888;
-      --text-4: #666666;
-      --accent: #f0f0f0;
-      --accent-text: #121212;
-      --accent-hover: #cccccc;
-      --playing: #ef4444;
-      --shadow-top: 0 -4px 12px rgba(0,0,0,0.4);
-      --backdrop: rgba(0, 0, 0, 0.6);
+      --bg: #121212; --surface: #1e1e1e; --surface-alt: #2a2a2a;
+      --surface-alt-active: #353535; --border: #333333; --border-faint: #262626;
+      --border-input: #3a3a3a; --text: #f0f0f0; --text-2: #b8b8b8;
+      --text-3: #888888; --text-4: #666666; --accent: #f0f0f0;
+      --accent-text: #121212; --accent-hover: #cccccc; --playing: #ef4444;
+      --shadow-top: 0 -4px 12px rgba(0,0,0,0.4); --backdrop: rgba(0,0,0,0.6);
       --rename-border: #666666;
     }
     * { box-sizing: border-box; }
@@ -55,605 +33,256 @@
       padding-bottom: calc(96px + env(safe-area-inset-bottom));
       background: var(--bg);
     }
-    main {
-      max-width: 600px;
-      margin: 0 auto;
-      padding: 1.25rem 1rem;
-    }
+    main { max-width: 600px; margin: 0 auto; padding: 1.25rem 1rem; }
+
+    /* ── Key display ── */
     h1#key-display {
-      font-size: 3rem;
-      font-weight: 700;
-      margin: 0.25rem 0 1rem;
-      text-align: center;
-      letter-spacing: -0.02em;
-      line-height: 1;
-      cursor: pointer;
-      user-select: none;
-      transition: opacity 0.1s;
+      font-size: 3rem; font-weight: 700; margin: 0.25rem 0 1rem;
+      text-align: center; letter-spacing: -0.02em; line-height: 1;
+      cursor: pointer; user-select: none; transition: opacity 0.1s;
     }
     h1#key-display:hover { opacity: 0.85; }
-
-    #key-picker {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 0.4rem;
-      max-width: 18rem;
-      margin: -0.5rem auto 1rem;
-    }
+    #key-picker { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.4rem; max-width: 18rem; margin: -0.5rem auto 1rem; }
     #key-picker[hidden] { display: none; }
     #scrubber-bar[hidden] { display: none; }
     .key-chip {
-      padding: 0.5rem 0.25rem;
-      background: var(--surface-alt);
-      border: 1px solid var(--border);
-      color: var(--text);
-      border-radius: 0.5rem;
-      font-size: 0.95rem;
-      font-weight: 600;
-      cursor: pointer;
-      font-family: inherit;
+      padding: 0.5rem 0.25rem; background: var(--surface-alt); border: 1px solid var(--border);
+      color: var(--text); border-radius: 0.5rem; font-size: 0.95rem; font-weight: 600;
+      cursor: pointer; font-family: inherit;
     }
     .key-chip:active { background: var(--surface-alt-active); }
-    .key-chip.active {
-      background: var(--accent);
-      color: var(--accent-text);
-      border-color: var(--accent);
-    }
+    .key-chip.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
 
+    /* ── Chord strip ── */
     #chord-strip {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 0.5rem;
-      margin-bottom: 1.25rem;
-      min-height: 4.5rem;
+      display: flex; flex-wrap: wrap; justify-content: center;
+      gap: 0.5rem; margin-bottom: 1.25rem; min-height: 4.5rem;
     }
     .chip {
-      flex: 1 1 4.5rem;
-      min-width: 4.5rem;
-      max-width: 8rem;
-      min-height: 3.8rem;
-      padding: 0.6rem 0.5rem;
-      border-radius: 0.5rem;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      text-align: center;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      position: relative;
+      flex: 1 1 4.5rem; min-width: 4.5rem; max-width: 8rem; min-height: 3.8rem;
+      padding: 0.6rem 0.5rem; border-radius: 0.5rem; background: var(--surface);
+      border: 1px solid var(--border); text-align: center; display: flex;
+      flex-direction: column; justify-content: center; position: relative;
       transition: background 0.1s, color 0.1s, border-color 0.1s;
     }
+    .chip .numeral { font-size: 0.75rem; color: var(--text-3); line-height: 1; }
+    .chip .name    { font-size: 1.25rem; font-weight: 600; line-height: 1.3; margin-top: 0.15rem; }
+    .chip.active   { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+    .chip.active .numeral { color: var(--text-3); }
     .bar-progress {
-      position: absolute;
-      left: 0.4rem;
-      right: 0.4rem;
-      bottom: 0.3rem;
-      display: flex;
-      justify-content: center;
-      gap: 0.25rem;
-      pointer-events: none;
+      position: absolute; left: 0.4rem; right: 0.4rem; bottom: 0.3rem;
+      display: flex; justify-content: center; gap: 0.25rem; pointer-events: none;
     }
     .chip:not(.active) .bar-progress { display: none; }
-    .bar-progress .bar-dot {
-      flex: 0 1 0.6rem;
-      min-width: 0;
-      height: 0.2rem;
-      border-radius: 0.1rem;
-      background: var(--accent-text);
-      opacity: 0.3;
-      transition: opacity 0.08s;
+    .bar-dot {
+      flex: 0 1 0.6rem; min-width: 0; height: 0.2rem; border-radius: 0.1rem;
+      background: var(--accent-text); opacity: 0.3; transition: opacity 0.08s;
     }
-    .bar-progress .bar-dot.active { opacity: 1; }
-    .chip .numeral { font-size: 0.75rem; color: var(--text-3); line-height: 1; }
-    .chip .name { font-size: 1.25rem; font-weight: 600; line-height: 1.3; margin-top: 0.15rem; }
-    .chip.active {
-      background: var(--accent);
-      color: var(--accent-text);
-      border-color: var(--accent);
-    }
-    .chip.active .numeral { color: var(--text-3); }
+    .bar-dot.active { opacity: 1; }
 
+    /* ── Beat indicator ── */
+    #beat-indicator {
+      display: flex; justify-content: center; align-items: center;
+      gap: 0.7rem; min-height: 0.75rem;
+    }
+    .beat-dot {
+      width: 0.5rem; height: 0.5rem; border-radius: 50%;
+      background: var(--surface-alt); transition: background 0.08s, transform 0.08s;
+    }
+    .beat-dot.active { background: var(--accent); transform: scale(1.5); }
+
+    /* ── Readout ── */
     #readout {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 0.4rem 0.6rem;
-      margin-top: 1rem;
-      color: var(--text-2);
-      font-size: 0.9rem;
+      display: flex; justify-content: center; align-items: center;
+      flex-wrap: wrap; gap: 0.4rem 0.6rem; margin-top: 1rem;
+      color: var(--text-2); font-size: 0.9rem;
     }
     #readout strong { color: var(--text); font-weight: 600; }
     .readout-row-break { flex-basis: 100%; height: 0; }
     .readout-btn {
-      background: var(--surface-alt);
-      color: var(--text);
-      padding: 0.2rem 0.65rem;
-      border-radius: 999px;
-      border: none;
-      font-size: 0.85rem;
-      font-family: inherit;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background 0.1s;
+      background: var(--surface-alt); color: var(--text); padding: 0.2rem 0.65rem;
+      border-radius: 999px; border: none; font-size: 0.85rem; font-family: inherit;
+      font-weight: 500; cursor: pointer; transition: background 0.1s;
     }
-    .readout-btn:hover { background: var(--surface-alt-active); }
-    .readout-btn:active { background: var(--surface-alt-active); }
-
-    .tempo-group {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-    }
+    .readout-btn:hover, .readout-btn:active { background: var(--surface-alt-active); }
+    .tempo-group { position: relative; display: inline-flex; align-items: center; }
     #tempo-picker {
-      position: absolute;
-      top: calc(100% + 0.55rem);
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      align-items: center;
-      gap: 0.6rem;
-      background: var(--surface-alt);
-      border: 1px solid var(--border);
-      border-radius: 0.5rem;
-      padding: 0.55rem 0.7rem;
-      min-width: 15rem;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-      z-index: 5;
+      position: absolute; top: calc(100% + 0.55rem); left: 50%; transform: translateX(-50%);
+      display: flex; align-items: center; gap: 0.6rem; background: var(--surface-alt);
+      border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.55rem 0.7rem;
+      min-width: 15rem; box-shadow: 0 4px 12px rgba(0,0,0,0.12); z-index: 5;
     }
     [data-theme="dark"] #tempo-picker { box-shadow: 0 4px 14px rgba(0,0,0,0.5); }
     #tempo-picker::before {
-      content: '';
-      position: absolute;
-      top: -0.35rem;
-      left: 50%;
-      transform: translateX(-50%) rotate(45deg);
-      width: 0.6rem;
-      height: 0.6rem;
-      background: var(--surface-alt);
-      border-left: 1px solid var(--border);
+      content: ''; position: absolute; top: -0.35rem; left: 50%;
+      transform: translateX(-50%) rotate(45deg); width: 0.6rem; height: 0.6rem;
+      background: var(--surface-alt); border-left: 1px solid var(--border);
       border-top: 1px solid var(--border);
     }
     #tempo-picker[hidden] { display: none; }
     #tempo-picker input[type=range] { flex: 1; min-width: 0; }
     .tempo-step {
-      flex: 0 0 auto;
-      width: 1.85rem;
-      height: 1.85rem;
-      padding: 0;
-      border-radius: 50%;
-      border: none;
-      background: var(--surface);
-      color: var(--text);
-      font-size: 1rem;
-      font-family: inherit;
-      font-weight: 500;
-      line-height: 1;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
+      flex: 0 0 auto; width: 1.85rem; height: 1.85rem; padding: 0; border-radius: 50%;
+      border: none; background: var(--surface); color: var(--text); font-size: 1rem;
+      font-family: inherit; font-weight: 500; line-height: 1; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
     }
     .tempo-step:hover, .tempo-step:active { background: var(--surface-alt-active); }
 
-    #beat-indicator {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 0.7rem;
-      min-height: 0.75rem;
-    }
-    .beat-dot {
-      width: 0.5rem;
-      height: 0.5rem;
-      border-radius: 50%;
-      background: var(--surface-alt);
-      transition: background 0.08s, transform 0.08s;
-    }
-    .beat-dot.active {
-      background: var(--accent);
-      transform: scale(1.5);
-    }
+    #status { margin-top: 0.75rem; text-align: center; font-family: monospace; color: var(--text-3); font-size: 0.85rem; min-height: 1.2em; }
 
-    #status {
-      margin-top: 0.75rem;
-      text-align: center;
-      font-family: monospace;
-      color: var(--text-3);
-      font-size: 0.85rem;
-      min-height: 1.2em;
-    }
-
+    /* ── Action bar ── */
     #action-bar {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      display: flex;
-      flex-direction: column;
-      background: var(--surface);
-      border-top: 1px solid var(--border);
-      box-shadow: var(--shadow-top);
-      z-index: 10;
+      position: fixed; bottom: 0; left: 0; right: 0;
+      display: flex; flex-direction: column; background: var(--surface);
+      border-top: 1px solid var(--border); box-shadow: var(--shadow-top); z-index: 10;
     }
     .action-buttons {
-      display: flex;
-      align-items: center;
-      justify-content: space-around;
-      gap: 0.5rem;
-      padding: 0.75rem 1rem;
+      display: flex; align-items: center; justify-content: space-around;
+      gap: 0.5rem; padding: 0.75rem 1rem;
       padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
     }
-    #scrubber-bar {
-      border-bottom: 1px solid var(--border);
-    }
-    .scrubber-inner {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.75rem 1rem 0.65rem;
-      max-width: 600px;
-      margin: 0 auto;
-    }
-    .scrubber-label {
-      font-size: 0.85rem;
-      color: var(--text-3);
-      white-space: nowrap;
-    }
-    #scrubber-track {
-      flex: 1;
-      display: flex;
-      gap: 0.4rem;
-      overflow-x: auto;
-      align-items: center;
-    }
-    .scrubber-seg {
-      flex: 0 0 auto;
-      width: 2.85rem;
-      padding: 0.7rem 0.25rem;
-      background: none;
-      border: 1px solid var(--border);
-      border-radius: 0.45rem;
-      color: var(--text-2);
-      font-size: 1rem;
-      font-weight: 600;
-      text-align: center;
-      cursor: pointer;
-      transition: background 0.1s;
-    }
-    .scrubber-seg.current {
-      background: var(--accent);
-      color: var(--accent-text);
-      border-color: var(--accent);
-    }
-    .scrubber-seg.queued {
-      border-color: var(--accent, #4a9eff);
-      animation: scrub-pulse 0.7s ease-in-out infinite;
-    }
-    @keyframes scrub-pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
-    }
     .bar-btn {
-      flex: 1;
-      max-width: 140px;
-      background: none;
-      border: none;
-      padding: 0.5rem;
-      font-size: 0.85rem;
-      color: var(--text-2);
-      cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.15rem;
+      flex: 1; max-width: 140px; background: none; border: none; padding: 0.5rem;
+      font-size: 0.85rem; color: var(--text-2); cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; gap: 0.15rem;
     }
     .bar-btn:active { color: var(--text); }
     .bar-icon { font-size: 1.4rem; line-height: 1; }
     #play {
-      flex: 0 0 auto;
-      width: 64px;
-      height: 64px;
-      border-radius: 50%;
-      background: var(--accent);
-      color: var(--accent-text);
-      border: none;
-      font-size: 1.5rem;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      flex: 0 0 auto; width: 64px; height: 64px; border-radius: 50%;
+      background: var(--accent); color: var(--accent-text); border: none;
+      font-size: 1.5rem; cursor: pointer; display: flex;
+      align-items: center; justify-content: center;
     }
     #play.playing { background: var(--playing); color: #fff; }
 
+    /* ── Scrubber ── */
+    #scrubber-bar { border-bottom: 1px solid var(--border); }
+    .scrubber-inner {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.75rem 1rem 0.65rem; max-width: 600px; margin: 0 auto;
+    }
+    .scrubber-label { font-size: 0.85rem; color: var(--text-3); white-space: nowrap; }
+    #scrubber-track { flex: 1; display: flex; gap: 0.4rem; overflow-x: auto; align-items: center; }
+    .scrubber-seg {
+      flex: 0 0 auto; width: 2.85rem; padding: 0.7rem 0.25rem; background: none;
+      border: 1px solid var(--border); border-radius: 0.45rem; color: var(--text-2);
+      font-size: 1rem; font-weight: 600; text-align: center; cursor: pointer;
+      transition: background 0.1s;
+    }
+    .scrubber-seg.current { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+    .scrubber-seg.queued { border-color: var(--accent); animation: scrub-pulse 0.7s ease-in-out infinite; }
+    @keyframes scrub-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    /* ── Dialogs / sheets ── */
     dialog {
-      border: none;
-      border-radius: 1rem 1rem 0 0;
-      padding: 0;
-      margin: 0;
-      background: var(--surface);
-      color: var(--text);
-      min-height: 50vh;
-      min-height: 50dvh;
-      max-height: 85vh;
-      max-height: 85dvh;
-      overflow: hidden;
+      border: none; border-radius: 1rem 1rem 0 0; padding: 0; margin: 0;
+      background: var(--surface); color: var(--text);
+      min-height: 50vh; min-height: 50dvh; max-height: 85vh; max-height: 85dvh; overflow: hidden;
     }
     dialog[open] {
-      position: fixed;
-      inset: auto 0 0 0;
-      margin: 0 auto;
-      width: 100%;
-      max-width: 600px;
-      display: flex;
-      flex-direction: column;
+      position: fixed; inset: auto 0 0 0; margin: 0 auto; width: 100%;
+      max-width: 600px; display: flex; flex-direction: column;
     }
-    dialog::backdrop {
-      background: var(--backdrop);
-    }
+    dialog::backdrop { background: var(--backdrop); }
     .sheet-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0.75rem 1rem;
-      flex-shrink: 0;
-      border-bottom: 1px solid var(--border-faint);
-      background: var(--surface);
-    }
-    .sheet-body {
-      padding: 0.5rem 1rem calc(1.25rem + env(safe-area-inset-bottom));
-      overflow-y: auto;
-      flex: 1;
-      min-height: 0;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 0.75rem 1rem; flex-shrink: 0;
+      border-bottom: 1px solid var(--border-faint); background: var(--surface);
     }
     .sheet-header h2 { margin: 0; font-size: 1.1rem; }
-    .close-btn {
-      background: none;
-      border: none;
-      font-size: 1.6rem;
-      line-height: 1;
-      cursor: pointer;
-      color: var(--text-2);
-      padding: 0.25rem 0.5rem;
-    }
+    .sheet-body { padding: 0.5rem 1rem calc(1.25rem + env(safe-area-inset-bottom)); overflow-y: auto; flex: 1; min-height: 0; }
+    .close-btn { background: none; border: none; font-size: 1.6rem; line-height: 1; cursor: pointer; color: var(--text-2); padding: 0.25rem 0.5rem; }
 
-    .setup-group {
-      padding-top: 1.75rem;
-      margin-top: 1.75rem;
-      border-top: 1px solid var(--border-faint);
-    }
-    .setup-group:first-child {
-      padding-top: 0;
-      margin-top: 0;
-      border-top: none;
-    }
-    .setup-group-title {
-      font-size: 0.72rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--text-3);
-      margin: 0 0 0.4rem;
-    }
-    .setup-group > .field-label:first-of-type { margin-top: 0.4rem; }
+    /* ── Setup sheet sections ── */
+    .setup-group { padding-top: 1.75rem; margin-top: 1.75rem; border-top: 1px solid var(--border-faint); }
+    .setup-group:first-child { padding-top: 0; margin-top: 0; border-top: none; }
+    .setup-group-title { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-3); margin: 0 0 0.4rem; }
+    .field-label { display: block; margin: 1rem 0 0.4rem; font-weight: 600; font-size: 0.9rem; }
+    .hint { font-size: 0.8rem; color: var(--text-3); margin-top: 0.25rem; }
+    .hint code { background: var(--surface-alt); padding: 0 0.25rem; border-radius: 0.25rem; }
 
-    .field-label {
-      display: block;
-      margin: 1rem 0 0.4rem;
-      font-weight: 600;
-      font-size: 0.9rem;
-    }
+    /* ── Form controls ── */
     input[type=text], select {
-      font-size: 1rem;
-      padding: 0.6rem;
-      width: 100%;
-      border-radius: 0.5rem;
-      border: 1px solid var(--border-input);
-      background: var(--surface);
-      color: var(--text);
-      font-family: inherit;
+      font-size: 1rem; padding: 0.6rem; width: 100%;
+      border-radius: 0.5rem; border: 1px solid var(--border-input);
+      background: var(--surface); color: var(--text); font-family: inherit;
     }
     input[type=range] { width: 100%; }
-    .hint {
-      font-size: 0.8rem;
-      color: var(--text-3);
-      margin-top: 0.25rem;
-    }
-    .hint code {
-      background: var(--surface-alt);
-      padding: 0 0.25rem;
-      border-radius: 0.25rem;
-    }
-    .toggle {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-weight: 600;
-      margin-top: 1.25rem;
-    }
+    .toggle { display: flex; align-items: center; gap: 0.5rem; font-weight: 600; margin-top: 1.25rem; }
     .toggle input { width: auto; transform: scale(1.2); }
 
-    .presets {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.4rem;
+    /* ── Option button groups (replaces bars-btn, cycle-btn, style-btn, etc.) ── */
+    .option-group { display: flex; gap: 0.4rem; }
+    .option-btn {
+      flex: 1; padding: 0.6rem; background: var(--surface-alt); border: 1px solid var(--border);
+      color: var(--text); border-radius: 0.5rem; font-size: 0.95rem; font-weight: 600;
+      cursor: pointer; font-family: inherit;
     }
+    .option-btn.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+
+    /* ── Preset buttons ── */
+    .presets { display: flex; flex-wrap: wrap; gap: 0.4rem; }
     .preset-btn {
-      padding: 0.45rem 0.8rem;
-      background: var(--surface-alt);
-      border: 1px solid var(--border);
-      color: var(--text);
-      border-radius: 999px;
-      font-size: 0.85rem;
-      cursor: pointer;
-      font-family: inherit;
+      padding: 0.45rem 0.8rem; background: var(--surface-alt); border: 1px solid var(--border);
+      color: var(--text); border-radius: 999px; font-size: 0.85rem;
+      cursor: pointer; font-family: inherit;
     }
     .preset-btn:active { background: var(--surface-alt-active); }
+    .save-current-btn { width: 100%; border-style: dashed; color: var(--text-2); background: transparent; margin-top: 0.2rem; }
 
-    .bars-options {
-      display: flex;
-      gap: 0.4rem;
-    }
-    .bars-btn, .cycle-btn, .style-btn, .bass-btn, .voicing-btn, .theme-btn {
-      flex: 1;
-      padding: 0.6rem;
-      background: var(--surface-alt);
-      border: 1px solid var(--border);
-      color: var(--text);
-      border-radius: 0.5rem;
-      font-size: 0.95rem;
-      font-weight: 600;
-      cursor: pointer;
-      font-family: inherit;
-    }
-    .bars-btn.active, .cycle-btn.active, .style-btn.active, .bass-btn.active, .voicing-btn.active, .theme-btn.active {
-      background: var(--accent);
-      color: var(--accent-text);
-      border-color: var(--accent);
-    }
-
-    .share-btn {
-      display: block;
-      width: 100%;
-      margin-top: 1.5rem;
-      padding: 0.75rem;
-      background: var(--accent);
-      color: var(--accent-text);
-      border: none;
-      border-radius: 0.5rem;
-      font-size: 0.95rem;
-      font-weight: 600;
-      cursor: pointer;
-      font-family: inherit;
-    }
-    .share-btn:active { background: var(--accent-hover); }
-
-    .user-presets {
-      display: flex;
-      flex-direction: column;
-      gap: 0.4rem;
-      margin-bottom: 0.4rem;
-    }
-    .user-preset-row {
-      display: flex;
-      gap: 0.4rem;
-    }
-    .user-preset-name {
-      flex: 1;
-      text-align: left;
-    }
+    /* ── User preset rows ── */
+    .user-presets { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.4rem; }
+    .user-preset-row { display: flex; gap: 0.4rem; }
+    .user-preset-name { flex: 1; text-align: left; }
     .icon-btn {
-      padding: 0.4rem 0.7rem;
-      background: var(--surface-alt);
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      font-size: 0.95rem;
-      cursor: pointer;
-      font-family: inherit;
-      color: var(--text-2);
-      min-width: 2.4rem;
+      padding: 0.4rem 0.7rem; background: var(--surface-alt); border: 1px solid var(--border);
+      border-radius: 999px; font-size: 0.95rem; cursor: pointer; font-family: inherit;
+      color: var(--text-2); min-width: 2.4rem;
     }
     .icon-btn:active { background: var(--surface-alt-active); color: var(--text); }
+    .icon-btn:disabled { opacity: 0.3; cursor: default; }
     .rename-input {
-      flex: 1;
-      padding: 0.4rem 0.85rem;
-      font-size: 0.9rem;
-      border-radius: 999px;
-      border: 1px solid var(--rename-border);
-      background: var(--surface);
-      color: var(--text);
-      font-family: inherit;
+      flex: 1; padding: 0.4rem 0.85rem; font-size: 0.9rem;
+      border-radius: 999px; border: 1px solid var(--rename-border);
+      background: var(--surface); color: var(--text); font-family: inherit;
     }
-    .save-current-btn {
-      width: 100%;
-      border-style: dashed;
-      color: var(--text-2);
-      background: transparent;
-      margin-top: 0.2rem;
-    }
-    .empty-presets {
-      font-size: 0.8rem;
-      color: var(--text-3);
-      padding: 0.25rem 0;
-    }
+    .empty-presets { font-size: 0.8rem; color: var(--text-3); padding: 0.25rem 0; }
 
-    .tempo-display {
-      font-weight: 400;
-      color: var(--text-2);
-      font-size: 0.85rem;
+    /* ── Section rows ── */
+    .section-rows { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.25rem; }
+    .section-row { display: flex; align-items: center; gap: 0.4rem; }
+    .section-num {
+      flex: 0 0 auto; width: 1.5rem; height: 1.5rem; border-radius: 50%;
+      background: var(--surface-alt); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.72rem; font-weight: 700; color: var(--text-3);
     }
+    .section-num.active-section { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+    .section-prog-input { flex: 1; min-width: 0; padding: 0.45rem 0.6rem; font-size: 0.9rem; }
+    .add-section-btn { width: 100%; border-style: dashed; color: var(--text-2); background: transparent; margin-top: 0.2rem; }
+    .add-section-btn:disabled { opacity: 0.4; cursor: default; }
 
+    /* ── Mix sheet ── */
     .mix-row {
-      display: grid;
-      grid-template-columns: minmax(6rem, 1fr) 2fr auto;
-      gap: 0.75rem;
-      align-items: center;
-      padding: 0.75rem 0;
+      display: grid; grid-template-columns: minmax(6rem, 1fr) 2fr auto;
+      gap: 0.75rem; align-items: center; padding: 0.75rem 0;
       border-bottom: 1px solid var(--border-faint);
     }
     .mix-row:last-child { border-bottom: none; }
-    .mix-row label,
-    .mix-row .mix-label {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-weight: 600;
-    }
+    .mix-row label, .mix-row .mix-label { display: flex; align-items: center; gap: 0.5rem; font-weight: 600; }
     .mix-row input[type=checkbox] { transform: scale(1.2); }
-    .mix-row .val {
-      font-variant-numeric: tabular-nums;
-      color: var(--text-3);
-      font-size: 0.85rem;
-      min-width: 2.5rem;
-      text-align: right;
-    }
+    .mix-row .val { font-variant-numeric: tabular-nums; color: var(--text-3); font-size: 0.85rem; min-width: 2.5rem; text-align: right; }
 
-    .section-rows {
-      display: flex;
-      flex-direction: column;
-      gap: 0.4rem;
-      margin-bottom: 0.25rem;
+    /* ── Share button ── */
+    .share-btn {
+      display: block; width: 100%; margin-top: 1.5rem; padding: 0.75rem;
+      background: var(--accent); color: var(--accent-text); border: none;
+      border-radius: 0.5rem; font-size: 0.95rem; font-weight: 600;
+      cursor: pointer; font-family: inherit;
     }
-    .section-row {
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
-    }
-    .section-num {
-      flex: 0 0 auto;
-      width: 1.5rem;
-      height: 1.5rem;
-      border-radius: 50%;
-      background: var(--surface-alt);
-      border: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.72rem;
-      font-weight: 700;
-      color: var(--text-3);
-    }
-    .section-num.active-section {
-      background: var(--accent);
-      color: var(--accent-text);
-      border-color: var(--accent);
-    }
-    .section-prog-input {
-      flex: 1;
-      min-width: 0;
-      padding: 0.45rem 0.6rem;
-      font-size: 0.9rem;
-    }
-    .icon-btn:disabled { opacity: 0.3; cursor: default; }
-    .add-section-btn {
-      width: 100%;
-      border-style: dashed;
-      color: var(--text-2);
-      background: transparent;
-      margin-top: 0.2rem;
-    }
-    .add-section-btn:disabled { opacity: 0.4; cursor: default; }
+    .share-btn:active { background: var(--accent-hover); }
   </style>
 </head>
 <body>
@@ -662,23 +291,21 @@
     <div id="key-picker" hidden></div>
     <div id="chord-strip"></div>
     <div id="beat-indicator">
-      <span class="beat-dot"></span>
-      <span class="beat-dot"></span>
-      <span class="beat-dot"></span>
-      <span class="beat-dot"></span>
+      <span class="beat-dot"></span><span class="beat-dot"></span>
+      <span class="beat-dot"></span><span class="beat-dot"></span>
     </div>
     <div id="readout">
-      <button type="button" class="readout-btn" id="readout-style">Pop</button>
-      <button type="button" class="readout-btn" id="readout-bass">Simple</button>
-      <button type="button" class="readout-btn" id="readout-voicing">Root</button>
+      <button type="button" class="readout-btn" id="readout-style">Funk</button>
+      <button type="button" class="readout-btn" id="readout-bass">Busy</button>
+      <button type="button" class="readout-btn" id="readout-voicing">Lead/loop</button>
       <div class="readout-row-break"></div>
       <button type="button" class="readout-btn" id="readout-bars">2 bars</button>
       <span class="tempo-group">
         <button type="button" class="readout-btn" id="tempo-toggle"><strong id="readout-tempo">85</strong> BPM</button>
         <div id="tempo-picker" hidden>
-          <button type="button" class="tempo-step" id="tempo-down" aria-label="Decrease tempo">−</button>
+          <button type="button" class="tempo-step" id="tempo-down">−</button>
           <input id="tempo-quick" type="range" min="40" max="220" step="1" />
-          <button type="button" class="tempo-step" id="tempo-up" aria-label="Increase tempo">+</button>
+          <button type="button" class="tempo-step" id="tempo-up">+</button>
         </div>
       </span>
       <button type="button" class="readout-btn" id="readout-cycle">Loop</button>
@@ -695,114 +322,83 @@
       </div>
     </div>
     <div class="action-buttons">
-      <button class="bar-btn" id="open-setup" type="button">
-        <span class="bar-icon">⚙</span>
-        <span>Setup</span>
-      </button>
+      <button class="bar-btn" id="open-setup" type="button"><span class="bar-icon">⚙</span><span>Setup</span></button>
       <button id="play" type="button" aria-label="Play">▶</button>
-      <button class="bar-btn" id="open-mix" type="button">
-        <span class="bar-icon">🎚</span>
-        <span>Mix</span>
-      </button>
+      <button class="bar-btn" id="open-mix" type="button"><span class="bar-icon">🎚</span><span>Mix</span></button>
     </div>
   </nav>
 
   <dialog id="setup-sheet">
     <div class="sheet-header">
       <h2>Setup</h2>
-      <button class="close-btn" type="button" data-close="setup-sheet" aria-label="Close">×</button>
+      <button class="close-btn" type="button" data-close="setup-sheet">×</button>
     </div>
     <div class="sheet-body">
       <section class="setup-group">
         <h3 class="setup-group-title">Playback</h3>
-
-        <label class="field-label" for="key">Key (major)</label>
-        <select id="key">
-          <option>C</option>
-          <option>Db</option>
-          <option>D</option>
-          <option>Eb</option>
-          <option>E</option>
-          <option>F</option>
-          <option>F#</option>
-          <option>G</option>
-          <option>Ab</option>
-          <option>A</option>
-          <option>Bb</option>
-          <option>B</option>
+        <label class="field-label" for="key-select">Key (major)</label>
+        <select id="key-select">
+          <option>C</option><option>Db</option><option>D</option><option>Eb</option>
+          <option>E</option><option>F</option><option>F#</option><option>G</option>
+          <option>Ab</option><option>A</option><option>Bb</option><option>B</option>
         </select>
-
-        <label class="field-label" for="tempo">Tempo <span class="tempo-display"><span id="tempoValue">85</span> BPM</span></label>
-        <input id="tempo" type="range" min="40" max="220" step="1" value="85" />
-
+        <label class="field-label" for="tempo-slider">Tempo <span id="tempo-display" style="font-weight:400;color:var(--text-2);font-size:0.85rem">85 BPM</span></label>
+        <input id="tempo-slider" type="range" min="40" max="220" step="1" value="85" />
         <label class="field-label">Bars per chord</label>
-        <div class="bars-options" id="bars-options">
-          <button type="button" class="bars-btn" data-bars="1">1</button>
-          <button type="button" class="bars-btn active" data-bars="2">2</button>
-          <button type="button" class="bars-btn" data-bars="4">4</button>
+        <div class="option-group" id="bars-group">
+          <button type="button" class="option-btn" data-bars="1">1</button>
+          <button type="button" class="option-btn active" data-bars="2">2</button>
+          <button type="button" class="option-btn" data-bars="4">4</button>
         </div>
-
         <label class="field-label">Loop mode</label>
-        <div class="bars-options" id="cycle-options">
-          <button type="button" class="cycle-btn active" data-cycle="none">Loop</button>
-          <button type="button" class="cycle-btn" data-cycle="4ths">Cycle 4ths</button>
-          <button type="button" class="cycle-btn" data-cycle="5ths">Cycle 5ths</button>
+        <div class="option-group" id="cycle-group">
+          <button type="button" class="option-btn active" data-cycle="none">Loop</button>
+          <button type="button" class="option-btn" data-cycle="4ths">Cycle 4ths</button>
+          <button type="button" class="option-btn" data-cycle="5ths">Cycle 5ths</button>
         </div>
-
         <label class="field-label">Style</label>
-        <div class="bars-options" id="style-options">
-          <button type="button" class="style-btn" data-style="pop">Pop</button>
-          <button type="button" class="style-btn active" data-style="funk">Funk</button>
-          <button type="button" class="style-btn" data-style="ballad">Ballad</button>
-          <button type="button" class="style-btn" data-style="rock">Rock</button>
+        <div class="option-group" id="style-group">
+          <button type="button" class="option-btn" data-style="pop">Pop</button>
+          <button type="button" class="option-btn active" data-style="funk">Funk</button>
+          <button type="button" class="option-btn" data-style="ballad">Ballad</button>
+          <button type="button" class="option-btn" data-style="rock">Rock</button>
         </div>
-
         <label class="field-label">Bass</label>
-        <div class="bars-options" id="bass-options">
-          <button type="button" class="bass-btn" data-bass="simple">Simple</button>
-          <button type="button" class="bass-btn active" data-bass="busy">Busy</button>
+        <div class="option-group" id="bass-group">
+          <button type="button" class="option-btn" data-bass="simple">Simple</button>
+          <button type="button" class="option-btn active" data-bass="busy">Busy</button>
         </div>
-
         <label class="field-label">Voicing</label>
-        <div class="bars-options" id="voicing-options">
-          <button type="button" class="voicing-btn" data-voicing="root">Root</button>
-          <button type="button" class="voicing-btn" data-voicing="voice-lead">Voice-lead</button>
-          <button type="button" class="voicing-btn active" data-voicing="voice-lead-loop">Voice-lead/loop</button>
+        <div class="option-group" id="voicing-group">
+          <button type="button" class="option-btn" data-voicing="root">Root</button>
+          <button type="button" class="option-btn" data-voicing="voice-lead">Voice-lead</button>
+          <button type="button" class="option-btn active" data-voicing="voice-lead-loop">Voice-lead/loop</button>
         </div>
       </section>
 
       <section class="setup-group">
         <h3 class="setup-group-title">Progression</h3>
-
         <label class="field-label">Sections <span id="section-count-label"></span></label>
         <div id="section-rows" class="section-rows"></div>
         <button id="add-section" type="button" class="preset-btn add-section-btn">+ Add section</button>
-
         <label class="field-label" for="arrangement">Arrangement</label>
         <input id="arrangement" type="text" placeholder="empty = all sections in order" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
-        <div class="hint">Section numbers (e.g. <code>1 2 1 3</code>). <code>2:4</code> = section&nbsp;2 four times. Empty = all sections in order.</div>
-
+        <div class="hint">Section numbers (e.g. <code>1 2 1 3</code>). <code>2:4</code> = section&nbsp;2 four times.</div>
         <label class="field-label">My presets</label>
         <div id="user-presets" class="user-presets"></div>
         <button id="save-preset" type="button" class="preset-btn save-current-btn">+ Save current</button>
-
         <label class="field-label">Presets</label>
         <div class="presets" id="presets"></div>
       </section>
 
       <section class="setup-group">
         <h3 class="setup-group-title">App</h3>
-
         <label class="field-label">Theme</label>
-        <div class="bars-options" id="theme-options">
-          <button type="button" class="theme-btn" data-theme="light">Light</button>
-          <button type="button" class="theme-btn" data-theme="dark">Dark</button>
+        <div class="option-group" id="theme-group">
+          <button type="button" class="option-btn" data-theme-opt="light">Light</button>
+          <button type="button" class="option-btn" data-theme-opt="dark">Dark</button>
         </div>
-
-        <label class="toggle">
-          <input id="keepAwake" type="checkbox" /> Keep screen on while playing
-        </label>
-
+        <label class="toggle"><input id="keep-awake" type="checkbox" /> Keep screen on while playing</label>
         <button id="copy-share" class="share-btn" type="button">Copy share link</button>
       </section>
     </div>
@@ -811,445 +407,289 @@
   <dialog id="mix-sheet">
     <div class="sheet-header">
       <h2>Mix</h2>
-      <button class="close-btn" type="button" data-close="mix-sheet" aria-label="Close">×</button>
+      <button class="close-btn" type="button" data-close="mix-sheet">×</button>
     </div>
     <div class="sheet-body">
       <div class="mix-row">
-        <label><input id="chords" type="checkbox" checked /> Chords</label>
-        <input id="chordVol" type="range" min="0" max="100" step="1" value="50" />
-        <span class="val" id="chordVolValue">50</span>
+        <label><input id="chords-on" type="checkbox" checked /> Chords</label>
+        <input id="chord-vol" type="range" min="0" max="100" step="1" value="50" />
+        <span class="val" id="chord-vol-val">50</span>
       </div>
       <div class="mix-row">
-        <label><input id="bass" type="checkbox" checked /> Bass</label>
-        <input id="bassVol" type="range" min="0" max="100" step="1" value="100" />
-        <span class="val" id="bassVolValue">100</span>
+        <label><input id="bass-on" type="checkbox" checked /> Bass</label>
+        <input id="bass-vol" type="range" min="0" max="100" step="1" value="100" />
+        <span class="val" id="bass-vol-val">100</span>
       </div>
       <div class="mix-row">
-        <label><input id="drums" type="checkbox" checked /> Drums</label>
-        <input id="drumVol" type="range" min="0" max="100" step="1" value="100" />
-        <span class="val" id="drumVolValue">100</span>
+        <label><input id="drums-on" type="checkbox" checked /> Drums</label>
+        <input id="drum-vol" type="range" min="0" max="100" step="1" value="100" />
+        <span class="val" id="drum-vol-val">100</span>
       </div>
       <div class="mix-row">
         <span class="mix-label">Master</span>
-        <input id="masterVol" type="range" min="0" max="100" step="1" value="100" />
-        <span class="val" id="masterVolValue">100</span>
+        <input id="master-vol" type="range" min="0" max="100" step="1" value="100" />
+        <span class="val" id="master-vol-val">100</span>
       </div>
     </div>
   </dialog>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
-  <script>
-    const BARS_OPTIONS = [1, 2, 4];
-    const MAX_BARS = 16;
-    const MAX_CHORDS = 24;
+  <script type="module">
+    import {
+      makeProgressionPlayer, serializeUrl,
+      STYLE_OPTIONS, STYLE_LABELS, BASS_OPTIONS, BASS_LABELS,
+      VOICING_OPTIONS, VOICING_PILL_LABELS, CYCLE_OPTIONS, CYCLE_LABELS,
+      BARS_OPTIONS, PRESETS, tokenize, resolvedChordName, resolvePlayOrder,
+      ROMAN, MAX_BARS,
+    } from './progression-core.js';
+    import { makeProgressionAudio } from './progression-audio.js';
 
-    function tokenize(input) {
-      return input.trim().split(/\s+/).filter(Boolean).slice(0, MAX_CHORDS);
+    // ── App instance ────────────────────────────────────────────────────────
+
+    const audio = makeProgressionAudio({ Tone });
+
+    const app = makeProgressionPlayer({
+      audio,
+      persist: (key, value) => localStorage.setItem(key, value),
+      load:    (key) => localStorage.getItem(key),
+      onStateChange:    render,
+      onPlaybackChange: onPlaybackChange,
+      onChordTick:      onChordTick,
+      onBeatTick:       onBeatTick,
+      onBarTick:        onBarTick,
+      onError: (msg) => { statusEl.textContent = msg; },
+    });
+
+    // ── DOM refs ────────────────────────────────────────────────────────────
+
+    const $ = id => document.getElementById(id);
+    const keyDisplayEl    = $('key-display');
+    const keyPickerEl     = $('key-picker');
+    const stripEl         = $('chord-strip');
+    const statusEl        = $('status');
+    const playBtn         = $('play');
+    const keySelectEl     = $('key-select');
+    const tempoSliderEl   = $('tempo-slider');
+    const tempoDisplayEl  = $('tempo-display');
+    const arrangementEl   = $('arrangement');
+    const sectionRowsEl   = $('section-rows');
+    const sectionCountEl  = $('section-count-label');
+    const addSectionEl    = $('add-section');
+    const userPresetsEl   = $('user-presets');
+    const scrubberBar     = $('scrubber-bar');
+    const scrubberTrack   = $('scrubber-track');
+    const readoutTempoEl  = $('readout-tempo');
+    const readoutStyleEl  = $('readout-style');
+    const readoutBassEl   = $('readout-bass');
+    const readoutVoicingEl = $('readout-voicing');
+    const readoutBarsEl   = $('readout-bars');
+    const readoutCycleEl  = $('readout-cycle');
+    const readoutAdvanceEl = $('readout-advance');
+    const chordVolEl      = $('chord-vol');
+    const bassVolEl       = $('bass-vol');
+    const drumVolEl       = $('drum-vol');
+    const masterVolEl     = $('master-vol');
+    const chordsOnEl      = $('chords-on');
+    const bassOnEl        = $('bass-on');
+    const drumsOnEl       = $('drums-on');
+
+    // ── Render ──────────────────────────────────────────────────────────────
+
+    /** @param {import('./progression-core.js').AppState} state */
+    function render(state) {
+      renderChips(state);
+      renderReadout(state);
+      renderSectionRows(state);
+      renderScrubber(state);
+      renderMix(state);
+      syncUrl(state);
     }
 
-    const MAJOR_SCALE = [0, 2, 4, 5, 7, 9, 11];
-    const ROMAN = {
-      I: 0, II: 1, III: 2, IV: 3, V: 4, VI: 5, VII: 6,
-      i: 0, ii: 1, iii: 2, iv: 3, v: 4, vi: 5, vii: 6,
-    };
-    const KEY_MIDI = {
-      C: 60, 'C#': 61, Db: 61, D: 62, 'D#': 63, Eb: 63, E: 64, F: 65,
-      'F#': 66, Gb: 66, G: 67, 'G#': 68, Ab: 68, A: 69, 'A#': 70, Bb: 70, B: 71,
-    };
-    const SHARP_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
-    const FLAT_NAMES  = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
-    const FLAT_KEYS = new Set(['F','Bb','Eb','Ab','Db','Gb']);
-
-    const PITCH_CLASS = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
-    const CHORD_NAME_RE = /^([A-G])([#b]?)(.*)$/;
-    const NOTE_RE = /^([A-G])([#b]?)(-?\d+)$/;
-    const CYCLE_SEMIS = { none: 0, '4ths': 5, '5ths': 7 };
-    const CYCLE_OPTIONS = ['none', '4ths', '5ths'];
-
-    const ROMAN_NUMERALS = ['III','VII','iii','vii','II','IV','VI','ii','iv','vi','I','V','i','v'];
-    const QUALITY_INTERVALS = {
-      major: [0, 4, 7],
-      minor: [0, 3, 7],
-      // 7ths omit the 5th (jazz shell voicing) — bass + chord context imply it,
-      // and dropping it reduces density / brightness up top.
-      maj7:  [0, 4, 11],
-      m7:    [0, 3, 10],
-      dom7:  [0, 4, 10],
-    };
-    const QUALITY_IS_MINOR = {
-      major: false, minor: true,
-      maj7:  false, m7:    true,  dom7: false,
-    };
-    const QUALITY_DISPLAY = {
-      major: '', minor: 'm',
-      maj7: 'maj7', m7: 'm7', dom7: '7',
-    };
-
-    function parseRoman(token) {
-      for (const r of ROMAN_NUMERALS) {
-        if (token.startsWith(r)) return { numeral: r, suffix: token.slice(r.length) };
-      }
-      return null;
-    }
-
-    function suffixToQuality(suffix, isLowerCase) {
-      if (suffix === '')     return isLowerCase ? 'minor' : 'major';
-      if (suffix === 'm')    return 'minor';
-      if (suffix === 'maj7') return 'maj7';
-      if (suffix === 'm7')   return 'm7';
-      if (suffix === '7')    return isLowerCase ? 'm7' : 'dom7';
-      return null;
-    }
-
-    const PRESETS = [
-      { label: 'I V vi IV',         state: { sections: [{ progression: 'I V vi IV' }],                      arrangement: '', cycle: 'none' } },
-      { label: 'I vi ii V',         state: { sections: [{ progression: 'I vi ii V' }],                      arrangement: '', cycle: 'none' } },
-      { label: 'ii V I',            state: { sections: [{ progression: 'ii V I' }],                         arrangement: '', cycle: 'none' } },
-      { label: 'iim7 V7 Imaj7',     state: { sections: [{ progression: 'iim7 V7 Imaj7' }],                  arrangement: '', cycle: 'none' } },
-      { label: 'I IV V',            state: { sections: [{ progression: 'I IV V' }],                         arrangement: '', cycle: 'none' } },
-      { label: 'i iv v',            state: { sections: [{ progression: 'i iv v' }],                         arrangement: '', cycle: 'none' } },
-      { label: '12-bar blues',      state: { sections: [{ progression: 'I:4 IV:2 I:2 V:1 IV:1 I:1 V:1' }], arrangement: '', cycle: 'none' } },
-      { label: 'Cycle 5ths',        state: { sections: [{ progression: 'I' }],                              arrangement: '', cycle: '5ths' } },
-      { label: 'Cycle 4ths',        state: { sections: [{ progression: 'I' }],                              arrangement: '', cycle: '4ths' } },
-      { label: 'Cycle 5ths (min)',  state: { sections: [{ progression: 'i' }],                              arrangement: '', cycle: '5ths' } },
-      { label: 'Cycle 4ths (min)',  state: { sections: [{ progression: 'i' }],                              arrangement: '', cycle: '4ths' } },
-    ];
-
-    function midiToNote(m) {
-      return SHARP_NAMES[m % 12] + (Math.floor(m / 12) - 1);
-    }
-
-    function clampShift(shift) {
-      const s = ((shift % 12) + 12) % 12;
-      return s > 6 ? s - 12 : s;
-    }
-
-    function transposeNote(noteName, semis) {
-      if (!semis) return noteName;
-      const m = NOTE_RE.exec(noteName);
-      if (!m) return noteName;
-      const [, letter, acc, octave] = m;
-      const acci = acc === '#' ? 1 : acc === 'b' ? -1 : 0;
-      const midi = PITCH_CLASS[letter] + acci + (parseInt(octave, 10) + 1) * 12 + semis;
-      return SHARP_NAMES[((midi % 12) + 12) % 12] + (Math.floor(midi / 12) - 1);
-    }
-
-    function cycleUsesFlats(cycle, key) {
-      if (cycle === '4ths') return true;
-      if (cycle === '5ths') return false;
-      return FLAT_KEYS.has(key);
-    }
-
-    function resolvedChordName(numeral, shift, key, cycle) {
-      const useFlats = cycleUsesFlats(cycle, key);
-      const names = useFlats ? FLAT_NAMES : SHARP_NAMES;
-
-      const roman = parseRoman(numeral);
-      if (roman && roman.numeral in ROMAN) {
-        const isLowerCase = roman.numeral === roman.numeral.toLowerCase();
-        const quality = suffixToQuality(roman.suffix, isLowerCase);
-        if (quality) {
-          const degree = ROMAN[roman.numeral];
-          const rootPc = (((KEY_MIDI[key] + MAJOR_SCALE[degree] + shift) % 12) + 12) % 12;
-          return names[rootPc] + QUALITY_DISPLAY[quality];
-        }
-      }
-
-      const m = CHORD_NAME_RE.exec(numeral);
-      if (m) {
-        const [, letter, acc, suffix] = m;
-        if (suffixToQuality(suffix, false) === null) return '?';
-        if (shift === 0) return numeral;
-        const acci = acc === '#' ? 1 : acc === 'b' ? -1 : 0;
-        const pc = (((PITCH_CLASS[letter] + acci + shift) % 12) + 12) % 12;
-        return names[pc] + suffix;
-      }
-      return '?';
-    }
-
-    function makeChord(root, quality, prevUpper = null) {
-      const intervals = QUALITY_INTERVALS[quality];
-      // Drop the whole voicing an octave if the top note sits too high
-      // (the synth gets shrill up there). Tighter ceiling on 7ths since
-      // their top is a 7th up; triads only need clamping at the very top.
-      let r = root;
-      const has7th = quality === 'maj7' || quality === 'm7' || quality === 'dom7';
-      const topMax = has7th ? 72 : 76;
-      while (r + intervals[intervals.length - 1] > topMax && r > 48) {
-        r -= 12;
-      }
-
-      let chordNotes;
-      if (prevUpper) {
-        // Pick the inversion that minimizes position-wise movement from prev.
-        const candidates = [];
-        for (let inv = 0; inv < intervals.length; inv++) {
-          let notes = [];
-          for (let i = 0; i < intervals.length; i++) {
-            const idx = (inv + i) % intervals.length;
-            const oct = (inv + i) >= intervals.length ? 12 : 0;
-            notes.push(r + intervals[idx] + oct);
-          }
-          while (notes[notes.length - 1] > topMax) {
-            notes = notes.map(n => n - 12);
-          }
-          candidates.push(notes);
-        }
-        let best = candidates[0];
-        let bestScore = Infinity;
-        for (const cand of candidates) {
-          let score = 0;
-          for (let i = 0; i < cand.length; i++) score += Math.abs(cand[i] - prevUpper[i]);
-          if (score < bestScore) { bestScore = score; best = cand; }
-        }
-        chordNotes = best;
-      } else {
-        chordNotes = intervals.map(iv => r + iv);
-      }
-
-      const chordBass = r - 12;
-      const synthBass = r - 24;
-      const isMinor = QUALITY_IS_MINOR[quality];
-      return {
-        notes: [chordBass, ...chordNotes].map(midiToNote),
-        upperVoicing: chordNotes,
-        bassRoot: midiToNote(synthBass),
-        bassThird: midiToNote(synthBass + (isMinor ? 3 : 4)),
-        bassFifth: midiToNote(synthBass + 7),
-        isMinor,
-        root,
-        quality,
-      };
-    }
-
-    function buildChord(token, keyMidi) {
-      const roman = parseRoman(token);
-      if (roman && roman.numeral in ROMAN) {
-        const isLowerCase = roman.numeral === roman.numeral.toLowerCase();
-        const quality = suffixToQuality(roman.suffix, isLowerCase);
-        if (quality) {
-          const degree = ROMAN[roman.numeral];
-          return makeChord(keyMidi + MAJOR_SCALE[degree], quality);
-        }
-      }
-      const m = CHORD_NAME_RE.exec(token);
-      if (m) {
-        const [, letter, acc, suffix] = m;
-        const quality = suffixToQuality(suffix, false);
-        if (quality) {
-          const acci = acc === '#' ? 1 : acc === 'b' ? -1 : 0;
-          const pc = ((PITCH_CLASS[letter] + acci) % 12 + 12) % 12;
-          return makeChord(60 + pc, quality);
-        }
-      }
-      throw new Error(`Unknown chord: ${token}`);
-    }
-
-    function parseToken(token, defaultBars) {
-      const [numeral, durStr] = token.split(':');
-      let bars = defaultBars;
-      if (durStr !== undefined) {
-        const n = parseInt(durStr, 10);
-        if (Number.isFinite(n) && n > 0) bars = Math.min(n, MAX_BARS);
-      }
-      return { numeral, bars };
-    }
-
-    function parseProgression(input, key, defaultBars) {
-      const keyMidi = KEY_MIDI[key];
-      const tokens = tokenize(input);
-      if (tokens.length === 0) throw new Error('Progression is empty');
-      return tokens.map(t => {
-        const { numeral, bars } = parseToken(t, defaultBars);
-        return { token: t, numeral, bars, ...buildChord(numeral, keyMidi) };
-      });
-    }
-
-    function parseArrangement(str, count) {
-      const out = [];
-      for (const tok of str.trim().split(/\s+/).filter(Boolean)) {
-        const [refStr, repStr] = tok.split(':');
-        const ref = parseInt(refStr, 10);
-        if (!Number.isInteger(ref) || ref < 1 || ref > count) continue;
-        const reps = repStr === undefined ? 1 : parseInt(repStr, 10);
-        if (!Number.isInteger(reps) || reps < 1) continue;
-        for (let i = 0; i < reps && out.length < 16; i++) out.push(ref);
-      }
-      return out;
-    }
-
-    function buildSongChords(sections, arrangementStr, key, bars) {
-      const count = sections.length;
-      const parsed = parseArrangement(arrangementStr, count);
-      const order = parsed.length ? parsed : Array.from({ length: count }, (_, i) => i + 1);
-      const chords = [];
-      order.forEach((ref, posIndex) => {
-        const sec = sections[ref - 1];
-        const secChords = parseProgression(sec.progression, key, bars);
-        secChords.forEach((c, chipIndex) => {
-          chords.push({ ...c, sectionIndex: ref - 1, posIndex, chipIndex });
-        });
-      });
-      return chords;
-    }
-
-    function buildManualChords(posIndex, key, bars) {
-      const order = resolvePlayOrder();
-      const idx = order.length ? Math.min(posIndex, order.length - 1) : 0;
-      const sectionRef = order.length ? order[idx] : 1;
-      const sec = appSections[sectionRef - 1] || { progression: '' };
-      return parseProgression(sec.progression, key, bars).map((c, chipIndex) => ({
-        ...c, sectionIndex: sectionRef - 1, posIndex: idx, chipIndex,
+    /** @param {import('./progression-core.js').AppState} state */
+    function renderChips(state) {
+      const progStr = state.sections[state.activeSection - 1]?.progression ?? '';
+      const tokens  = tokenize(progStr);
+      buildChipStructure(tokens);
+      updateChipNames(tokens.map(t => {
+        const [numeral] = t.split(':');
+        return resolvedChordName(numeral, 0, state.key, state.cycle);
       }));
+      keyDisplayEl.textContent = `Key of ${state.key}`;
+      keySelectEl.value = state.key;
+      keyPickerEl.querySelectorAll('.key-chip').forEach(b =>
+        b.classList.toggle('active', b.dataset.key === state.key));
     }
 
-    function remapArrangementDelete(str, deletedIdx) {
-      const deleted = deletedIdx + 1;
-      return str.trim().split(/\s+/).filter(Boolean).map(tok => {
-        const [refStr, repStr] = tok.split(':');
-        const ref = parseInt(refStr, 10);
-        if (!Number.isInteger(ref)) return tok;
-        if (ref === deleted) return null;
-        const newRef = ref > deleted ? ref - 1 : ref;
-        return repStr !== undefined ? `${newRef}:${repStr}` : String(newRef);
-      }).filter(Boolean).join(' ');
-    }
-
-    function remapArrangementSwap(str, idxA, idxB) {
-      const a = idxA + 1, b = idxB + 1;
-      return str.trim().split(/\s+/).filter(Boolean).map(tok => {
-        const [refStr, repStr] = tok.split(':');
-        const ref = parseInt(refStr, 10);
-        if (!Number.isInteger(ref)) return tok;
-        let newRef = ref === a ? b : ref === b ? a : ref;
-        return repStr !== undefined ? `${newRef}:${repStr}` : String(newRef);
-      }).join(' ');
-    }
-
-    function renderSectionRows() {
-      const playing = Tone.Transport.state === 'started';
-      const count = appSections.length;
-      const countLabel = $('section-count-label');
-      if (countLabel) countLabel.textContent = `(${count} of 6)`;
-
-      const container = $('section-rows');
-      if (!container) return;
-      container.innerHTML = '';
-
-      appSections.forEach((sec, i) => {
-        const row = document.createElement('div');
-        row.className = 'section-row';
-
-        const num = document.createElement('div');
-        num.className = 'section-num' + (appActiveSection === i + 1 ? ' active-section' : '');
-        num.textContent = i + 1;
-
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.className = 'section-prog-input';
-        input.value = sec.progression;
-        input.autocomplete = 'off';
-        input.autocapitalize = 'off';
-        input.setAttribute('autocorrect', 'off');
-        input.spellcheck = false;
-        input.disabled = playing;
-        input.addEventListener('focus', () => {
-          container.querySelectorAll('.section-num').forEach((n, j) => {
-            n.classList.toggle('active-section', j === i);
-          });
-        });
-        input.addEventListener('input', () => {
-          appSections[i] = { ...appSections[i], progression: input.value };
-          if (appActiveSection === i + 1) renderChips();
-          renderScrubber();
-          syncUrl();
-        });
-
-        const upBtn = document.createElement('button');
-        upBtn.type = 'button';
-        upBtn.className = 'icon-btn';
-        upBtn.textContent = '↑';
-        upBtn.disabled = playing || i === 0;
-        upBtn.addEventListener('click', () => {
-          [appSections[i - 1], appSections[i]] = [appSections[i], appSections[i - 1]];
-          appArrangement = remapArrangementSwap(appArrangement, i - 1, i);
-          if (arrangementEl) arrangementEl.value = appArrangement;
-          if (appActiveSection === i) appActiveSection = i + 1;
-          else if (appActiveSection === i + 1) appActiveSection = i;
-          renderSectionRows();
-          renderChips();
-          syncUrl();
-        });
-
-        const downBtn = document.createElement('button');
-        downBtn.type = 'button';
-        downBtn.className = 'icon-btn';
-        downBtn.textContent = '↓';
-        downBtn.disabled = playing || i === count - 1;
-        downBtn.addEventListener('click', () => {
-          [appSections[i], appSections[i + 1]] = [appSections[i + 1], appSections[i]];
-          appArrangement = remapArrangementSwap(appArrangement, i, i + 1);
-          if (arrangementEl) arrangementEl.value = appArrangement;
-          if (appActiveSection === i + 1) appActiveSection = i + 2;
-          else if (appActiveSection === i + 2) appActiveSection = i + 1;
-          renderSectionRows();
-          renderChips();
-          syncUrl();
-        });
-
-        const delBtn = document.createElement('button');
-        delBtn.type = 'button';
-        delBtn.className = 'icon-btn';
-        delBtn.textContent = '×';
-        delBtn.disabled = playing || count <= 1;
-        delBtn.addEventListener('click', () => {
-          appArrangement = remapArrangementDelete(appArrangement, i);
-          appSections.splice(i, 1);
-          if (arrangementEl) arrangementEl.value = appArrangement;
-          if (appActiveSection > appSections.length) appActiveSection = appSections.length;
-          renderSectionRows();
-          renderScrubber();
-          renderChips();
-          syncUrl();
-        });
-
-        row.append(num, input, upBtn, downBtn, delBtn);
-        container.appendChild(row);
+    /**
+     * Builds chip DOM structure from token strings — no name resolution.
+     * @param {string[]} tokens
+     */
+    function buildChipStructure(tokens) {
+      stripEl.innerHTML = '';
+      tokens.forEach(token => {
+        const [numeral, durStr] = token.split(':');
+        const durDisplay   = durStr ? String(Math.min(parseInt(durStr, 10), MAX_BARS)) : '';
+        const displayToken = durDisplay ? `${numeral}:${durDisplay}` : numeral;
+        const isAbsolute   = !(numeral in ROMAN) && /^[A-G]/.test(numeral);
+        const chip = document.createElement('div');
+        chip.className = 'chip';
+        if (!isAbsolute) {
+          chip.appendChild(Object.assign(document.createElement('div'),
+            { className: 'numeral', textContent: displayToken }));
+        }
+        chip.appendChild(Object.assign(document.createElement('div'), { className: 'name' }));
+        chip.appendChild(Object.assign(document.createElement('div'), { className: 'bar-progress' }));
+        stripEl.appendChild(chip);
       });
-
-      const addBtn = $('add-section');
-      if (addBtn) addBtn.disabled = playing || count >= 6;
-
-      if (arrangementEl) arrangementEl.disabled = playing;
-      renderScrubber();
     }
 
-    function resolvePlayOrder() {
-      const count = appSections.length;
-      if (count < 2) return [];
-      const validRefs = appSections
-        .map((s, i) => tokenize(s.progression).length > 0 ? i + 1 : null)
-        .filter(Boolean);
-      if (validRefs.length < 2) return [];
-      const parsed = parseArrangement(appArrangement, count).filter(ref => validRefs.includes(ref));
-      return parsed.length ? parsed : validRefs;
+    /** Updates displayed chord name text without rebuilding chip DOM. */
+    function updateChipNames(names) {
+      stripEl.querySelectorAll('.chip .name').forEach((el, i) => {
+        if (names[i] !== undefined) el.textContent = names[i];
+      });
     }
 
-    function renderScrubber() {
-      const order = resolvePlayOrder();
-      const scrubberBar = $('scrubber-bar');
-      const track = $('scrubber-track');
-      const advanceBtn = $('readout-advance');
-      if (!scrubberBar || !track) return;
+    /** @param {number} index — pass -1 to clear all */
+    function setActiveChip(index) {
+      stripEl.querySelectorAll('.chip').forEach((c, i) => c.classList.toggle('active', i === index));
+    }
+
+    function clearActiveChip() { setActiveChip(-1); }
+
+    // ── Beat / bar progress helpers ─────────────────────────────────────────
+
+    const beatDots = document.querySelectorAll('.beat-dot');
+
+    function onBeatTick(beat) {
+      if (!audio.isPlaying()) return;
+      beatDots.forEach((d, i) => d.classList.toggle('active', i === beat));
+    }
+
+    function clearBeats() { beatDots.forEach(d => d.classList.remove('active')); }
+
+    function activeBarProgress() {
+      const active = stripEl.querySelector('.chip.active');
+      return active?.querySelector('.bar-progress') ?? null;
+    }
+
+    function renderBarDots(count, activeBar) {
+      clearBars();
+      if (count <= 1) return;
+      const bp = activeBarProgress();
+      if (!bp) return;
+      for (let i = 0; i < count; i++) {
+        bp.appendChild(Object.assign(document.createElement('span'),
+          { className: 'bar-dot' + (i === activeBar ? ' active' : '') }));
+      }
+    }
+
+    function onBarTick(bar) {
+      if (!audio.isPlaying()) return;
+      const bp = activeBarProgress();
+      if (!bp) return;
+      Array.from(bp.children).forEach((d, i) => d.classList.toggle('active', i === bar));
+    }
+
+    function clearBars() {
+      stripEl.querySelectorAll('.bar-progress').forEach(bp => { bp.innerHTML = ''; });
+    }
+
+    // ── Scrubber current position ───────────────────────────────────────────
+
+    function setScrubberCurrent(posIndex) {
+      scrubberTrack.querySelectorAll('.scrubber-seg').forEach(seg => {
+        const sp = parseInt(seg.dataset.posIndex, 10);
+        seg.classList.toggle('current', sp === posIndex);
+        seg.classList.toggle('queued', sp === _pendingJump && sp !== posIndex);
+      });
+    }
+
+    // ── Audio timing callbacks (fast path — no onStateChange) ───────────────
+
+    /** @param {import('./progression-audio.js').ChordTickEvent} ev */
+    function onChordTick({ chipIndex, posIndex, sectionIndex, sectionChanged,
+                           resolvedChipNames, resolvedKey, bars, sectionTokens }) {
+      if (sectionChanged && sectionTokens) {
+        buildChipStructure(sectionTokens);
+      }
+      setActiveChip(chipIndex);
+      updateChipNames(resolvedChipNames);
+      keyDisplayEl.textContent = `Key of ${resolvedKey}`;
+      setScrubberCurrent(posIndex);
+      renderBarDots(bars, 0);
+    }
+
+    /** @param {import('./progression-core.js').AppState} state */
+    function renderReadout(state) {
+      readoutTempoEl.textContent  = state.tempo;
+      tempoDisplayEl.textContent  = `${state.tempo} BPM`;
+      readoutStyleEl.textContent  = STYLE_LABELS[state.style]   ?? state.style;
+      readoutBassEl.textContent   = BASS_LABELS[state.bass]      ?? state.bass;
+      readoutVoicingEl.textContent = VOICING_PILL_LABELS[state.voicing] ?? state.voicing;
+      readoutBarsEl.textContent   = `${state.bars} ${state.bars === 1 ? 'bar' : 'bars'}`;
+      readoutCycleEl.textContent  = CYCLE_LABELS[state.cycle]   ?? state.cycle;
+      readoutAdvanceEl.textContent = state.advance === 'manual' ? 'Manual' : 'Auto';
+
+      if (document.activeElement !== tempoSliderEl) tempoSliderEl.value = String(state.tempo);
+
+      document.querySelectorAll('[data-bars]').forEach(btn =>
+        btn.classList.toggle('active', parseInt(btn.dataset.bars, 10) === state.bars));
+      document.querySelectorAll('[data-cycle]').forEach(btn =>
+        btn.classList.toggle('active', btn.dataset.cycle === state.cycle));
+      document.querySelectorAll('[data-style]').forEach(btn =>
+        btn.classList.toggle('active', btn.dataset.style === state.style));
+      document.querySelectorAll('[data-bass]').forEach(btn =>
+        btn.classList.toggle('active', btn.dataset.bass === state.bass));
+      document.querySelectorAll('[data-voicing]').forEach(btn =>
+        btn.classList.toggle('active', btn.dataset.voicing === state.voicing));
+    }
+
+    /** @param {import('./progression-core.js').AppState} state */
+    function renderSectionRows(state) {
+      const { sections, activeSection } = state;
+      const playing = audio.isPlaying();
+      const existing = sectionRowsEl.querySelectorAll('.section-row');
+
+      if (existing.length !== sections.length) {
+        sectionRowsEl.innerHTML = '';
+        sections.forEach((_, i) => sectionRowsEl.appendChild(makeSectionRow(i, state)));
+      } else {
+        existing.forEach((row, i) => {
+          const numEl = row.querySelector('.section-num');
+          numEl.className = 'section-num' + (activeSection === i + 1 ? ' active-section' : '');
+          numEl.textContent = i + 1;
+          const inp = row.querySelector('.section-prog-input');
+          if (document.activeElement !== inp) inp.value = sections[i].progression;
+          inp.disabled = playing;
+          const [upBtn, downBtn, delBtn] = row.querySelectorAll('.icon-btn');
+          upBtn.disabled  = playing || i === 0;
+          downBtn.disabled = playing || i === sections.length - 1;
+          delBtn.disabled = playing || sections.length <= 1;
+        });
+      }
+
+      addSectionEl.disabled = playing || sections.length >= 6;
+      if (document.activeElement !== arrangementEl) arrangementEl.value = state.arrangement;
+      arrangementEl.disabled = playing;
+      sectionCountEl.textContent = `(${sections.length} of 6)`;
+    }
+
+    // Host-side pending jump tracker (for scrubber queued animation)
+    let _pendingJump = null;
+
+    /** @param {import('./progression-core.js').AppState} state */
+    function renderScrubber(state) {
+      const order = resolvePlayOrder(state.sections, state.arrangement);
       if (order.length < 2) {
         scrubberBar.hidden = true;
-        if (advanceBtn) advanceBtn.hidden = true;
+        readoutAdvanceEl.hidden = true;
         syncBodyPadding();
         return;
       }
       scrubberBar.hidden = false;
-      if (advanceBtn) advanceBtn.hidden = false;
-      track.innerHTML = '';
+      readoutAdvanceEl.hidden = false;
+      scrubberTrack.innerHTML = '';
       order.forEach((sectionRef, posIndex) => {
         const seg = document.createElement('button');
         seg.type = 'button';
@@ -1257,1205 +697,355 @@
         seg.textContent = sectionRef;
         seg.dataset.posIndex = posIndex;
         seg.addEventListener('click', () => handleScrubberTap(posIndex));
-        track.appendChild(seg);
+        scrubberTrack.appendChild(seg);
       });
       syncBodyPadding();
     }
 
-    function setScrubberCurrent(posIndex) {
-      document.querySelectorAll('.scrubber-seg').forEach(seg => {
-        const sp = parseInt(seg.dataset.posIndex, 10);
-        seg.classList.toggle('current', sp === posIndex);
-        seg.classList.toggle('queued', sp !== posIndex && pendingJump === sp);
-      });
-    }
-
     function handleScrubberTap(posIndex) {
-      if (Tone.Transport.state !== 'started') {
-        const order = resolvePlayOrder();
-        if (order.length) {
-          appActiveSection = order[Math.min(posIndex, order.length - 1)] ?? appActiveSection;
-          renderChips();
-        }
+      if (!audio.isPlaying()) {
+        const order = resolvePlayOrder(app.getState().sections, app.getState().arrangement);
+        app.setState({ activeSection: order[Math.min(posIndex, order.length - 1)] ?? 1 });
         return;
       }
-      if (pendingJump === posIndex) {
-        pendingJump = null;
-        document.querySelectorAll('.scrubber-seg').forEach(s => s.classList.remove('queued'));
+      // Cancel if tapping the queued segment again
+      if (_pendingJump === posIndex) {
+        _pendingJump = null;
+        app.cancelJump();
+        scrubberTrack.querySelectorAll('.scrubber-seg').forEach(s => s.classList.remove('queued'));
         return;
       }
-      pendingJump = posIndex;
-      document.querySelectorAll('.scrubber-seg').forEach(seg => {
+      _pendingJump = posIndex;
+      app.queueJump(posIndex);
+      scrubberTrack.querySelectorAll('.scrubber-seg').forEach(seg => {
         const sp = parseInt(seg.dataset.posIndex, 10);
         seg.classList.toggle('queued', sp === posIndex && !seg.classList.contains('current'));
       });
     }
 
-    function syncBodyPadding() {
-      const bar = document.getElementById('action-bar');
-      if (bar) document.body.style.paddingBottom = bar.offsetHeight + 'px';
+    /** @param {import('./progression-core.js').AppState} state */
+    function renderMix(state) {
+      const ae = document.activeElement;
+      if (ae !== chordVolEl)  chordVolEl.value  = String(state.chordVol);
+      if (ae !== bassVolEl)   bassVolEl.value    = String(state.bassVol);
+      if (ae !== drumVolEl)   drumVolEl.value    = String(state.drumVol);
+      if (ae !== masterVolEl) masterVolEl.value  = String(state.masterVol);
+      $('chord-vol-val').textContent  = state.chordVol;
+      $('bass-vol-val').textContent   = state.bassVol;
+      $('drum-vol-val').textContent   = state.drumVol;
+      $('master-vol-val').textContent = state.masterVol;
+      chordsOnEl.checked = state.chordsOn;
+      bassOnEl.checked   = state.bassOn;
+      drumsOnEl.checked  = state.drumsOn;
     }
 
-    // Style patterns are 16-step (one bar of 16th notes).
-    // Drums: 1 = hit, 0 = rest.
-    // Bass: 'R' = root, '5' = fifth, 0 = rest.
-    const STYLES = {
-      pop: {
-        kick:  [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
-        snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
-        hat:   [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
-        bass: {
-          simple: {
-            major: ['R',0,0,0, 'R',0,0,0, '5',0,0,0, 'R',0,0,0],
-            minor: ['R',0,0,0, 'R',0,0,0, 'R',0,0,0, 'R',0,0,0],
-          },
-          busy: {
-            major: ['R',0,0,0, '5',0,0,0, '3',0,0,0, '5',0,'R',0],
-            minor: ['R',0,0,0, '5',0,0,0, '3',0,0,0, '5',0,'R',0],
-          },
-        },
-      },
-      funk: {
-        kick:  [1,0,0,0, 0,0,1,0, 0,0,1,0, 0,0,1,0],
-        snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
-        hat:   [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
-        bass: {
-          simple: {
-            major: ['R',0,0,0, 0,0,'R',0, 0,0,'R',0, 0,0,'5',0],
-            minor: ['R',0,0,0, 0,0,'R',0, 0,0,'R',0, 0,0,'R',0],
-          },
-          busy: {
-            major: ['R',0,0,'R', 0,0,'R',0, 0,'3',0,'R', 0,'3',0,'5'],
-            minor: ['R',0,0,'R', 0,0,'R',0, 0,'3',0,'R', 0,'3',0,'R'],
-          },
-        },
-      },
-      ballad: {
-        kick:  [1,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
-        snare: [0,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
-        hat:   [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0],
-        bass: {
-          simple: {
-            major: ['R',0,0,0, 0,0,0,0, '5',0,0,0, 0,0,0,0],
-            minor: ['R',0,0,0, 0,0,0,0, 'R',0,0,0, 0,0,0,0],
-          },
-          busy: {
-            major: ['R',0,0,0, 0,0,0,0, '3',0,'5',0, '3',0,'R',0],
-            minor: ['R',0,0,0, 0,0,0,0, '3',0,'5',0, '3',0,'R',0],
-          },
-        },
-      },
-      rock: {
-        kick:  [1,0,0,0, 0,0,1,0, 1,0,0,0, 0,0,0,0],
-        snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
-        hat:   [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
-        bass: {
-          simple: {
-            major: ['R',0,0,0, 0,0,'R',0, 'R',0,0,0, '5',0,0,0],
-            minor: ['R',0,0,0, 0,0,'R',0, 'R',0,0,0, 'R',0,0,0],
-          },
-          busy: {
-            major: ['R',0,'R',0, '3',0,'R',0, 'R',0,'R',0, '5',0,'3',0],
-            minor: ['R',0,'R',0, '3',0,'R',0, 'R',0,'R',0, '5',0,'3',0],
-          },
-        },
-      },
-    };
-    const STYLE_OPTIONS = Object.keys(STYLES);
-    const STYLE_LABELS = { pop: 'Pop', funk: 'Funk', ballad: 'Ballad', rock: 'Rock' };
-    const BASS_OPTIONS = ['simple', 'busy'];
-    const BASS_LABELS = { simple: 'Simple', busy: 'Busy' };
-    const VOICING_OPTIONS = ['root', 'voice-lead', 'voice-lead-loop'];
-    const VOICING_PILL_LABELS = { 'root': 'Root', 'voice-lead': 'Lead', 'voice-lead-loop': 'Lead/loop' };
-    const CYCLE_LABELS = { none: 'Loop', '4ths': 'Cycle 4ths', '5ths': 'Cycle 5ths' };
+    /** @param {number} index @param {import('./progression-core.js').AppState} state */
+    function makeSectionRow(index, state) {
+      const { sections, activeSection } = state;
+      const playing = audio.isPlaying();
+      const row = document.createElement('div');
+      row.className = 'section-row';
 
-    let synth = null, reverb = null, part = null;
-    let kick = null, snare = null, hat = null;
-    let kickSeq = null, snareSeq = null, hatSeq = null;
-    let bass = null, bassSeq = null;
-    let beatSeq = null;
-    let chordChannel = null, bassChannel = null, drumChannel = null, masterChannel = null;
+      const num = document.createElement('div');
+      num.className = 'section-num' + (activeSection === index + 1 ? ' active-section' : '');
+      num.textContent = index + 1;
 
-    let appSections = [{ progression: 'I vi ii V' }];
-    let appArrangement = '';
-    let appActiveSection = 1;
-    let appAdvance = 'auto';
-    let pendingJump = null;
-    let appCurrentPosIndex = 0;
-    let manualLap = 0;
-
-    function sliderToDb(v) {
-      const n = parseInt(v, 10);
-      if (!Number.isFinite(n) || n <= 0) return -Infinity;
-      return Tone.gainToDb(Math.min(100, n) / 100);
-    }
-
-    function initChannels() {
-      if (chordChannel) return;
-      masterChannel = new Tone.Channel().toDestination();
-      chordChannel = new Tone.Channel().connect(masterChannel);
-      bassChannel = new Tone.Channel().connect(masterChannel);
-      drumChannel = new Tone.Channel().connect(masterChannel);
-      chordChannel.volume.value = sliderToDb(chordVolEl.value);
-      bassChannel.volume.value = sliderToDb(bassVolEl.value);
-      drumChannel.volume.value = sliderToDb(drumVolEl.value);
-      masterChannel.volume.value = sliderToDb(masterVolEl.value);
-      chordChannel.mute = !chordsEl.checked;
-    }
-
-    // Tone occasionally throws "Value must be within [0, Infinity]" from
-    // floating-point noise during rapid teardown/rebuild — both from
-    // trigger callbacks AND from part/sequence stop/dispose. Swallow these
-    // so cleanup runs to completion and playback survives.
-    function safeTrigger(fn) {
-      try { fn(); } catch (e) { console.warn('Tone trigger suppressed:', e); }
-    }
-    function safeCall(obj, method) {
-      if (!obj) return;
-      try { obj[method](); } catch (e) { console.warn(`Tone ${method} suppressed:`, e); }
-    }
-
-    function teardown() {
-      safeCall(part, 'stop');
-      safeCall(part, 'dispose');
-      part = null;
-      for (const s of [kickSeq, snareSeq, hatSeq, bassSeq, beatSeq]) {
-        safeCall(s, 'stop');
-        safeCall(s, 'dispose');
-      }
-      kickSeq = snareSeq = hatSeq = bassSeq = beatSeq = null;
-      for (const v of [synth, kick, snare, hat, bass, reverb]) safeCall(v, 'dispose');
-      synth = kick = snare = hat = bass = reverb = null;
-      safeTrigger(() => Tone.Draw.cancel(0));
-      safeTrigger(() => Tone.Transport.cancel());
-    }
-
-    function buildDrums(style) {
-      kick = new Tone.MembraneSynth({
-        pitchDecay: 0.05,
-        octaves: 6,
-        envelope: { attack: 0.005, decay: 0.4, sustain: 0, release: 1.4 },
-      }).connect(drumChannel);
-      kick.volume.value = -4;
-
-      snare = new Tone.NoiseSynth({
-        noise: { type: 'white' },
-        envelope: { attack: 0.005, decay: 0.15, sustain: 0 },
-      }).connect(drumChannel);
-      snare.volume.value = -10;
-
-      hat = new Tone.MetalSynth({
-        frequency: 250,
-        envelope: { attack: 0.002, decay: 0.05, release: 0.01 },
-        harmonicity: 5.1,
-        modulationIndex: 32,
-        resonance: 4000,
-        octaves: 1.5,
-      }).connect(drumChannel);
-      hat.volume.value = -28;
-
-      kickSeq = new Tone.Sequence((time, hit) => {
-        if (hit && kick) safeTrigger(() => kick.triggerAttackRelease('C1', '8n', time));
-      }, style.kick, '16n').start(0);
-
-      snareSeq = new Tone.Sequence((time, hit) => {
-        if (hit && snare) safeTrigger(() => snare.triggerAttackRelease('16n', time));
-      }, style.snare, '16n').start(0);
-
-      hatSeq = new Tone.Sequence((time, hit) => {
-        if (hit && hat) safeTrigger(() => hat.triggerAttackRelease('32n', time));
-      }, style.hat, '16n').start(0);
-
-      applyDrumMute();
-    }
-
-    function applyDrumMute() {
-      const muted = !drumsEl.checked;
-      for (const s of [kickSeq, snareSeq, hatSeq]) if (s) s.mute = muted;
-    }
-    function applyBassMute() {
-      if (bassSeq) bassSeq.mute = !bassEl.checked;
-    }
-
-    function buildBass(chords, cycle, style, bassVariant) {
-      bass = new Tone.MonoSynth({
-        oscillator: { type: 'sawtooth' },
-        filter: { Q: 2, type: 'lowpass' },
-        envelope: { attack: 0.01, decay: 0.25, sustain: 0.4, release: 0.3 },
-        filterEnvelope: { attack: 0.01, decay: 0.2, sustain: 0.4, release: 0.3, baseFrequency: 80, octaves: 2.5 },
-      }).connect(bassChannel);
-      bass.volume.value = -6;
-
-      const bassPatterns = style.bass[bassVariant] || style.bass.simple;
-      const semis = CYCLE_SEMIS[cycle] || 0;
-      const laps = semis ? 12 : 1;
-
-      const steps = [];
-      for (let lap = 0; lap < laps; lap++) {
-        const shift = clampShift(semis * lap);
-        for (const c of chords) {
-          const voiced = shift ? makeChord(c.root + shift, c.quality) : c;
-          const pattern = voiced.isMinor ? bassPatterns.minor : bassPatterns.major;
-          const totalSteps = c.bars * 16;
-          for (let s = 0; s < totalSteps; s++) {
-            const step = pattern[s % 16];
-            if (step === 'R')      steps.push(voiced.bassRoot);
-            else if (step === '3') steps.push(voiced.bassThird);
-            else if (step === '5') steps.push(voiced.bassFifth);
-            else                   steps.push(null);
-          }
-        }
-      }
-
-      bassSeq = new Tone.Sequence((time, note) => {
-        if (note && bass) safeTrigger(() => bass.triggerAttackRelease(note, '8n', time));
-      }, steps, '16n').start(0);
-
-      applyBassMute();
-    }
-
-    function buildPart(chords, cycle, style, bassVariant, voicing) {
-      teardown();
-
-      reverb = new Tone.Reverb({ decay: 2.5, wet: 0.25 }).connect(chordChannel);
-      synth = new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'triangle' },
-        envelope: { attack: 0.05, decay: 0.3, sustain: 0.6, release: 1.5 },
-      }).connect(reverb);
-      synth.volume.value = -13;
-
-      const semis = CYCLE_SEMIS[cycle] || 0;
-      const laps = semis ? 12 : 1;
-      const smooth = voicing === 'voice-lead' || voicing === 'voice-lead-loop';
-      const resetEachLap = voicing === 'voice-lead-loop';
-
-      const songBars = chords.reduce((sum, c) => sum + c.bars, 0);
-      const posOffsets = {};
-      let offsetAcc = 0;
-      for (const c of chords) {
-        if (!(c.posIndex in posOffsets)) posOffsets[c.posIndex] = offsetAcc;
-        offsetAcc += c.bars;
-      }
-
-      let cumBars = 0;
-      const events = [];
-      let prevUpper = null;
-      for (let lap = 0; lap < laps; lap++) {
-        if (resetEachLap) prevUpper = null;
-        const rawShift = semis * lap;
-        const audioShift = clampShift(rawShift);
-        chords.forEach((c) => {
-          const needsRebuild = audioShift || smooth;
-          const voiced = needsRebuild
-            ? makeChord(c.root + audioShift, c.quality, smooth ? prevUpper : null)
-            : c;
-          if (smooth) prevUpper = voiced.upperVoicing;
-          events.push({
-            time: `${cumBars}m`,
-            bars: c.bars,
-            notes: voiced.notes,
-            token: c.token,
-            chipIndex: c.chipIndex,
-            sectionIndex: c.sectionIndex,
-            posIndex: c.posIndex,
-            shift: rawShift,
-            total: chords.length,
-          });
-          cumBars += c.bars;
-        });
-      }
-
-      let lastPos = -1;
-      part = new Tone.Part((time, ev) => {
-        // Manual: intercept every section boundary — either loop back or advance
-        if (appAdvance === 'manual' && ev.posIndex !== appCurrentPosIndex) {
-          if (pendingJump !== null) {
-            const target = pendingJump;
-            pendingJump = null;
-            const order = resolvePlayOrder();
-            appCurrentPosIndex = Math.min(target, order.length - 1);
-            appActiveSection = order[appCurrentPosIndex] ?? appActiveSection;
-            manualLap = 0;
-            Tone.Transport.position = `${Math.round(posOffsets[appCurrentPosIndex] ?? 0)}:0:0`;
-          } else {
-            // Loop back to next lap of same section — explicit counter avoids ticks rounding errors
-            manualLap++;
-            Tone.Transport.position = `${Math.round(manualLap * songBars + (posOffsets[appCurrentPosIndex] ?? 0))}:0:0`;
-          }
-          return;
-        }
-        // Auto: jump on demand
-        if (pendingJump !== null && appAdvance !== 'manual') {
-          const target = pendingJump;
-          pendingJump = null;
-          const ticksPerBar = Tone.Transport.PPQ * 4;
-          const currentBar = Tone.Transport.ticks / ticksPerBar;
-          const lapStart = Math.floor(currentBar / songBars) * songBars;
-          Tone.Transport.position = `${Math.round(lapStart + (posOffsets[target] ?? 0))}:0:0`;
-          return;
-        }
-        if (synth) safeTrigger(() => synth.triggerAttackRelease(ev.notes, `${ev.bars}m`, time));
-        Tone.Draw.schedule(() => {
-          if (ev.posIndex !== lastPos) {
-            appActiveSection = ev.sectionIndex + 1;
-            renderChips();
-            lastPos = ev.posIndex;
-          }
-          setActiveChip(ev.chipIndex);
-          updateChipsForShift(ev.shift);
-          renderBarDots(ev.bars, 0);
-          setScrubberCurrent(ev.posIndex);
-        }, time);
-        const measureSec = Tone.Time('1m').toSeconds();
-        for (let b = 1; b < ev.bars; b++) {
-          Tone.Draw.schedule(() => setActiveBar(b), time + measureSec * b);
-        }
-      }, events);
-
-      part.loop = true;
-      part.loopEnd = `${cumBars}m`;
-      part.start(0);
-
-      beatSeq = new Tone.Sequence((time, beat) => {
-        Tone.Draw.schedule(() => setActiveBeat(beat), time);
-      }, [0, 1, 2, 3], '4n').start(0);
-
-      buildDrums(style);
-      buildBass(chords, cycle, style, bassVariant);
-    }
-
-    const beatDots = document.querySelectorAll('.beat-dot');
-    function setActiveBeat(b) {
-      if (Tone.Transport.state !== 'started') return;
-      beatDots.forEach((d, i) => d.classList.toggle('active', i === b));
-    }
-    function clearBeats() {
-      beatDots.forEach(d => d.classList.remove('active'));
-    }
-
-    function activeBarProgress() {
-      const active = stripEl.querySelector('.chip.active');
-      return active ? active.querySelector('.bar-progress') : null;
-    }
-    function renderBarDots(count, active) {
-      clearBars();
-      if (count <= 1) return;
-      const bp = activeBarProgress();
-      if (!bp) return;
-      for (let i = 0; i < count; i++) {
-        const d = document.createElement('span');
-        d.className = 'bar-dot';
-        if (i === active) d.classList.add('active');
-        bp.appendChild(d);
-      }
-    }
-    function setActiveBar(b) {
-      if (Tone.Transport.state !== 'started') return;
-      const bp = activeBarProgress();
-      if (!bp) return;
-      Array.from(bp.children).forEach((d, i) => {
-        d.classList.toggle('active', i === b);
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.className = 'section-prog-input';
+      inp.value = sections[index].progression;
+      inp.autocomplete = 'off';
+      inp.autocapitalize = 'off';
+      inp.setAttribute('autocorrect', 'off');
+      inp.spellcheck = false;
+      inp.disabled = playing;
+      inp.addEventListener('focus', () => {
+        sectionRowsEl.querySelectorAll('.section-num').forEach((n, j) =>
+          n.classList.toggle('active-section', j === index));
       });
-    }
-    function clearBars() {
-      stripEl.querySelectorAll('.bar-progress').forEach(bp => bp.innerHTML = '');
-    }
+      inp.addEventListener('input', () => app.updateSection(index, inp.value));
 
-    const $ = id => document.getElementById(id);
-    const playBtn      = $('play');
-    const keyEl        = $('key');
-    const tempoEl      = $('tempo');
-    const arrangementEl = $('arrangement');
-    const chordsEl     = $('chords');
-    const drumsEl      = $('drums');
-    const bassEl       = $('bass');
-    const statusEl     = $('status');
-    const chordVolEl   = $('chordVol');
-    const bassVolEl    = $('bassVol');
-    const drumVolEl    = $('drumVol');
-    const masterVolEl  = $('masterVol');
-    const keepAwakeEl  = $('keepAwake');
-    const stripEl      = $('chord-strip');
-    const tempoValueEl = $('tempoValue');
-    const readoutKey   = $('key-display');
-    const readoutTempo = $('readout-tempo');
-    const readoutStyle   = $('readout-style');
-    const readoutBass    = $('readout-bass');
-    const readoutVoicing = $('readout-voicing');
-    const readoutBars    = $('readout-bars');
-    const readoutCycle   = $('readout-cycle');
-    const readoutAdvance = $('readout-advance');
-    const barsButtons  = document.querySelectorAll('.bars-btn');
-    const cycleButtons = document.querySelectorAll('.cycle-btn');
-    const styleButtons = document.querySelectorAll('.style-btn');
-    const bassButtons  = document.querySelectorAll('.bass-btn');
-    const voicingButtons = document.querySelectorAll('.voicing-btn');
+      const upBtn = Object.assign(document.createElement('button'), { type: 'button', className: 'icon-btn', textContent: '↑', disabled: playing || index === 0 });
+      upBtn.addEventListener('click', () => app.moveSection(index, 'up'));
 
-    function updateReadout() {
-      readoutTempo.textContent = clampedTempo();
-      readoutStyle.textContent = STYLE_LABELS[getStyle()] || getStyle();
-      readoutBass.textContent = BASS_LABELS[getBassVariant()] || getBassVariant();
-      readoutVoicing.textContent = VOICING_PILL_LABELS[getVoicing()] || getVoicing();
-      const bars = getDefaultBars();
-      readoutBars.textContent = bars + (bars === 1 ? ' bar' : ' bars');
-      readoutCycle.textContent = CYCLE_LABELS[getCycleMode()] || getCycleMode();
-      if (readoutAdvance) readoutAdvance.textContent = appAdvance === 'manual' ? 'Manual' : 'Auto';
+      const downBtn = Object.assign(document.createElement('button'), { type: 'button', className: 'icon-btn', textContent: '↓', disabled: playing || index === sections.length - 1 });
+      downBtn.addEventListener('click', () => app.moveSection(index, 'down'));
+
+      const delBtn = Object.assign(document.createElement('button'), { type: 'button', className: 'icon-btn', textContent: '×', disabled: playing || sections.length <= 1 });
+      delBtn.addEventListener('click', () => app.removeSection(index));
+
+      row.append(num, inp, upBtn, downBtn, delBtn);
+      return row;
     }
 
-    function getDefaultBars() {
-      const active = document.querySelector('.bars-btn.active');
-      return active ? parseInt(active.dataset.bars, 10) : 2;
-    }
-
-    function getCycleMode() {
-      const active = document.querySelector('.cycle-btn.active');
-      return active ? active.dataset.cycle : 'none';
-    }
-
-    function getStyle() {
-      const active = document.querySelector('.style-btn.active');
-      return active ? active.dataset.style : 'funk';
-    }
-
-    function getBassVariant() {
-      const active = document.querySelector('.bass-btn.active');
-      return active ? active.dataset.bass : 'busy';
-    }
-
-    function getVoicing() {
-      const active = document.querySelector('.voicing-btn.active');
-      return active ? active.dataset.voicing : 'voice-lead-loop';
-    }
-
-    let wakeLock = null;
-    async function acquireWakeLock() {
-      if (wakeLock || !('wakeLock' in navigator)) return;
-      try {
-        wakeLock = await navigator.wakeLock.request('screen');
-        wakeLock.addEventListener('release', () => { wakeLock = null; });
-      } catch (e) {
-        setStatus('Wake lock failed: ' + e.message);
-      }
-    }
-    async function releaseWakeLock() {
-      if (!wakeLock) return;
-      try { await wakeLock.release(); } catch {}
-      wakeLock = null;
-    }
-
-    const KEEP_AWAKE_KEY = 'keep-awake';
-    keepAwakeEl.checked = localStorage.getItem(KEEP_AWAKE_KEY) === '1';
-    keepAwakeEl.addEventListener('change', () => {
-      localStorage.setItem(KEEP_AWAKE_KEY, keepAwakeEl.checked ? '1' : '0');
-      if (Tone.Transport.state === 'started') {
-        keepAwakeEl.checked ? acquireWakeLock() : releaseWakeLock();
-      }
-    });
-
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible' &&
-          keepAwakeEl.checked &&
-          Tone.Transport.state === 'started') {
-        acquireWakeLock();
-      }
-    });
-
-    function renderChips() {
-      const progStr = appSections[appActiveSection - 1]?.progression ?? '';
-      stripEl.innerHTML = '';
-      const tokens = tokenize(progStr);
-      tokens.forEach(token => {
-        const [numeral, durStr] = token.split(':');
-        let displayDur = '';
-        if (durStr !== undefined) {
-          const n = parseInt(durStr, 10);
-          if (Number.isFinite(n) && n > 0) displayDur = String(Math.min(n, MAX_BARS));
-        }
-        const displayToken = displayDur ? `${numeral}:${displayDur}` : numeral;
-        const chip = document.createElement('div');
-        chip.className = 'chip';
-        const isAbsolute = !(numeral in ROMAN) && CHORD_NAME_RE.test(numeral);
-        chip.dataset.absolute = isAbsolute ? '1' : '0';
-        chip.dataset.numeral = numeral;
-        chip.dataset.duration = displayDur;
-        if (!isAbsolute) {
-          const ne = document.createElement('div');
-          ne.className = 'numeral';
-          ne.textContent = displayToken;
-          chip.appendChild(ne);
-        }
-        const name = document.createElement('div');
-        name.className = 'name';
-        chip.appendChild(name);
-        const bp = document.createElement('div');
-        bp.className = 'bar-progress';
-        chip.appendChild(bp);
-        stripEl.appendChild(chip);
-      });
-      updateChipsForShift(0);
-    }
-
-    function updateChipsForShift(shift) {
-      const key = keyEl.value;
-      const cycle = getCycleMode();
-      stripEl.querySelectorAll('.chip').forEach(chip => {
-        const numeral = chip.dataset.numeral;
-        const dur = chip.dataset.duration;
-        const isAbsolute = chip.dataset.absolute === '1';
-        const resolved = resolvedChordName(numeral, shift, key, cycle);
-        const nameEl = chip.querySelector('.name');
-        nameEl.textContent = isAbsolute && dur ? `${resolved}:${dur}` : resolved;
-      });
-      const baseKeyPc = KEY_MIDI[key] % 12;
-      const curPc = (((baseKeyPc + shift) % 12) + 12) % 12;
-      const names = cycleUsesFlats(cycle, key) ? FLAT_NAMES : SHARP_NAMES;
-      readoutKey.textContent = `Key of ${names[curPc]}`;
-    }
-
-    function setActiveChip(index) {
-      stripEl.querySelectorAll('.chip').forEach((c, i) => {
-        c.classList.toggle('active', i === index);
-      });
-    }
-
-    let rebuildTimer = null;
-    function scheduleRebuild() {
-      clearTimeout(rebuildTimer);
-      rebuildTimer = setTimeout(() => {
-        if (Tone.Transport.state !== 'started') return;
-        Tone.Transport.scheduleOnce(() => {
-          if (Tone.Transport.state !== 'started') return;
-          try {
-            const chords = buildSongChords(appSections, appArrangement, keyEl.value, getDefaultBars());
-            buildPart(chords, getCycleMode(), STYLES[getStyle()], getBassVariant(), getVoicing());
-          } catch (e) {
-            setStatus('Error: ' + e.message);
-          }
-        }, '+0');
-      }, 250);
-    }
-
-    drumsEl.addEventListener('change', applyDrumMute);
-    bassEl.addEventListener('change', applyBassMute);
-    chordsEl.addEventListener('change', () => {
-      if (chordChannel) chordChannel.mute = !chordsEl.checked;
-    });
-
-    function wireVolume(sliderEl, valueElId, getChannel) {
-      const valueEl = $(valueElId);
-      sliderEl.addEventListener('input', () => {
-        valueEl.textContent = sliderEl.value;
-        const ch = getChannel();
-        if (ch) ch.volume.value = sliderToDb(sliderEl.value);
-      });
-    }
-    wireVolume(chordVolEl,  'chordVolValue',  () => chordChannel);
-    wireVolume(bassVolEl,   'bassVolValue',   () => bassChannel);
-    wireVolume(drumVolEl,   'drumVolValue',   () => drumChannel);
-    wireVolume(masterVolEl, 'masterVolValue', () => masterChannel);
-
-    function clampedTempo() {
-      const v = parseInt(tempoEl.value, 10);
-      if (!Number.isFinite(v)) return 85;
-      return Math.max(40, Math.min(220, v));
-    }
-
-    tempoEl.addEventListener('input', () => {
-      const v = clampedTempo();
-      tempoValueEl.textContent = v;
-      readoutTempo.textContent = v;
-      if (tempoQuick && tempoQuick.value !== String(v)) tempoQuick.value = v;
-      Tone.Transport.bpm.value = v;
-    });
-
-    keyEl.addEventListener('change', () => {
-      readoutKey.textContent = keyEl.value;
-      renderChips();
-      scheduleRebuild();
-    });
-
-
-    barsButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
-        barsButtons.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        updateReadout();
-        scheduleRebuild();
-        syncUrl();
-      });
-    });
-
-    cycleButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
-        cycleButtons.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        updateReadout();
-        renderChips();
-        scheduleRebuild();
-        syncUrl();
-      });
-    });
-
-    styleButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
-        styleButtons.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        updateReadout();
-        scheduleRebuild();
-        syncUrl();
-      });
-    });
-
-    bassButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
-        bassButtons.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        updateReadout();
-        scheduleRebuild();
-        syncUrl();
-      });
-    });
-
-    voicingButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
-        voicingButtons.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        updateReadout();
-        scheduleRebuild();
-        syncUrl();
-      });
-    });
-
-    function cycleNext(buttons) {
-      const arr = Array.from(buttons);
-      const idx = arr.findIndex(b => b.classList.contains('active'));
-      arr[(idx + 1) % arr.length].click();
-    }
-    $('readout-style').addEventListener('click', () => cycleNext(styleButtons));
-    $('readout-bass').addEventListener('click', () => cycleNext(bassButtons));
-    $('readout-voicing').addEventListener('click', () => cycleNext(voicingButtons));
-    $('readout-bars').addEventListener('click', () => cycleNext(barsButtons));
-    $('readout-cycle').addEventListener('click', () => cycleNext(cycleButtons));
-    readoutAdvance.addEventListener('click', () => {
-      appAdvance = appAdvance === 'auto' ? 'manual' : 'auto';
-      updateReadout();
-      syncUrl();
-    });
-
-    const tempoToggle = $('tempo-toggle');
-    const tempoPickerEl = $('tempo-picker');
-    const tempoQuick = $('tempo-quick');
-
-    function setTempoValue(v) {
-      const n = parseInt(v, 10);
-      const clamped = Math.max(40, Math.min(220, Number.isFinite(n) ? n : 85));
-      tempoEl.value = clamped;
-      tempoEl.dispatchEvent(new Event('input'));
-    }
-    tempoToggle.addEventListener('click', () => {
-      if (tempoPickerEl.hidden) {
-        tempoQuick.value = clampedTempo();
-        tempoPickerEl.hidden = false;
-      } else {
-        tempoPickerEl.hidden = true;
-      }
-    });
-    tempoQuick.addEventListener('input', () => setTempoValue(tempoQuick.value));
-    $('tempo-down').addEventListener('click', () => setTempoValue(clampedTempo() - 1));
-    $('tempo-up').addEventListener('click', () => setTempoValue(clampedTempo() + 1));
-    document.addEventListener('click', e => {
-      if (tempoPickerEl.hidden) return;
-      if (tempoToggle.contains(e.target) || tempoPickerEl.contains(e.target)) return;
-      tempoPickerEl.hidden = true;
-    });
-
-    const keyPickerEl = $('key-picker');
-    const KEY_LIST = Array.from(keyEl.options).map(o => o.value);
-    KEY_LIST.forEach(k => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'key-chip';
-      btn.dataset.key = k;
-      btn.textContent = k;
-      btn.addEventListener('click', () => {
-        keyEl.value = k;
-        keyEl.dispatchEvent(new Event('change'));
-        hideKeyPicker();
-      });
-      keyPickerEl.appendChild(btn);
-    });
-    function updateKeyPickerActive() {
-      const cur = keyEl.value;
-      keyPickerEl.querySelectorAll('.key-chip').forEach(b => {
-        b.classList.toggle('active', b.dataset.key === cur);
-      });
-    }
-    function showKeyPicker() {
-      updateKeyPickerActive();
-      keyPickerEl.hidden = false;
-    }
-    function hideKeyPicker() { keyPickerEl.hidden = true; }
-    readoutKey.addEventListener('click', () => {
-      keyPickerEl.hidden ? showKeyPicker() : hideKeyPicker();
-    });
-    document.addEventListener('click', e => {
-      if (keyPickerEl.hidden) return;
-      if (readoutKey.contains(e.target) || keyPickerEl.contains(e.target)) return;
-      hideKeyPicker();
-    });
-
-    function setStatus(msg) { statusEl.textContent = msg; }
-
-    function setPlayingUI(playing) {
-      if (playing) {
-        playBtn.textContent = '■';
-        playBtn.classList.add('playing');
-        playBtn.setAttribute('aria-label', 'Stop');
-      } else {
-        playBtn.textContent = '▶';
-        playBtn.classList.remove('playing');
-        playBtn.setAttribute('aria-label', 'Play');
-      }
-    }
-
-    async function startPlayback() {
-      try {
-        await Tone.start();
-        if ('audioSession' in navigator) navigator.audioSession.type = 'playback';
-        initChannels();
-        const key = keyEl.value;
-        const bars = getDefaultBars();
-        const order = resolvePlayOrder();
-        const chords = buildSongChords(appSections, appArrangement, key, bars);
-        buildPart(chords, getCycleMode(), STYLES[getStyle()], getBassVariant(), getVoicing());
-        if (order.length >= 2) {
-          const startIdx = order.findIndex(ref => ref === appActiveSection);
-          const startPos = startIdx >= 0 ? startIdx : 0;
-          let barAcc = 0;
-          const offs = {};
-          for (const c of chords) {
-            if (!(c.posIndex in offs)) offs[c.posIndex] = barAcc;
-            barAcc += c.bars;
-          }
-          if (appAdvance === 'manual') {
-            appCurrentPosIndex = startPos;
-            manualLap = 0;
-          }
-          Tone.Transport.position = `${offs[startPos] ?? 0}:0:0`;
-        }
-        Tone.Transport.bpm.value = clampedTempo();
-        Tone.Transport.start();
-        if (keepAwakeEl.checked) acquireWakeLock();
-        setPlayingUI(true);
-        renderSectionRows();
-      } catch (e) {
-        setStatus('Error: ' + e.message);
-      }
-    }
-
-    function stopPlayback() {
-      Tone.Transport.stop();
-      teardown();
-      releaseWakeLock();
-      setActiveChip(-1);
-      updateChipsForShift(0);
-      clearBeats();
-      clearBars();
-      pendingJump = null;
-      manualLap = 0;
-      document.querySelectorAll('.scrubber-seg').forEach(s => s.classList.remove('current', 'queued'));
-      setPlayingUI(false);
-      renderSectionRows();
-      setStatus('');
-    }
-
-    playBtn.addEventListener('click', () => {
-      if (Tone.Transport.state === 'started') stopPlayback();
-      else startPlayback();
-    });
-
-    document.addEventListener('keydown', (e) => {
-      if (e.code !== 'Space') return;
-      const t = document.activeElement?.tagName;
-      if (t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT') return;
-      e.preventDefault();
-      playBtn.click();
-    });
-
-    // Bottom sheets
-    function openSheet(id) { $(id).showModal(); }
-    function closeSheet(id) { $(id).close(); }
-    $('open-setup').addEventListener('click', () => openSheet('setup-sheet'));
-    $('open-mix').addEventListener('click', () => openSheet('mix-sheet'));
-    document.querySelectorAll('[data-close]').forEach(btn => {
-      btn.addEventListener('click', () => closeSheet(btn.dataset.close));
-    });
-    document.querySelectorAll('dialog').forEach(d => {
-      d.addEventListener('click', e => {
-        if (e.target === d) d.close();
-      });
-    });
-
-    // Presets
-    const presetsEl = $('presets');
-    PRESETS.forEach(p => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'preset-btn';
-      btn.textContent = p.label;
-      btn.addEventListener('click', () => {
-        loadPreset({ ...currentState(), ...p.state });
-      });
-      presetsEl.appendChild(btn);
-    });
-
-    // URL state sync
-    const DEFAULTS = {
-      key: 'C',
-      tempo: 85,
-      bars: 2,
-      cycle: 'none',
-      style: 'funk',
-      bass: 'busy',
-      voicing: 'voice-lead-loop',
-      sections: [{ progression: 'I vi ii V' }],
-      arrangement: '',
-      activeSection: 1,
-      advance: 'auto',
-      chordVol: 50,
-      bassVol: 100,
-      drumVol: 100,
-      masterVol: 100,
-      chordsOn: true,
-      bassOn: true,
-      drumsOn: true,
-    };
-    const VALID_KEYS = Array.from(keyEl.options).map(o => o.value);
-
-    function currentState() {
-      return {
-        key: keyEl.value,
-        tempo: clampedTempo(),
-        bars: getDefaultBars(),
-        cycle: getCycleMode(),
-        style: getStyle(),
-        bass: getBassVariant(),
-        voicing: getVoicing(),
-        sections: appSections,
-        arrangement: appArrangement,
-        activeSection: appActiveSection,
-        advance: appAdvance,
-        chordVol: chordVolEl.value,
-        bassVol: bassVolEl.value,
-        drumVol: drumVolEl.value,
-        masterVol: masterVolEl.value,
-        chordsOn: chordsEl.checked,
-        bassOn: bassEl.checked,
-        drumsOn: drumsEl.checked,
-      };
-    }
-
-    function stateToParams(s) {
-      const p = new URLSearchParams();
-      p.set('key', s.key);
-      p.set('tempo', s.tempo);
-      p.set('bars', s.bars);
-      p.set('cycle', s.cycle);
-      p.set('style', s.style);
-      p.set('bass', s.bass);
-      p.set('voicing', s.voicing);
-      (s.sections || []).forEach(sec => p.append('section', sec.progression));
-      p.set('arrangement', s.arrangement ?? '');
-      p.set('activeSection', s.activeSection ?? 1);
-      p.set('advance', s.advance ?? 'auto');
-      p.set('chordVol', s.chordVol);
-      p.set('bassVol', s.bassVol);
-      p.set('drumVol', s.drumVol);
-      p.set('masterVol', s.masterVol);
-      p.set('chordsOn', s.chordsOn ? '1' : '0');
-      p.set('bassOn', s.bassOn ? '1' : '0');
-      p.set('drumsOn', s.drumsOn ? '1' : '0');
-      return p.toString();
-    }
-
-    function parseUrlState() {
-      const p = new URLSearchParams(window.location.search);
-      const num = (k, def) => {
-        const v = parseInt(p.get(k), 10);
-        return Number.isFinite(v) ? v : def;
-      };
-      const bool = (k, def) => {
-        const v = p.get(k);
-        if (v === '1' || v === 'true') return true;
-        if (v === '0' || v === 'false') return false;
-        return def;
-      };
-      const str = (k, def) => p.get(k) ?? def;
-      const key = str('key', DEFAULTS.key);
-      const bars = num('bars', DEFAULTS.bars);
-      const cycle = str('cycle', DEFAULTS.cycle);
-      const style = str('style', DEFAULTS.style);
-      const bass = str('bass', DEFAULTS.bass);
-      const voicing = str('voicing', DEFAULTS.voicing);
-      const rawSections = p.getAll('section');
-      const sections = rawSections.length
-        ? rawSections.map(prog => ({ progression: prog }))
-        : DEFAULTS.sections;
-      const rawAdvance = str('advance', DEFAULTS.advance);
-      const rawActive = num('activeSection', DEFAULTS.activeSection);
-      return {
-        key: VALID_KEYS.includes(key) ? key : DEFAULTS.key,
-        tempo: Math.max(40, Math.min(220, num('tempo', DEFAULTS.tempo))),
-        bars: BARS_OPTIONS.includes(bars) ? bars : DEFAULTS.bars,
-        cycle: CYCLE_OPTIONS.includes(cycle) ? cycle : DEFAULTS.cycle,
-        style: STYLE_OPTIONS.includes(style) ? style : DEFAULTS.style,
-        bass: BASS_OPTIONS.includes(bass) ? bass : DEFAULTS.bass,
-        voicing: VOICING_OPTIONS.includes(voicing) ? voicing : DEFAULTS.voicing,
-        sections,
-        arrangement: str('arrangement', DEFAULTS.arrangement),
-        activeSection: (Number.isInteger(rawActive) && rawActive >= 1 && rawActive <= sections.length) ? rawActive : 1,
-        advance: ['auto', 'manual'].includes(rawAdvance) ? rawAdvance : DEFAULTS.advance,
-        chordVol: num('chordVol', DEFAULTS.chordVol),
-        bassVol: num('bassVol', DEFAULTS.bassVol),
-        drumVol: num('drumVol', DEFAULTS.drumVol),
-        masterVol: num('masterVol', DEFAULTS.masterVol),
-        chordsOn: bool('chordsOn', DEFAULTS.chordsOn),
-        bassOn: bool('bassOn', DEFAULTS.bassOn),
-        drumsOn: bool('drumsOn', DEFAULTS.drumsOn),
-      };
-    }
-
-    function applyState(s) {
-      keyEl.value = s.key;
-      readoutKey.textContent = s.key;
-
-      tempoEl.value = s.tempo;
-      tempoValueEl.textContent = s.tempo;
-      readoutTempo.textContent = s.tempo;
-      tempoEl.dispatchEvent(new Event('input'));
-
-      barsButtons.forEach(btn => {
-        btn.classList.toggle('active', parseInt(btn.dataset.bars, 10) === s.bars);
-      });
-      cycleButtons.forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.cycle === s.cycle);
-      });
-      styleButtons.forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.style === s.style);
-      });
-      bassButtons.forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.bass === s.bass);
-      });
-      voicingButtons.forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.voicing === s.voicing);
-      });
-
-      appSections = (s.sections && s.sections.length) ? s.sections : DEFAULTS.sections;
-      appArrangement = s.arrangement ?? DEFAULTS.arrangement;
-      appActiveSection = s.activeSection ?? DEFAULTS.activeSection;
-      appAdvance = s.advance ?? DEFAULTS.advance;
-      if (arrangementEl) arrangementEl.value = appArrangement;
-
-      chordVolEl.value  = s.chordVol;  $('chordVolValue').textContent  = s.chordVol;
-      bassVolEl.value   = s.bassVol;   $('bassVolValue').textContent   = s.bassVol;
-      drumVolEl.value   = s.drumVol;   $('drumVolValue').textContent   = s.drumVol;
-      masterVolEl.value = s.masterVol; $('masterVolValue').textContent = s.masterVol;
-      chordVolEl.dispatchEvent(new Event('input'));
-      bassVolEl.dispatchEvent(new Event('input'));
-      drumVolEl.dispatchEvent(new Event('input'));
-      masterVolEl.dispatchEvent(new Event('input'));
-
-      chordsEl.checked = s.chordsOn;
-      bassEl.checked   = s.bassOn;
-      drumsEl.checked  = s.drumsOn;
-      chordsEl.dispatchEvent(new Event('change'));
-      bassEl.dispatchEvent(new Event('change'));
-      drumsEl.dispatchEvent(new Event('change'));
-
-      renderSectionRows();
-      renderChips();
-      updateReadout();
-    }
-
-    let urlSyncTimer = null;
-    function syncUrl() {
-      clearTimeout(urlSyncTimer);
-      urlSyncTimer = setTimeout(() => {
-        history.replaceState(null, '', '?' + stateToParams(currentState()));
-      }, 200);
-    }
-
-    // Theme toggle
-    const themeButtons = document.querySelectorAll('.theme-btn');
-    function applyTheme(t) {
-      document.documentElement.setAttribute('data-theme', t);
-      localStorage.setItem('theme', t);
-      themeButtons.forEach(b => b.classList.toggle('active', b.dataset.theme === t));
-    }
-    themeButtons.forEach(btn => {
-      btn.addEventListener('click', () => applyTheme(btn.dataset.theme));
-    });
-    applyTheme(document.documentElement.getAttribute('data-theme') || 'dark');
-
-    // Copy share link
-    const copyShareBtn = $('copy-share');
-    copyShareBtn.addEventListener('click', async () => {
-      clearTimeout(urlSyncTimer);
-      history.replaceState(null, '', '?' + stateToParams(currentState()));
-      try {
-        await navigator.clipboard.writeText(window.location.href);
-        copyShareBtn.textContent = 'Copied!';
-      } catch {
-        copyShareBtn.textContent = 'Copy failed';
-      }
-      setTimeout(() => { copyShareBtn.textContent = 'Copy share link'; }, 1500);
-    });
-
-    // User presets (localStorage)
-    const PRESETS_KEY = 'progression-presets-v2';
-    const userPresetsEl = $('user-presets');
-
-    function loadUserPresets() {
-      try { return JSON.parse(localStorage.getItem(PRESETS_KEY) || '[]'); }
-      catch { return []; }
-    }
-    function saveUserPresets(list) {
-      localStorage.setItem(PRESETS_KEY, JSON.stringify(list));
-    }
-    function addUserPreset(name, state) {
-      const list = loadUserPresets();
-      const id = Date.now().toString(36);
-      list.push({ id, name, state });
-      saveUserPresets(list);
-      return id;
-    }
-    function renameUserPreset(id, name) {
-      const list = loadUserPresets();
-      const p = list.find(p => p.id === id);
-      if (p) { p.name = name; saveUserPresets(list); }
-    }
-    function deleteUserPreset(id) {
-      saveUserPresets(loadUserPresets().filter(p => p.id !== id));
-    }
-
-    function loadPreset(state) {
-      applyState({ ...DEFAULTS, ...state });
-      syncUrl();
-      if (Tone.Transport.state === 'started') scheduleRebuild();
-    }
-
-    function enterRename(row, preset) {
-      row.innerHTML = '';
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.className = 'rename-input';
-      input.value = preset.name;
-      input.autocomplete = 'off';
-      input.spellcheck = false;
-
-      let done = false;
-      const commit = () => {
-        if (done) return;
-        done = true;
-        const name = input.value.trim() || preset.name;
-        renameUserPreset(preset.id, name);
-        renderUserPresets();
-      };
-      const cancel = () => {
-        if (done) return;
-        done = true;
-        renderUserPresets();
-      };
-
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter')  { e.preventDefault(); commit(); }
-        if (e.key === 'Escape') { e.preventDefault(); cancel(); }
-      });
-      input.addEventListener('blur', commit);
-
-      row.appendChild(input);
-      input.focus();
-      input.select();
-    }
-
-    function renderUserPresets(focusEditId) {
+    function renderUserPresets(focusId = null) {
       userPresetsEl.innerHTML = '';
-      const list = loadUserPresets();
-      if (list.length === 0) {
-        const empty = document.createElement('div');
-        empty.className = 'empty-presets';
-        empty.textContent = 'No saved presets yet.';
-        userPresetsEl.appendChild(empty);
+      const list = app.getUserPresets();
+      if (!list.length) {
+        userPresetsEl.appendChild(Object.assign(document.createElement('div'), { className: 'empty-presets', textContent: 'No saved presets yet.' }));
         return;
       }
       list.forEach(p => {
         const row = document.createElement('div');
         row.className = 'user-preset-row';
 
-        const nameBtn = document.createElement('button');
-        nameBtn.type = 'button';
-        nameBtn.className = 'preset-btn user-preset-name';
-        nameBtn.textContent = p.name;
-        nameBtn.addEventListener('click', () => loadPreset(p.state));
+        const nameBtn = Object.assign(document.createElement('button'), { type: 'button', className: 'preset-btn user-preset-name', textContent: p.name });
+        nameBtn.addEventListener('click', () => app.loadPreset(p.state));
 
-        const editBtn = document.createElement('button');
-        editBtn.type = 'button';
-        editBtn.className = 'icon-btn';
-        editBtn.textContent = '✎';
+        const editBtn = Object.assign(document.createElement('button'), { type: 'button', className: 'icon-btn', textContent: '✎' });
         editBtn.setAttribute('aria-label', `Rename ${p.name}`);
         editBtn.addEventListener('click', () => enterRename(row, p));
 
-        const delBtn = document.createElement('button');
-        delBtn.type = 'button';
-        delBtn.className = 'icon-btn';
-        delBtn.textContent = '×';
+        const delBtn = Object.assign(document.createElement('button'), { type: 'button', className: 'icon-btn', textContent: '×' });
         delBtn.setAttribute('aria-label', `Delete ${p.name}`);
-        delBtn.addEventListener('click', () => {
-          deleteUserPreset(p.id);
-          renderUserPresets();
-        });
+        delBtn.addEventListener('click', () => { app.deleteUserPreset(p.id); renderUserPresets(); });
 
         row.append(nameBtn, editBtn, delBtn);
         userPresetsEl.appendChild(row);
-
-        if (focusEditId === p.id) enterRename(row, p);
+        if (focusId === p.id) enterRename(row, p);
       });
     }
 
-    $('save-preset').addEventListener('click', () => {
-      const n = loadUserPresets().length + 1;
-      const id = addUserPreset(`Preset ${n}`, currentState());
-      renderUserPresets(id);
+    function enterRename(row, preset) {
+      row.innerHTML = '';
+      const inp = Object.assign(document.createElement('input'), { type: 'text', className: 'rename-input', value: preset.name, autocomplete: 'off', spellcheck: false });
+      let done = false;
+      const commit = () => { if (done) return; done = true; app.renameUserPreset(preset.id, inp.value.trim() || preset.name); renderUserPresets(); };
+      const cancel = () => { if (done) return; done = true; renderUserPresets(); };
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); commit(); } if (e.key === 'Escape') { e.preventDefault(); cancel(); } });
+      inp.addEventListener('blur', commit);
+      row.appendChild(inp);
+      inp.focus();
+      inp.select();
+    }
+
+    // ── Theme ────────────────────────────────────────────────────────────────
+
+    function applyTheme(t) {
+      document.documentElement.setAttribute('data-theme', t);
+      localStorage.setItem('theme', t);
+      document.querySelectorAll('[data-theme-opt]').forEach(b =>
+        b.classList.toggle('active', b.dataset.themeOpt === t));
+    }
+
+    // ── Playback change ──────────────────────────────────────────────────────
+
+    /** @param {boolean} playing */
+    function onPlaybackChange(playing) {
+      playBtn.textContent = playing ? '■' : '▶';
+      playBtn.classList.toggle('playing', playing);
+      playBtn.setAttribute('aria-label', playing ? 'Stop' : 'Play');
+      if (playing) {
+        statusEl.textContent = '';
+        if (keepAwakeEl.checked) acquireWakeLock();
+      } else {
+        releaseWakeLock();
+        clearActiveChip();
+        clearBeats();
+        clearBars();
+        _pendingJump = null;
+        statusEl.textContent = '';
+        scrubberTrack.querySelectorAll('.scrubber-seg')
+          .forEach(s => s.classList.remove('current', 'queued'));
+        renderChips(app.getState());
+      }
+    }
+
+    // ── Wake lock ────────────────────────────────────────────────────────────
+
+    let _wakeLock = null;
+    async function acquireWakeLock() {
+      if (_wakeLock || !('wakeLock' in navigator)) return;
+      try {
+        _wakeLock = await navigator.wakeLock.request('screen');
+        _wakeLock.addEventListener('release', () => { _wakeLock = null; });
+      } catch (e) {
+        console.warn('Wake lock failed:', e.message);
+      }
+    }
+    async function releaseWakeLock() {
+      if (!_wakeLock) return;
+      try { await _wakeLock.release(); } catch {}
+      _wakeLock = null;
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && keepAwakeEl.checked && audio.isPlaying()) {
+        acquireWakeLock();
+      }
     });
 
-    renderUserPresets();
+    // ── UI helpers ───────────────────────────────────────────────────────────
 
-    $('add-section').addEventListener('click', () => {
-      if (appSections.length >= 6) return;
-      appSections.push({ progression: '' });
-      renderSectionRows();
-      renderChips();
-      syncUrl();
-      const rows = $('section-rows').querySelectorAll('.section-prog-input');
+    function syncBodyPadding() {
+      const bar = $('action-bar');
+      if (bar) document.body.style.paddingBottom = bar.offsetHeight + 'px';
+    }
+
+    let _urlTimer = null;
+    function syncUrl(state) {
+      clearTimeout(_urlTimer);
+      _urlTimer = setTimeout(() => {
+        history.replaceState(null, '', '?' + serializeUrl(state));
+      }, 200);
+    }
+
+    // ── Key picker ───────────────────────────────────────────────────────────
+
+    ['C','Db','D','Eb','E','F','F#','G','Ab','A','Bb','B'].forEach(k => {
+      const btn = Object.assign(document.createElement('button'), { type: 'button', className: 'key-chip', textContent: k });
+      btn.dataset.key = k;
+      btn.addEventListener('click', () => { app.setState({ key: k }); keyPickerEl.hidden = true; });
+      keyPickerEl.appendChild(btn);
+    });
+
+    keyDisplayEl.addEventListener('click', () => { keyPickerEl.hidden = !keyPickerEl.hidden; });
+    document.addEventListener('click', e => {
+      if (keyPickerEl.hidden) return;
+      if (keyDisplayEl.contains(e.target) || keyPickerEl.contains(e.target)) return;
+      keyPickerEl.hidden = true;
+    });
+
+    // ── Tempo picker ─────────────────────────────────────────────────────────
+
+    const tempoPickerEl = $('tempo-picker');
+    const tempoQuickEl  = $('tempo-quick');
+
+    $('tempo-toggle').addEventListener('click', () => {
+      if (tempoPickerEl.hidden) { tempoQuickEl.value = String(app.getState().tempo); tempoPickerEl.hidden = false; }
+      else tempoPickerEl.hidden = true;
+    });
+    tempoQuickEl.addEventListener('input', () => app.setState({ tempo: Math.max(40, Math.min(220, parseInt(tempoQuickEl.value, 10))) }));
+    $('tempo-down').addEventListener('click', () => app.setState({ tempo: Math.max(40, app.getState().tempo - 1) }));
+    $('tempo-up').addEventListener('click',   () => app.setState({ tempo: Math.min(220, app.getState().tempo + 1) }));
+    document.addEventListener('click', e => {
+      if (tempoPickerEl.hidden) return;
+      if ($('tempo-toggle').contains(e.target) || tempoPickerEl.contains(e.target)) return;
+      tempoPickerEl.hidden = true;
+    });
+
+    tempoSliderEl.addEventListener('input', () =>
+      app.setState({ tempo: parseInt(tempoSliderEl.value, 10) }));
+
+    // ── Setup sheet option groups ─────────────────────────────────────────────
+
+    keySelectEl.addEventListener('change', () => app.setState({ key: keySelectEl.value }));
+
+    document.querySelectorAll('[data-bars]').forEach(btn =>
+      btn.addEventListener('click', () => app.setState({ bars: parseInt(btn.dataset.bars, 10) })));
+    document.querySelectorAll('[data-cycle]').forEach(btn =>
+      btn.addEventListener('click', () => app.setState({ cycle: btn.dataset.cycle })));
+    document.querySelectorAll('[data-style]').forEach(btn =>
+      btn.addEventListener('click', () => app.setState({ style: btn.dataset.style })));
+    document.querySelectorAll('[data-bass]').forEach(btn =>
+      btn.addEventListener('click', () => app.setState({ bass: btn.dataset.bass })));
+    document.querySelectorAll('[data-voicing]').forEach(btn =>
+      btn.addEventListener('click', () => app.setState({ voicing: btn.dataset.voicing })));
+    document.querySelectorAll('[data-theme-opt]').forEach(btn =>
+      btn.addEventListener('click', () => applyTheme(btn.dataset.themeOpt)));
+
+    // ── Readout pill cycling ──────────────────────────────────────────────────
+
+    const cycleOpt = (opts, cur) => opts[(opts.indexOf(cur) + 1) % opts.length];
+    readoutStyleEl.addEventListener('click',   () => app.setState({ style:   cycleOpt(STYLE_OPTIONS,   app.getState().style) }));
+    readoutBassEl.addEventListener('click',    () => app.setState({ bass:    cycleOpt(BASS_OPTIONS,    app.getState().bass) }));
+    readoutVoicingEl.addEventListener('click', () => app.setState({ voicing: cycleOpt(VOICING_OPTIONS, app.getState().voicing) }));
+    readoutBarsEl.addEventListener('click',    () => app.setState({ bars:    cycleOpt(BARS_OPTIONS,    app.getState().bars) }));
+    readoutCycleEl.addEventListener('click',   () => app.setState({ cycle:   cycleOpt(CYCLE_OPTIONS,   app.getState().cycle) }));
+    readoutAdvanceEl.addEventListener('click', () => app.setState({ advance: app.getState().advance === 'auto' ? 'manual' : 'auto' }));
+
+    // ── Sections ──────────────────────────────────────────────────────────────
+
+    addSectionEl.addEventListener('click', () => {
+      app.addSection();
+      const rows = sectionRowsEl.querySelectorAll('.section-prog-input');
       if (rows.length) rows[rows.length - 1].focus();
     });
 
-    arrangementEl.addEventListener('input', () => {
-      appArrangement = arrangementEl.value;
-      renderScrubber();
-      syncUrl();
+    arrangementEl.addEventListener('input', () => app.setState({ arrangement: arrangementEl.value }));
+
+    // ── Presets ───────────────────────────────────────────────────────────────
+
+    PRESETS.forEach(p => {
+      const btn = Object.assign(document.createElement('button'), { type: 'button', className: 'preset-btn', textContent: p.label });
+      btn.addEventListener('click', () => app.loadPreset({ ...app.getState(), ...p.state }));
+      $('presets').appendChild(btn);
     });
 
-    // Initial render
-    applyState(parseUrlState());
-    updateReadout();
-    syncUrl();
-    [keyEl, tempoEl, chordVolEl, bassVolEl, drumVolEl, masterVolEl,
-     chordsEl, bassEl, drumsEl].forEach(el => {
-      el.addEventListener('input', syncUrl);
-      el.addEventListener('change', syncUrl);
+    $('save-preset').addEventListener('click', () => {
+      const n = app.getUserPresets().length + 1;
+      const id = app.saveUserPreset(`Preset ${n}`);
+      renderUserPresets(id);
     });
+
+    // ── Mix ───────────────────────────────────────────────────────────────────
+
+    const wireVol = (el, valId, key) => {
+      el.addEventListener('input', () => {
+        $(valId).textContent = el.value;
+        app.setState({ [key]: parseInt(el.value, 10) });
+      });
+    };
+    wireVol(chordVolEl,  'chord-vol-val',  'chordVol');
+    wireVol(bassVolEl,   'bass-vol-val',   'bassVol');
+    wireVol(drumVolEl,   'drum-vol-val',   'drumVol');
+    wireVol(masterVolEl, 'master-vol-val', 'masterVol');
+
+    chordsOnEl.addEventListener('change', () => app.setState({ chordsOn: chordsOnEl.checked }));
+    bassOnEl.addEventListener('change',   () => app.setState({ bassOn:   bassOnEl.checked }));
+    drumsOnEl.addEventListener('change',  () => app.setState({ drumsOn:  drumsOnEl.checked }));
+
+    // ── Playback ──────────────────────────────────────────────────────────────
+
+    playBtn.addEventListener('click', () => {
+      app.togglePlay().catch(e => { statusEl.textContent = 'Error: ' + e.message; });
+    });
+    document.addEventListener('keydown', e => {
+      if (e.code !== 'Space') return;
+      const t = document.activeElement?.tagName;
+      if (t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT') return;
+      e.preventDefault();
+      app.togglePlay().catch(e => { statusEl.textContent = 'Error: ' + e.message; });
+    });
+
+    // ── Keep awake ────────────────────────────────────────────────────────────
+
+    const keepAwakeEl = $('keep-awake');
+    keepAwakeEl.checked = localStorage.getItem('keep-awake') === '1';
+    keepAwakeEl.addEventListener('change', () =>
+      localStorage.setItem('keep-awake', keepAwakeEl.checked ? '1' : '0'));
+
+    // ── Sheets ────────────────────────────────────────────────────────────────
+
+    $('open-setup').addEventListener('click', () => $('setup-sheet').showModal());
+    $('open-mix').addEventListener('click',   () => $('mix-sheet').showModal());
+    document.querySelectorAll('[data-close]').forEach(btn =>
+      btn.addEventListener('click', () => $(btn.dataset.close).close()));
+    document.querySelectorAll('dialog').forEach(d =>
+      d.addEventListener('click', e => { if (e.target === d) d.close(); }));
+
+    // ── Share link ────────────────────────────────────────────────────────────
+
+    $('copy-share').addEventListener('click', async () => {
+      clearTimeout(_urlTimer);
+      history.replaceState(null, '', '?' + app.serializeUrl());
+      const btn = $('copy-share');
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        btn.textContent = 'Copied!';
+      } catch {
+        btn.textContent = 'Copy failed';
+      }
+      setTimeout(() => { btn.textContent = 'Copy share link'; }, 1500);
+    });
+
     window.addEventListener('resize', syncBodyPadding);
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+
+    app.applyUrl(location.search);
+    renderUserPresets();
+    applyTheme(localStorage.getItem('theme') || 'dark');
   </script>
 </body>
 </html>
