@@ -172,6 +172,8 @@
       transition: background 0.1s;
     }
     .scrubber-seg.current { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+    .scrubber-seg.queued { border-color: var(--accent); animation: scrub-pulse 0.7s ease-in-out infinite; }
+    @keyframes scrub-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
     /* ── Dialogs / sheets ── */
     dialog {

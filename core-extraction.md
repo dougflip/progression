@@ -328,6 +328,7 @@ Verify feature parity, do a final review, rename `index-core.html` →
 - **Full re-render on every state change** — `render()` calls all 5 sub-renders on every `setState`, including rapid slider drags. Fine for now; revisit if sluggishness appears.
 - **`Tone` is a global** — loaded via script tag, passed as `makeProgressionAudio({ Tone })`. Works fine; would need to change if we ever adopt a bundler.
 - **`serializeUrl` imported two ways** — directly in host (for `syncUrl`) and via `app.serializeUrl()`. Both correct, slightly redundant. Easy cleanup.
+- **Auto+cycle scrubber jump bug** — intermittent, no repro steps yet. Likely involves `posOffsets` not accounting for the current lap in cycle mode, causing a jump to the wrong bar position. Investigate when it reveals itself consistently.
 - **`onChordTick` must NOT go through `setState → onStateChange`** — audio timing callbacks are fast-path only. Core pre-computes `resolvedChipNames` / `resolvedKey` and hands them to the host directly. Host updates DOM without triggering a full re-render. This is the key boundary to enforce in M3.
 
 ## Future Features (architecture must support)

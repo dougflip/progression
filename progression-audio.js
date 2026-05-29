@@ -27,6 +27,9 @@ export function makeProgressionAudio({ Tone }) {
   let _manualLap = 0;
   let _advance = 'auto';
   let _muteState = { chordsOn: true, bassOn: true, drumsOn: true };
+  // Track last-set volume per channel so setMute can reapply it on unmute,
+  // guarding against Tone.js silently ignoring -Infinity assignments.
+  let _volState  = { chords: 50, bass: 100, drums: 100, master: 100 };
 
   // ── Active start params (needed inside Draw callbacks) ─────────────────────
   let _key = 'C';
@@ -55,6 +58,7 @@ export function makeProgressionAudio({ Tone }) {
 
   function _initChannels({ chordVol, bassVol, drumVol, masterVol, chordsOn, bassOn }) {
     if (_channels) return;
+    _volState = { chords: chordVol, bass: bassVol, drums: drumVol, master: masterVol };
     const master = new Tone.Channel().toDestination();
     const chord  = new Tone.Channel().connect(master);
     const bass   = new Tone.Channel().connect(master);
@@ -390,6 +394,7 @@ export function makeProgressionAudio({ Tone }) {
      */
     setVolume(channel, value) {
       if (!_channels) return;
+      _volState[channel] = value;
       const db = _toDb(value);
       if      (channel === 'chords') _channels.chord.volume.value  = db;
       else if (channel === 'bass')   _channels.bass.volume.value   = db;
@@ -403,9 +408,14 @@ export function makeProgressionAudio({ Tone }) {
      */
     setMute(channel, muted) {
       _muteState[channel === 'chords' ? 'chordsOn' : channel === 'bass' ? 'bassOn' : 'drumsOn'] = !muted;
-      if (channel === 'chords' && _channels) _channels.chord.mute = muted;
-      else if (channel === 'bass' && _channels) _channels.bass.mute = muted;
-      else if (channel === 'drums') {
+      if (channel === 'chords' && _channels) {
+        _channels.chord.mute = muted;
+        // Reapply volume in case Tone.js silently rejected a -Infinity assignment earlier
+        if (!muted) _channels.chord.volume.value = _toDb(_volState.chords);
+      } else if (channel === 'bass' && _channels) {
+        _channels.bass.mute = muted;
+        if (!muted) _channels.bass.volume.value = _toDb(_volState.bass);
+      } else if (channel === 'drums') {
         for (const s of [_kickSeq, _snareSeq, _hatSeq]) if (s) s.mute = muted;
       }
     },
