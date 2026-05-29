@@ -309,7 +309,7 @@
         </div>
       </span>
       <button type="button" class="readout-btn" id="readout-cycle">Loop</button>
-      <button type="button" class="readout-btn" id="readout-advance">Auto</button>
+      <button type="button" class="readout-btn" id="readout-advance" hidden>Auto</button>
     </div>
     <div id="status"></div>
   </main>
@@ -844,6 +844,7 @@
         clearBeats();
         clearBars();
         _pendingJump = null;
+        statusEl.textContent = '';
         scrubberTrack.querySelectorAll('.scrubber-seg')
           .forEach(s => s.classList.remove('current', 'queued'));
         renderChips(app.getState());
