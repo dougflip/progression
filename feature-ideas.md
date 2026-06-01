@@ -1,14 +1,40 @@
 # Feature Ideas
 
-## Song Sections
+## Tap Tempo
 
-Instead of a single progression allow for an array of progressions.
-You could also provide a pre-defined sequence for the sections: AABA for example.
+Ability to tap tempo.
+Likely both in setup and in the player pills.
 
-#### Claude's thoughts
+## Major vs Minor key
 
-This pulls the app from "practice loop" toward "song player". Honest question: do you ever leave loop-mode while practicing? If most of your time is the loop, sections add UI weight without
- proportional value. If you do want it, the lightweight version is a few progression text fields plus a sequence string ("A A B A") — not a section editor.
+Right now all key selection is assumed to be major.
+It would be nice to specify major vs minor and then roman numerals are resolved against it.
+
+## Extended Voicings
+
+Right now, we support major, minor, and 7 chords.
+We should expand to support b3 b6 b7 etc.
+Maybe there is a good resource that lists common chords which we should support?
+
+### Claude's Thoughts
+
+Impacted areas (all in progression-core.js except noted):
+
+1. QUALITY_INTERVALS (~line 75) — add interval arrays for each new type (e.g. dim: [0,3,6], sus4: [0,5,7], etc.)
+2. QUALITY_IS_MINOR (~line 87) — add false/true entries per new quality (used by bass pattern selection)
+3. QUALITY_DISPLAY (~line 91) — add display strings (e.g. dim7: 'dim7', aug: 'aug')
+4. suffixToQuality() (~line 217) — map new suffix strings to qualities; add symbol aliases here too (° → dim, ø → m7b5, + → aug) — essentially free once the quality exists
+5. @typedef ChordQuality (~line 10) — expand the union type
+
+progression-audio.js and index.html need no changes — they consume ChordQuality generically.
+
+One known rough edge: makeChord() hardcodes bass fifth at +7 semitones, so dim (b5) and aug (#5) would play a wrong fifth in busy bass. This needs to be resolved before shipping — the busy bass variant reads bassFifth directly, so it would play a natural 5th over a diminished or augmented chord. Fix: derive bassFifth from the quality's actual interval rather than a hardcoded +7.
+
+Remaining questions:
+
+1. For Roman numerals, idim vs Idim — should case still matter (root degree), with suffix overriding quality? Or should dim/aug/sus always force a specific base?
+2. ° in the URL encodes as %C2%B0 — acceptable, or prefer always using the plain-text dim/aug as canonical with symbols as input aliases only?
+3. mMaj7 — camelCase is the most common notation but mmaj7 or mM7 also appear. Which spellings to accept?
 
 ## External (Foot) Controller Support
 
@@ -36,18 +62,6 @@ The "advance-on-press" cycle mode is the real prize: nail ii-V-I in C, foot pres
  If the feature is good, then invest in Web MIDI integration. Web MIDI works in Chrome/Edge but not Safari; iOS is rough. I'd target one specific switch (iRig Blueboard, AirTurn) rather
 than aim for universal.
 
-## Auth and Preset Persistence
-
-I've used [instantdb](https://www.instantdb.com/) for other apps as a lightweight db.
-We could offer (optional) auth and when auth'd persist presets to the db.
-This enables access across devices.
-Instantdb can work with plain JS and provides helpers for auth.
-https://www.instantdb.com/docs/start-vanilla
-
-#### Claude thoughts
-
-Copy-share-link already does cross-device transfer with zero infra. Auth pays off only when the user has 20+ presets they actually rely on. Revisit when that pain materializes.
-
 ## Higher Quality Sounds
 
 Worth exploring samples or other ways to produce better sounding progressions?
@@ -56,16 +70,6 @@ Worth exploring samples or other ways to produce better sounding progressions?
 
 The current synths are functional but tiring over a long session. Salamander Grand piano samples (~few MB, public domain) via Tone.js Sampler would transform chord/bass feel. Drums could
 stay synthesized. Moderate work.
-
-## Other Time Signatures
-
-This is a lower priority for sure.
-The main goal of this repo is as a practice tool and we can accomplish that in 4/4.
-Still, allowing for different time signatures opens the door to more practice scenarios.
-
-#### Claude's thoughts
-
-You called it. 4/4 covers practice. Adding 3/4 / 6/8 / 5/4 means reworking bass and drum patterns. Don't.
 
 ## Beats per Chord
 
@@ -87,3 +91,25 @@ Cleanest API IMO: use fractions, not a b suffix. V:0.5 reads naturally as "half 
 - (2) and the "step mode" inside (1) share the same primitive: "advance to next thing on trigger". Build that abstraction once.
 - (7) plays cleanly with (5) — fractional durations don't care about sound quality.
 - None of these break URL/state schema badly except (1) sections. If you ever do sections, plan the URL migration carefully.
+
+## Auth and Preset Persistence
+
+I've used [instantdb](https://www.instantdb.com/) for other apps as a lightweight db.
+We could offer (optional) auth and when auth'd persist presets to the db.
+This enables access across devices.
+Instantdb can work with plain JS and provides helpers for auth.
+https://www.instantdb.com/docs/start-vanilla
+
+#### Claude thoughts
+
+Copy-share-link already does cross-device transfer with zero infra. Auth pays off only when the user has 20+ presets they actually rely on. Revisit when that pain materializes.
+
+## Other Time Signatures
+
+This is a lower priority for sure.
+The main goal of this repo is as a practice tool and we can accomplish that in 4/4.
+Still, allowing for different time signatures opens the door to more practice scenarios.
+
+#### Claude's thoughts
+
+You called it. 4/4 covers practice. Adding 3/4 / 6/8 / 5/4 means reworking bass and drum patterns. Don't.
