@@ -7,7 +7,7 @@
 
 /** @typedef {{ progression: string }} Section */
 
-/** @typedef {'major'|'minor'|'maj7'|'m7'|'dom7'} ChordQuality */
+/** @typedef {'major'|'minor'|'maj7'|'m7'|'dom7'|'dim'|'aug'|'sus2'|'sus4'|'m7b5'|'dim7'|'mMaj7'|'dom7sus4'} ChordQuality */
 
 /**
  * @typedef {{
@@ -75,22 +75,34 @@ const ROMAN_NUMERALS = ['III','VII','iii','vii','II','IV','VI','ii','iv','vi','I
 const QUALITY_INTERVALS = {
   major: [0, 4, 7],
   minor: [0, 3, 7],
+  dim:   [0, 3, 6],
+  aug:   [0, 4, 8],
+  sus2:  [0, 2, 7],
+  sus4:  [0, 5, 7],
   // 7ths omit the 5th (jazz shell voicing) — bass + chord context imply it
-  maj7:  [0, 4, 11],
-  m7:    [0, 3, 10],
-  dom7:  [0, 4, 10],
+  maj7:     [0, 4, 11],
+  m7:       [0, 3, 10],
+  dom7:     [0, 4, 10],
+  m7b5:     [0, 3, 6, 10],
+  dim7:     [0, 3, 6, 9],
+  mMaj7:    [0, 3, 7, 11],
+  dom7sus4: [0, 5, 7, 10],
 };
 
 /** @type {Record<ChordQuality, boolean>} */
 const QUALITY_IS_MINOR = {
   major: false, minor: true,
-  maj7:  false, m7:    true, dom7: false,
+  dim:   true,  aug:   false, sus2: false, sus4: false,
+  maj7:  false, m7:    true,  dom7: false,
+  m7b5:  true,  dim7:  true,  mMaj7: true, dom7sus4: false,
 };
 
 /** @type {Record<ChordQuality, string>} */
 export const QUALITY_DISPLAY = {
   major: '', minor: 'm',
+  dim: 'dim', aug: 'aug', sus2: 'sus2', sus4: 'sus4',
   maj7: 'maj7', m7: 'm7', dom7: '7',
+  m7b5: 'm7b5', dim7: 'dim7', mMaj7: 'mMaj7', dom7sus4: '7sus4',
 };
 
 export const STYLE_OPTIONS       = ['pop', 'funk', 'ballad', 'rock'];
@@ -215,11 +227,19 @@ function parseRoman(token) {
  * @returns {ChordQuality | null}
  */
 function suffixToQuality(suffix, isLowerCase) {
-  if (suffix === '')     return isLowerCase ? 'minor' : 'major';
-  if (suffix === 'm')    return 'minor';
-  if (suffix === 'maj7') return 'maj7';
-  if (suffix === 'm7')   return 'm7';
-  if (suffix === '7')    return isLowerCase ? 'm7' : 'dom7';
+  if (suffix === '')      return isLowerCase ? 'minor' : 'major';
+  if (suffix === 'm')     return 'minor';
+  if (suffix === 'maj7')  return 'maj7';
+  if (suffix === 'm7')    return 'm7';
+  if (suffix === '7')     return isLowerCase ? 'm7' : 'dom7';
+  if (suffix === 'dim'  || suffix === '°')  return 'dim';
+  if (suffix === 'aug'  || suffix === '+')  return 'aug';
+  if (suffix === 'sus2')  return 'sus2';
+  if (suffix === 'sus4')  return 'sus4';
+  if (suffix === 'm7b5' || suffix === 'ø')  return 'm7b5';
+  if (suffix === 'dim7' || suffix === '°7') return 'dim7';
+  if (suffix === 'mMaj7') return 'mMaj7';
+  if (suffix === '7sus4') return 'dom7sus4';
   return null;
 }
 
@@ -329,8 +349,7 @@ export function resolvedKeyName(key, shift, cycle) {
  */
 export function makeChord(root, quality, prevUpper = null) {
   const intervals = QUALITY_INTERVALS[quality];
-  const has7th = quality === 'maj7' || quality === 'm7' || quality === 'dom7';
-  const topMax = has7th ? 72 : 76;
+  const topMax = intervals.length > 3 ? 72 : 76;
   let r = root;
   while (r + intervals[intervals.length - 1] > topMax && r > 48) r -= 12;
 
@@ -366,8 +385,8 @@ export function makeChord(root, quality, prevUpper = null) {
     notes: [chordBass, ...chordNotes].map(midiToNote),
     upperVoicing: chordNotes,
     bassRoot:  midiToNote(synthBass),
-    bassThird: midiToNote(synthBass + (isMinor ? 3 : 4)),
-    bassFifth: midiToNote(synthBass + 7),
+    bassThird: midiToNote(synthBass + intervals[1]),
+    bassFifth: midiToNote(synthBass + intervals[2]),
     isMinor,
     root,
     quality,
