@@ -28,7 +28,12 @@ Impacted areas (all in progression-core.js except noted):
 
 progression-audio.js and index.html need no changes — they consume ChordQuality generically.
 
-One known rough edge: makeChord() hardcodes bass fifth at +7 semitones, so dim (b5) and aug (#5) would play a wrong fifth in busy bass. This needs to be resolved before shipping — the busy bass variant reads bassFifth directly, so it would play a natural 5th over a diminished or augmented chord. Fix: derive bassFifth from the quality's actual interval rather than a hardcoded +7.
+Known bass issues to fix before shipping — both bassThird and bassFifth in makeChord() are hardcoded rather than derived from QUALITY_INTERVALS:
+
+- dim, aug, m7b5, dim7: bassFifth is hardcoded +7; should be +6 (dim) or +8 (aug)
+- sus2, sus4, 7sus4: bassThird is hardcoded to isMinor ? 3 : 4; sus chords have no third (+2 or +5 instead)
+
+Real fix: derive both bassThird and bassFifth from QUALITY_INTERVALS[quality] rather than the isMinor shortcut.
 
 Remaining questions:
 
