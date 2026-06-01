@@ -10,6 +10,22 @@ Likely both in setup and in the player pills.
 Right now all key selection is assumed to be major.
 It would be nice to specify major vs minor and then roman numerals are resolved against it.
 
+### Claude's Thoughts
+
+Add `mode: 'major' | 'minor'` to state. Mode controls which scale Roman numeral degrees map to — case still determines chord quality (uppercase = major triad, lowercase = minor), so `I` in minor mode = major triad on the minor root, `i` in minor mode = minor tonic. Users can override any chord quality explicitly regardless of mode.
+
+Impacted areas:
+1. Add `MINOR_SCALE = [0, 2, 3, 5, 7, 8, 10]` alongside `MAJOR_SCALE`
+2. `buildChord()` — swap hardcoded `MAJOR_SCALE[degree]` for the mode-selected scale; mode flows in as a parameter
+3. `resolvedChordName()` — same, uses `MAJOR_SCALE` for chip display name resolution
+4. `parseProgression()` — passes mode/scale through to `buildChord`
+5. State defaults, URL serialization — add `mode` param
+6. UI — mode toggle (pill or part of key picker)
+
+Built-in minor cycle presets currently load `i` — they still work since case controls quality. With mode support the natural approach shifts to `I` in minor mode; worth revisiting when implementing.
+
+Open question: natural minor only, or also harmonic minor (raised 7th = `[0,2,3,5,7,8,11]`)? Harmonic minor gives a proper dominant V in minor keys. Recommendation: ship natural minor as a toggle first; harmonic minor as a follow-up if requested. Users can always write `V7` explicitly in a minor progression regardless.
+
 ## Extended Voicings
 
 Right now, we support major, minor, and 7 chords.
