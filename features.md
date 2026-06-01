@@ -23,6 +23,8 @@ The progression input accepts space-separated tokens:
 - **Roman numerals**: `I`, `vi`, `ii V I`. Uppercase = major triad, lowercase = minor.
 - **Absolute chord names**: `C`, `Am`, `F#`, `Bbm`. Use `m` suffix for minor.
 - **7th chords**: `Imaj7`, `V7`, `iim7`, `Cmaj7`, `G7`, `Dm7`. On Roman numerals, bare `7` follows case (`V7` = dom7, `v7` = m7).
+- **Extended triads**: `dim` / `°`, `aug` / `+`, `sus2`, `sus4`. Works on both Roman numerals and chord names (`idim`, `Caug`, `Gsus4`, `I+`).
+- **Extended 7ths**: `m7b5` / `ø` (half-diminished), `dim7` / `°7`, `mMaj7`, `7sus4`. E.g. `iim7b5 V7 im`, `Cdim7`, `CmMaj7`.
 - **Mix both** in one progression if you want.
 - **Per-chord duration**: append `:n` for n bars (`V:4`, `Am:1`). Omitted = uses bars-per-chord default.
 - **Repeat tokens** to extend (`I I vi V` = two bars of I then default-duration vi and V).
