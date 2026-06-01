@@ -108,7 +108,7 @@
     .tempo-group { position: relative; display: inline-flex; align-items: center; }
     #tempo-picker {
       position: absolute; top: calc(100% + 0.55rem); left: 50%; transform: translateX(-50%);
-      display: flex; align-items: center; gap: 0.6rem; background: var(--surface-alt);
+      display: flex; flex-direction: column; gap: 0.5rem; background: var(--surface-alt);
       border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.55rem 0.7rem;
       min-width: 15rem; box-shadow: 0 4px 12px rgba(0,0,0,0.12); z-index: 5;
     }
@@ -120,7 +120,8 @@
       border-top: 1px solid var(--border);
     }
     #tempo-picker[hidden] { display: none; }
-    #tempo-picker input[type=range] { flex: 1; min-width: 0; }
+    .tempo-controls { display: flex; align-items: center; gap: 0.6rem; }
+    .tempo-controls input[type=range] { flex: 1; min-width: 0; }
     .tempo-step {
       flex: 0 0 auto; width: 1.85rem; height: 1.85rem; padding: 0; border-radius: 50%;
       border: none; background: var(--surface); color: var(--text); font-size: 1rem;
@@ -128,6 +129,18 @@
       display: inline-flex; align-items: center; justify-content: center;
     }
     .tempo-step:hover, .tempo-step:active { background: var(--surface-alt-active); }
+    .tap-btn {
+      width: 100%; padding: 0.6rem; border-radius: 999px;
+      border: 1px solid var(--border); background: var(--surface); color: var(--text);
+      font-size: 0.9rem; font-family: inherit; font-weight: 500; cursor: pointer;
+      transition: background 0.1s, color 0.1s;
+    }
+    .tap-btn:hover, .tap-btn:active { background: var(--surface-alt-active); }
+    @keyframes tap-flash {
+      0%   { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+      100% { background: var(--surface); color: var(--text); border-color: var(--border); }
+    }
+    .tap-btn.tapped { animation: tap-flash 0.35s ease-out forwards; }
 
     #status { margin-top: 0.75rem; text-align: center; font-family: monospace; color: var(--text-3); font-size: 0.85rem; min-height: 1.2em; }
 
@@ -303,9 +316,12 @@
       <span class="tempo-group">
         <button type="button" class="readout-btn" id="tempo-toggle"><strong id="readout-tempo">85</strong> BPM</button>
         <div id="tempo-picker" hidden>
-          <button type="button" class="tempo-step" id="tempo-down">−</button>
-          <input id="tempo-quick" type="range" min="40" max="220" step="1" />
-          <button type="button" class="tempo-step" id="tempo-up">+</button>
+          <div class="tempo-controls">
+            <button type="button" class="tempo-step" id="tempo-down">−</button>
+            <input id="tempo-quick" type="range" min="40" max="220" step="1" />
+            <button type="button" class="tempo-step" id="tempo-up">+</button>
+          </div>
+          <button type="button" class="tap-btn" id="tap-tempo-pop">Tap</button>
         </div>
       </span>
       <button type="button" class="readout-btn" id="readout-cycle">Loop</button>
@@ -344,6 +360,7 @@
         </select>
         <label class="field-label" for="tempo-slider">Tempo <span id="tempo-display" style="font-weight:400;color:var(--text-2);font-size:0.85rem">85 BPM</span></label>
         <input id="tempo-slider" type="range" min="40" max="220" step="1" value="85" />
+        <button type="button" class="tap-btn" id="tap-tempo-setup" style="margin-top:0.4rem">Tap tempo</button>
         <label class="field-label">Bars per chord</label>
         <div class="option-group" id="bars-group">
           <button type="button" class="option-btn" data-bars="1">1</button>
@@ -926,6 +943,35 @@
 
     tempoSliderEl.addEventListener('input', () =>
       app.setState({ tempo: parseInt(tempoSliderEl.value, 10) }));
+
+    // ── Tap tempo ─────────────────────────────────────────────────────────────
+
+    let _taps = [];
+    let _tapTimer = null;
+
+    function handleTap(btn) {
+      const now = Date.now();
+      if (_taps.length > 0 && now - _taps[_taps.length - 1] > 2000) _taps = [];
+      _taps.push(now);
+      if (_taps.length > 8) _taps = _taps.slice(-8);
+
+      if (_taps.length >= 2) {
+        let total = 0;
+        for (let i = 1; i < _taps.length; i++) total += _taps[i] - _taps[i - 1];
+        const bpm = Math.round(60000 / (total / (_taps.length - 1)));
+        app.setState({ tempo: Math.max(40, Math.min(220, bpm)) });
+      }
+
+      btn.classList.remove('tapped');
+      void btn.offsetWidth;
+      btn.classList.add('tapped');
+
+      clearTimeout(_tapTimer);
+      _tapTimer = setTimeout(() => { _taps = []; }, 2000);
+    }
+
+    $('tap-tempo-pop').addEventListener('click', e => { e.stopPropagation(); handleTap(e.currentTarget); });
+    $('tap-tempo-setup').addEventListener('click', e => handleTap(e.currentTarget));
 
     // ── Setup sheet option groups ─────────────────────────────────────────────
 
