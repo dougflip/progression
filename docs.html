@@ -30,8 +30,10 @@
     }
 
     /* ── Header ── */
-    header {
+    #sticky-top {
       position: sticky; top: 0; z-index: 10;
+    }
+    header {
       background: var(--surface); border-bottom: 1px solid var(--border);
       padding: 0.7rem 1rem;
       display: flex; align-items: center; justify-content: space-between;
@@ -48,7 +50,6 @@
 
     /* ── Tabs ── */
     .tab-nav {
-      position: sticky; top: 2.9rem; z-index: 9;
       display: flex; background: var(--surface);
       border-bottom: 1px solid var(--border);
     }
@@ -80,6 +81,7 @@
     }
     strong { color: var(--text); }
     hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    [role="tabpanel"] h2 { scroll-margin-top: 7rem; }
 
     /* ── Numbered steps ── */
     .steps { counter-reset: step; list-style: none; padding: 0; margin: 0 0 1rem; }
@@ -128,6 +130,7 @@
 </head>
 <body>
 
+<div id="sticky-top">
 <header>
   <span class="header-title">Chord Progression Player</span>
   <a href="./" class="open-app-btn">Open App</a>
@@ -137,6 +140,7 @@
   <button class="tab-btn active" role="tab" data-tab="quick-start" aria-selected="true">Quick Start</button>
   <button class="tab-btn" role="tab" data-tab="reference" aria-selected="false">Reference</button>
 </nav>
+</div>
 
 <main>
 
@@ -162,9 +166,15 @@
     <p>Each example opens the app pre-configured. Press play and start practicing.</p>
 
     <div class="idea-card">
-      <h3>ii–V–I through all 12 keys</h3>
-      <p>The most essential jazz progression. Cycle 4ths runs it through every key automatically — one full lap covers all 12. Focus on hearing the resolution from V7 to Imaj7.</p>
-      <a href="./?section=iim7%20V7%20Imaj7&cycle=4ths&tempo=120&style=funk" class="idea-link">Try it →</a>
+      <h3>Triads!</h3>
+      <p>Play all 3 major triad inversions on a string set around the circle of 4ths. For example, limit yourself to the G, B, and high E strings. Repeat for the other 3 string set combinations!</p>
+      <a href="./?key=C&tempo=75&bars=2&cycle=4ths&style=funk&bass=busy&voicing=voice-lead-loop&section=I&arrangement=&activeSection=1&advance=auto&chordVol=50&bassVol=100&drumVol=100&masterVol=100&chordsOn=1&bassOn=1&drumsOn=1" class="idea-link">Try it →</a>
+    </div>
+
+    <div class="idea-card">
+      <h3>Triad Progression</h3>
+      <p>Play triads over a basic progression mixing major and minor chords. To start, try to stay on one string set and in one area of the neck. This example stays in a single key, but you can <a href="#controls">manually switch keys</a> or have the player <a href="#loop-modes">cycle the keys</a>.</p>
+      <a href="./?key=C&tempo=75&bars=2&cycle=none&style=funk&bass=busy&voicing=voice-lead-loop&section=I+vi+ii+V&arrangement=&activeSection=1&advance=auto&chordVol=50&bassVol=100&drumVol=100&masterVol=100&chordsOn=1&bassOn=1&drumsOn=1" class="idea-link">Try it →</a>
     </div>
 
     <div class="idea-card">
@@ -215,7 +225,7 @@
 
     <hr />
 
-    <h2>Controls</h2>
+    <h2 id="controls">Controls</h2>
 
     <h3>Main screen</h3>
     <ul>
@@ -244,7 +254,7 @@
 
     <hr />
 
-    <h2>Loop modes</h2>
+    <h2 id="loop-modes">Loop modes</h2>
     <ul>
       <li><strong>Loop</strong> — repeat in the configured key</li>
       <li><strong>Cycle 4ths</strong> — play the progression through all 12 keys ascending by perfect fourths; spelling uses flats</li>
@@ -312,6 +322,11 @@
   const tabs = document.querySelectorAll('.tab-btn');
   const panels = document.querySelectorAll('.tab-panel');
 
+  const SECTION_TAB = {
+    'controls': 'reference',
+    'loop-modes': 'reference',
+  };
+
   function activate(id) {
     const target = ['quick-start', 'reference'].includes(id) ? id : 'quick-start';
     tabs.forEach(t => {
@@ -322,14 +337,26 @@
     panels.forEach(p => p.classList.toggle('active', p.id === 'tab-' + target));
   }
 
+  function fromHash() {
+    const hash = location.hash.slice(1);
+    if (SECTION_TAB[hash]) {
+      activate(SECTION_TAB[hash]);
+      setTimeout(() => document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth' }), 50);
+    } else {
+      activate(hash);
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }
+  }
+
   tabs.forEach(t => t.addEventListener('click', () => {
     history.pushState(null, '', '#' + t.dataset.tab);
     activate(t.dataset.tab);
     window.scrollTo({ top: 0, behavior: 'instant' });
   }));
 
-  window.addEventListener('popstate', () => activate(location.hash.slice(1)));
-  activate(location.hash.slice(1));
+  window.addEventListener('popstate', fromHash);
+  window.addEventListener('hashchange', fromHash);
+  fromHash();
 </script>
 
 </body>
