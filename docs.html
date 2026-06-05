@@ -81,7 +81,7 @@
     }
     strong { color: var(--text); }
     hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
-    [role="tabpanel"] h2 { scroll-margin-top: 7rem; }
+    [role="tabpanel"] h2, [role="tabpanel"] h3 { scroll-margin-top: 7rem; }
 
     /* ── Numbered steps ── */
     .steps { counter-reset: step; list-style: none; padding: 0; margin: 0 0 1rem; }
@@ -148,21 +148,20 @@
   <section class="tab-panel active" id="tab-quick-start" role="tabpanel">
 
     <h2>Get playing in 60 seconds</h2>
-    <p>Chord Progression Player is a backing-track tool for musicians. Enter a chord progression, set your key and tempo, and loop it while you practice scales, solos, or chord shapes.</p>
+    <p>Progression is a backing-track tool for musicians. Enter a chord progression, set your key and tempo, and loop it while you practice scales, solos, or chord shapes.</p>
 
     <ol class="steps">
-      <li>Open <strong>Setup</strong> (bottom-left button) and type a progression — try <code>I vi IV V</code></li>
-      <li>Tap the large <strong>key display</strong> at the top to set your key</li>
-      <li>Tap <strong>BPM</strong> to adjust tempo — use the slider, ± buttons, or tap-tempo</li>
-      <li>Press <strong>Play</strong> — chord chips highlight as each chord plays</li>
-      <li>Tweak <strong>Style</strong>, <strong>Bass</strong>, and other pills live during playback</li>
+      <li>Press <strong>Play</strong> — a progression is already loaded and ready to go. Chord chips highlight as each chord plays.</li>
+      <li>Press <strong>Stop</strong>, then tap the large <strong>key display</strong> to pick a different key. Press Play again.</li>
+      <li>Tap any pill — <strong>Style</strong>, <strong>Bass</strong>, <strong>Bars</strong>, <strong>Loop mode</strong> — to cycle through its options. Changes apply live.</li>
+      <li>Open <strong>Setup</strong> (bottom left) to edit the progression, adjust tempo, and save presets. Open <strong>Mix</strong> (bottom right) to control volumes.</li>
     </ol>
 
-    <p>Tip: spacebar also toggles play/stop when no text input is focused.</p>
+    <p>Looking for something to practice? Try a <a href="#practice-ideas">Practice Idea</a> below, or browse the <a href="#reference">Reference</a> tab for a full feature guide.</p>
 
     <hr />
 
-    <h2>Practice Ideas</h2>
+    <h2 id="practice-ideas">Practice Ideas</h2>
     <p>Each example opens the app pre-configured. Press play and start practicing.</p>
 
     <div class="idea-card">
@@ -323,6 +322,7 @@
   const panels = document.querySelectorAll('.tab-panel');
 
   const SECTION_TAB = {
+    'practice-ideas': 'quick-start',
     'controls': 'reference',
     'loop-modes': 'reference',
   };
