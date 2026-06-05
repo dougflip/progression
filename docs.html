@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Chord Progression Player — Docs</title>
+  <title>Progression — Docs</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-  <meta name="description" content="Documentation for Chord Progression Player — a backing-track tool for practicing scales, solos, and chord shapes." />
+  <meta name="description" content="Documentation for Progression — a backing-track tool for practicing scales, solos, and chord shapes." />
   <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');</script>
   <style>
     :root {
@@ -82,6 +82,10 @@
     strong { color: var(--text); }
     hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
     [role="tabpanel"] h2, [role="tabpanel"] h3 { scroll-margin-top: 7rem; }
+    .play-callout {
+      border-left: 3px solid var(--accent); padding: 0.4rem 0 0.4rem 1rem; margin: 0 0 1.5rem;
+    }
+    .play-callout p { margin: 0; font-size: 1rem; color: var(--text); }
 
     /* ── Numbered steps ── */
     .steps { counter-reset: step; list-style: none; padding: 0; margin: 0 0 1rem; }
@@ -132,7 +136,7 @@
 
 <div id="sticky-top">
 <header>
-  <span class="header-title">Chord Progression Player</span>
+  <span class="header-title">Progression</span>
   <a href="./" class="open-app-btn">Open App</a>
 </header>
 
@@ -147,14 +151,18 @@
   <!-- ── Quick Start ── -->
   <section class="tab-panel active" id="tab-quick-start" role="tabpanel">
 
-    <h2>Get playing in 60 seconds</h2>
+    <h2>Start playing now!</h2>
     <p>Progression is a backing-track tool for musicians. Enter a chord progression, set your key and tempo, and loop it while you practice scales, solos, or chord shapes.</p>
 
+    <div class="play-callout">
+      <p>A progression is already loaded — press <strong>Play</strong> and you're off. Chord chips highlight as each chord plays.</p>
+    </div>
+
+    <h3>Tweak the defaults</h3>
     <ol class="steps">
-      <li>Press <strong>Play</strong> — a progression is already loaded and ready to go. Chord chips highlight as each chord plays.</li>
-      <li>Press <strong>Stop</strong>, then tap the large <strong>key display</strong> to pick a different key. Press Play again.</li>
-      <li>Tap any pill — <strong>Style</strong>, <strong>Bass</strong>, <strong>Bars</strong>, <strong>Loop mode</strong> — to cycle through its options. Changes apply live.</li>
-      <li>Open <strong>Setup</strong> (bottom left) to edit the progression, adjust tempo, and save presets. Open <strong>Mix</strong> (bottom right) to control volumes.</li>
+      <li>Tap the large <strong>key display</strong> to change key — picks up on the next loop.</li>
+      <li>Tap any pill — <strong>Style</strong>, <strong>Bass</strong>, <strong>Bars</strong>, <strong>Loop mode</strong> — to cycle its options. Changes apply live, no need to stop.</li>
+      <li>Open <strong>Setup</strong> (bottom left) to edit the progression, adjust tempo, and save presets. Open <strong>Mix</strong> (bottom right) for per-instrument volume controls.</li>
     </ol>
 
     <p>Looking for something to practice? Try a <a href="#practice-ideas">Practice Idea</a> below, or browse the <a href="#reference">Reference</a> tab for a full feature guide.</p>
