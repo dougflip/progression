@@ -4,7 +4,7 @@
 
 - Looping backing track with chords, bass, and drums.
 - Single Play/Stop toggle button. Spacebar also works when no input is focused.
-- 12 major keys. Tempo 40–220 BPM.
+- 12 keys, major or minor. Tempo 40–220 BPM.
 - Default 2 bars per chord; can be set to 1, 2, or 4.
 - Visual feedback while playing: chord chips highlight in turn, beat dots pulse on each quarter note, and bar dots inside the active chip show position within multi-bar chords.
 
@@ -12,7 +12,7 @@
 
 The most-used settings are tappable directly on the main screen — no need to open Setup. All changes apply live during playback.
 
-- Tap the **key heading** to reveal an inline key picker.
+- Tap the **key note** (e.g. "C") to reveal an inline key picker. Tap **Major** / **Minor** to toggle the key quality.
 - Tap the **BPM** to open a tempo popover with a slider and ± nudge buttons.
 - Tap **style**, **bass**, **bars**, or **loop mode** pills to cycle through their options.
 
@@ -21,6 +21,7 @@ The most-used settings are tappable directly on the main screen — no need to o
 The progression input accepts space-separated tokens:
 
 - **Roman numerals**: `I`, `vi`, `ii V I`. Uppercase = major triad, lowercase = minor.
+- **Flat scale degrees**: prefix `b` to lower a degree by a semitone — `bIII`, `bVI`, `bVII`. Essential for natural minor progressions, e.g. `i bVII bVI bVII`.
 - **Absolute chord names**: `C`, `Am`, `F#`, `Bbm`. Use `m` suffix for minor.
 - **7th chords**: `Imaj7`, `V7`, `iim7`, `Cmaj7`, `G7`, `Dm7`. On Roman numerals, bare `7` follows case (`V7` = dom7, `v7` = m7).
 - **Extended triads**: `dim` / `°`, `aug` / `+`, `sus2`, `sus4`. Works on both Roman numerals and chord names (`idim`, `Caug`, `Gsus4`, `I+`).
@@ -49,7 +50,7 @@ The Auto/Manual pill appears on the main screen alongside the other controls whe
 - **Cycle 4ths** — play the progression in 12 keys, ascending by perfect fourths.
 - **Cycle 5ths** — same, ascending by perfect fifths.
 
-Cycle mode applies to any progression — `ii V I` through all 12 keys, `I` through 12 keys (= the circle itself), or whatever shape you want. The displayed key updates per lap. Spelling uses flats in 4ths, sharps in 5ths. Pitch is octave-clamped so the cycle doesn't keep climbing into screech range.
+Cycle mode applies to any progression — `ii V I` through all 12 keys, `I` through 12 keys (= the circle itself), or whatever shape you want. The displayed key updates per lap and reflects the key quality (e.g. "Am", "Dm" in minor). Spelling uses flats in 4ths, sharps in 5ths. Pitch is octave-clamped so the cycle doesn't keep climbing into screech range.
 
 ## Style
 
@@ -80,7 +81,7 @@ How chord notes are arranged.
 Quick-load chips for common shapes:
 
 - Progressions: `I V vi IV`, `I vi ii V`, `ii V I`, `iim7 V7 Imaj7` (jazz ii-V-I), `I IV V`, `i iv v`, 12-bar blues.
-- Cycle starters: Cycle 4ths/5ths in major or minor (each just loads `I` or `i` with the matching loop mode).
+- Cycle starters: Cycle 4ths and Cycle 5ths.
 
 Clicking a preset overrides progression and loop mode but preserves your key, tempo, volumes, mutes.
 

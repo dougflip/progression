@@ -160,7 +160,7 @@
 
     <h3>Tweak the defaults</h3>
     <ol class="steps">
-      <li>Tap the large <strong>key display</strong> to change key — picks up on the next loop.</li>
+      <li>Tap the <strong>key note</strong> (e.g. "C") to change key, or tap <strong>Major / Minor</strong> to toggle the key quality.</li>
       <li>Tap any pill — <strong>Style</strong>, <strong>Bass</strong>, <strong>Bars</strong>, <strong>Loop mode</strong> — to cycle its options. Changes apply live, no need to stop.</li>
       <li>Open <strong>Setup</strong> (bottom left) to edit the progression, adjust tempo, and save presets. Open <strong>Mix</strong> (bottom right) for per-instrument volume controls.</li>
     </ol>
@@ -212,6 +212,7 @@
         <tbody>
           <tr><td>Major triad</td><td><code>I</code> <code>IV</code> <code>V</code></td><td>Uppercase Roman numerals</td></tr>
           <tr><td>Minor triad</td><td><code>i</code> <code>iv</code> <code>vi</code></td><td>Lowercase Roman numerals</td></tr>
+          <tr><td>Flat scale degree</td><td><code>bIII</code> <code>bVI</code> <code>bVII</code></td><td>Prefix <code>b</code> lowers by a semitone; useful for natural minor (e.g. <code>i bVII bVI</code>)</td></tr>
           <tr><td>Absolute chord</td><td><code>C</code> <code>Am</code> <code>F#</code> <code>Bbm</code></td><td>Suffix <code>m</code> for minor</td></tr>
           <tr><td>Major 7th</td><td><code>Imaj7</code> <code>Cmaj7</code></td><td></td></tr>
           <tr><td>Dominant 7th</td><td><code>V7</code> <code>G7</code></td><td>Uppercase numeral + <code>7</code></td></tr>
@@ -236,7 +237,7 @@
 
     <h3>Main screen</h3>
     <ul>
-      <li><strong>Key heading</strong> — tap to open an inline key picker (12 major keys)</li>
+      <li><strong>Key note</strong> (e.g. "C") — tap to open an inline key picker; <strong>Major / Minor</strong> pill toggles the key quality</li>
       <li><strong>BPM</strong> — tap to open a popover with a slider, ± nudge buttons, and tap-tempo</li>
       <li><strong>Style / Bass / Bars / Loop mode</strong> pills — tap to cycle; all changes apply live during playback</li>
     </ul>
@@ -267,7 +268,7 @@
       <li><strong>Cycle 4ths</strong> — play the progression through all 12 keys ascending by perfect fourths; spelling uses flats</li>
       <li><strong>Cycle 5ths</strong> — same, ascending by perfect fifths; spelling uses sharps</li>
     </ul>
-    <p>Cycle mode works with any progression — <code>ii V I</code>, <code>I</code> (the circle of fifths itself), or anything else. The displayed key updates each lap. Pitch is octave-clamped so it doesn't climb out of range.</p>
+    <p>Cycle mode works with any progression — <code>ii V I</code>, <code>I</code> (the circle of fifths itself), or anything else. The displayed key updates each lap and reflects the key quality (e.g. "Am", "Dm" in minor). Pitch is octave-clamped so it doesn't climb out of range.</p>
 
     <hr />
 
@@ -301,7 +302,7 @@
     <h2>Presets</h2>
 
     <h3>Built-in</h3>
-    <p>Quick-load chips in Setup: <code>I V vi IV</code>, <code>I vi ii V</code>, <code>ii V I</code>, jazz <code>iim7 V7 Imaj7</code>, <code>I IV V</code>, minor <code>i iv v</code>, 12-bar blues, and Cycle starters in major and minor. Selecting a preset preserves your key, tempo, volumes, and mutes.</p>
+    <p>Quick-load chips in Setup: <code>I V vi IV</code>, <code>I vi ii V</code>, <code>ii V I</code>, jazz <code>iim7 V7 Imaj7</code>, <code>I IV V</code>, minor <code>i iv v</code>, 12-bar blues, and Cycle 4ths / Cycle 5ths starters. Selecting a preset preserves your key, tempo, volumes, and mutes.</p>
 
     <h3>Saved presets</h3>
     <p>Tap <strong>+ Save current</strong> in Setup to snapshot the full app state. Saved presets appear above the built-ins. Rename with the pencil icon, delete with ×.</p>

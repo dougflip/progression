@@ -34,6 +34,7 @@ export function makeProgressionAudio({ Tone }) {
   // ── Active start params (needed inside Draw callbacks) ─────────────────────
   let _key = 'C';
   let _cycle = 'none';
+  let _keyQuality = 'major';
 
   // ── Callbacks ──────────────────────────────────────────────────────────────
   let _onChordTick = null;
@@ -205,7 +206,7 @@ export function makeProgressionAudio({ Tone }) {
             sectionIndex:     ev.sectionIndex,
             sectionChanged,
             resolvedChipNames,
-            resolvedKey:      resolvedKeyName(_key, ev.shift, _cycle),
+            resolvedKey:      resolvedKeyName(_key, ev.shift, _cycle, _keyQuality),
             bars:             ev.bars,
             sectionTokens:    sectionChanged ? ev.sectionTokens : null,
           });
@@ -332,12 +333,13 @@ export function makeProgressionAudio({ Tone }) {
      * }} opts
      */
     async start({ chordSequence, tempo, style, bassVariant, voicing, advance,
-                  startPosIndex = 0, key, cycle, mix,
+                  startPosIndex = 0, key, keyQuality = 'major', cycle, mix,
                   onChordTick, onBeatTick, onBarTick }) {
       await Tone.start();
       if ('audioSession' in navigator) navigator.audioSession.type = 'playback';
 
       _key          = key;
+      _keyQuality   = keyQuality;
       _cycle        = cycle;
       _advance      = advance;
       _onChordTick  = onChordTick;
@@ -371,12 +373,13 @@ export function makeProgressionAudio({ Tone }) {
     },
 
     /** Hot-swap chord sequence mid-playback (called inside scheduleOnce). */
-    rebuild({ chordSequence, style, bassVariant, voicing, key, cycle }) {
+    rebuild({ chordSequence, style, bassVariant, voicing, key, keyQuality = 'major', cycle }) {
       if (Tone.Transport.state !== 'started') return;
       Tone.Transport.scheduleOnce(() => {
         if (Tone.Transport.state !== 'started') return;
-        _key   = key;
-        _cycle = cycle;
+        _key        = key;
+        _keyQuality = keyQuality;
+        _cycle      = cycle;
         try {
           _teardown();
           _buildSynth();

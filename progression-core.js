@@ -212,11 +212,13 @@ export function tokenize(input) {
 
 /**
  * @param {string} token
- * @returns {{ numeral: string, suffix: string } | null}
+ * @returns {{ numeral: string, suffix: string, flat: boolean } | null}
  */
 function parseRoman(token) {
+  const flat = token.startsWith('b');
+  const rest = flat ? token.slice(1) : token;
   for (const r of ROMAN_NUMERALS) {
-    if (token.startsWith(r)) return { numeral: r, suffix: token.slice(r.length) };
+    if (rest.startsWith(r)) return { numeral: r, suffix: rest.slice(r.length), flat };
   }
   return null;
 }
@@ -308,7 +310,8 @@ export function resolvedChordName(numeral, shift, key, cycle) {
     const quality = suffixToQuality(roman.suffix, isLowerCase);
     if (quality) {
       const degree = ROMAN[roman.numeral];
-      const rootPc = (((KEY_MIDI[key] + MAJOR_SCALE[degree] + shift) % 12) + 12) % 12;
+      const semis = MAJOR_SCALE[degree] - (roman.flat ? 1 : 0);
+      const rootPc = (((KEY_MIDI[key] + semis + shift) % 12) + 12) % 12;
       return names[rootPc] + QUALITY_DISPLAY[quality];
     }
   }
@@ -330,13 +333,14 @@ export function resolvedChordName(numeral, shift, key, cycle) {
  * @param {string} key
  * @param {number} shift
  * @param {string} cycle
+ * @param {string} [keyQuality]
  * @returns {string}
  */
-export function resolvedKeyName(key, shift, cycle) {
+export function resolvedKeyName(key, shift, cycle, keyQuality = 'major') {
   const baseKeyPc = KEY_MIDI[key] % 12;
   const curPc = (((baseKeyPc + shift) % 12) + 12) % 12;
   const names = cycleUsesFlats(cycle, key) ? FLAT_NAMES : SHARP_NAMES;
-  return names[curPc];
+  return names[curPc] + (keyQuality === 'minor' ? 'm' : '');
 }
 
 // ─── Chord building ──────────────────────────────────────────────────────────
@@ -405,7 +409,8 @@ export function buildChord(token, keyMidi) {
     const quality = suffixToQuality(roman.suffix, isLowerCase);
     if (quality) {
       const degree = ROMAN[roman.numeral];
-      return makeChord(keyMidi + MAJOR_SCALE[degree], quality);
+      const semis = MAJOR_SCALE[degree] - (roman.flat ? 1 : 0);
+      return makeChord(keyMidi + semis, quality);
     }
   }
   const m = CHORD_NAME_RE.exec(token);
@@ -559,6 +564,7 @@ export const VALID_KEYS = ['C','Db','D','Eb','E','F','F#','G','Ab','A','Bb','B']
 /**
  * @typedef {{
  *   key: string,
+ *   keyQuality: 'major' | 'minor',
  *   tempo: number,
  *   bars: number,
  *   cycle: string,
@@ -580,8 +586,11 @@ export const VALID_KEYS = ['C','Db','D','Eb','E','F','F#','G','Ab','A','Bb','B']
  */
 
 /** @type {AppState} */
+export const KEY_QUALITY_OPTIONS = ['major', 'minor'];
+
 export const DEFAULTS = {
   key:          'C',
+  keyQuality:   'major',
   tempo:        85,
   bars:         2,
   cycle:        'none',
@@ -613,9 +622,10 @@ export function parseUrl(searchString) {
   const bool = (k, def) => { const v = p.get(k); if (v === '1') return true; if (v === '0') return false; return def; };
   const str  = (k, def) => p.get(k) ?? def;
 
-  const key     = str('key',     DEFAULTS.key);
-  const bars    = num('bars',    DEFAULTS.bars);
-  const cycle   = str('cycle',   DEFAULTS.cycle);
+  const key        = str('key',        DEFAULTS.key);
+  const keyQuality = str('keyMode',    DEFAULTS.keyQuality);
+  const bars       = num('bars',       DEFAULTS.bars);
+  const cycle      = str('cycle',      DEFAULTS.cycle);
   const style   = str('style',   DEFAULTS.style);
   const bass    = str('bass',    DEFAULTS.bass);
   const voicing = str('voicing', DEFAULTS.voicing);
@@ -627,8 +637,9 @@ export function parseUrl(searchString) {
   const rawActive = num('activeSection', DEFAULTS.activeSection);
 
   return {
-    key:     VALID_KEYS.includes(key) ? key : DEFAULTS.key,
-    tempo:   Math.max(40, Math.min(220, num('tempo', DEFAULTS.tempo))),
+    key:        VALID_KEYS.includes(key) ? key : DEFAULTS.key,
+    keyQuality: KEY_QUALITY_OPTIONS.includes(keyQuality) ? keyQuality : DEFAULTS.keyQuality,
+    tempo:      Math.max(40, Math.min(220, num('tempo', DEFAULTS.tempo))),
     bars:    BARS_OPTIONS.includes(bars) ? bars : DEFAULTS.bars,
     cycle:   CYCLE_OPTIONS.includes(cycle) ? cycle : DEFAULTS.cycle,
     style:   STYLE_OPTIONS.includes(style) ? style : DEFAULTS.style,
@@ -656,6 +667,7 @@ export function parseUrl(searchString) {
 export function serializeUrl(state) {
   const p = new URLSearchParams();
   p.set('key',     state.key);
+  p.set('keyMode', state.keyQuality);
   p.set('tempo',   String(state.tempo));
   p.set('bars',    String(state.bars));
   p.set('cycle',   state.cycle);
@@ -753,6 +765,7 @@ export function makeProgressionPlayer(config) {
           bassVariant:   _state.bass,
           voicing:       _state.voicing,
           key:           _state.key,
+          keyQuality:    _state.keyQuality,
           cycle:         _state.cycle,
         });
       } catch (e) {
@@ -779,6 +792,7 @@ export function makeProgressionPlayer(config) {
       advance:       _state.advance,
       startPosIndex,
       key:           _state.key,
+      keyQuality:    _state.keyQuality,
       cycle:         _state.cycle,
       mix: {
         chordVol:  _state.chordVol,
