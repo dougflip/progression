@@ -12,7 +12,7 @@
 
 The most-used settings are tappable directly on the main screen — no need to open Setup. All changes apply live during playback.
 
-- Tap the **key note** (e.g. "C") to reveal an inline key picker. Tap **Major** / **Minor** to toggle the key quality.
+- Tap the **key heading** to reveal an inline key picker.
 - Tap the **BPM** to open a tempo popover with a slider and ± nudge buttons.
 - Tap **style**, **bass**, **bars**, or **loop mode** pills to cycle through their options.
 
@@ -50,7 +50,7 @@ The Auto/Manual pill appears on the main screen alongside the other controls whe
 - **Cycle 4ths** — play the progression in 12 keys, ascending by perfect fourths.
 - **Cycle 5ths** — same, ascending by perfect fifths.
 
-Cycle mode applies to any progression — `ii V I` through all 12 keys, `I` through 12 keys (= the circle itself), or whatever shape you want. The displayed key updates per lap and reflects the key quality (e.g. "Am", "Dm" in minor). Spelling uses flats in 4ths, sharps in 5ths. Pitch is octave-clamped so the cycle doesn't keep climbing into screech range.
+Cycle mode applies to any progression — `ii V I` through all 12 keys, `I` through 12 keys (= the circle itself), or whatever shape you want. The displayed key updates per lap. Spelling uses flats in 4ths, sharps in 5ths. Pitch is octave-clamped so the cycle doesn't keep climbing into screech range.
 
 ## Style
 

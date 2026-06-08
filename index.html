@@ -356,7 +356,6 @@
     </div>
     <div id="key-display">
       <button id="key-note-btn" class="key-pill" type="button">C</button>
-      <button id="key-quality-btn" class="key-pill" type="button">Major</button>
     </div>
     <div id="key-picker" hidden></div>
     <div id="chord-strip"></div>
@@ -415,10 +414,6 @@
           <option>E</option><option>F</option><option>F#</option><option>G</option>
           <option>Ab</option><option>A</option><option>Bb</option><option>B</option>
         </select>
-        <div class="option-group" id="key-quality-group" style="margin-top:0.5rem">
-          <button type="button" class="option-btn active" data-key-quality="major">Major</button>
-          <button type="button" class="option-btn" data-key-quality="minor">Minor</button>
-        </div>
         <label class="field-label" for="tempo-slider">Tempo <span id="tempo-display" style="font-weight:400;color:var(--text-2);font-size:0.85rem">85 BPM</span></label>
         <input id="tempo-slider" type="range" min="40" max="220" step="1" value="85" />
         <button type="button" class="tap-btn" id="tap-tempo-setup" style="margin-top:0.4rem">Tap tempo</button>
@@ -528,7 +523,7 @@
       STYLE_OPTIONS, STYLE_LABELS, BASS_OPTIONS, BASS_LABELS,
       VOICING_OPTIONS, VOICING_PILL_LABELS, CYCLE_OPTIONS, CYCLE_LABELS,
       BARS_OPTIONS, PRESETS, tokenize, resolvedChordName, resolvePlayOrder,
-      ROMAN, MAX_BARS, KEY_QUALITY_OPTIONS,
+      ROMAN, MAX_BARS,
     } from './progression-core.js';
     import { makeProgressionAudio } from './progression-audio.js';
 
@@ -552,7 +547,6 @@
 
     const $ = id => document.getElementById(id);
     const keyNoteBtnEl    = $('key-note-btn');
-    const keyQualityBtnEl = $('key-quality-btn');
     const keyPickerEl     = $('key-picker');
     const stripEl         = $('chord-strip');
     const statusEl        = $('status');
@@ -603,13 +597,10 @@
         const [numeral] = t.split(':');
         return resolvedChordName(numeral, 0, state.key, state.cycle);
       }));
-      keyNoteBtnEl.textContent    = state.key;
-      keyQualityBtnEl.textContent = state.keyQuality === 'minor' ? 'Minor' : 'Major';
+      keyNoteBtnEl.textContent = state.key;
       keySelectEl.value = state.key;
       keyPickerEl.querySelectorAll('.key-chip').forEach(b =>
         b.classList.toggle('active', b.dataset.key === state.key));
-      document.querySelectorAll('[data-key-quality]').forEach(b =>
-        b.classList.toggle('active', b.dataset.keyQuality === state.keyQuality));
     }
 
     /**
@@ -707,8 +698,7 @@
       }
       setActiveChip(chipIndex);
       updateChipNames(resolvedChipNames);
-      keyNoteBtnEl.textContent = resolvedKey.replace(/m$/, '');
-      keyQualityBtnEl.textContent = resolvedKey.endsWith('m') ? 'Minor' : 'Major';
+      keyNoteBtnEl.textContent = resolvedKey;
       setScrubberCurrent(posIndex);
       renderBarDots(bars, 0);
     }
@@ -993,17 +983,11 @@
     });
 
     keyNoteBtnEl.addEventListener('click', () => { keyPickerEl.hidden = !keyPickerEl.hidden; });
-    keyQualityBtnEl.addEventListener('click', () => {
-      const q = app.getState().keyQuality;
-      app.setState({ keyQuality: q === 'minor' ? 'major' : 'minor' });
-    });
     document.addEventListener('click', e => {
       if (keyPickerEl.hidden) return;
       if (keyNoteBtnEl.contains(e.target) || keyPickerEl.contains(e.target)) return;
       keyPickerEl.hidden = true;
     });
-    document.querySelectorAll('[data-key-quality]').forEach(btn =>
-      btn.addEventListener('click', () => app.setState({ keyQuality: btn.dataset.keyQuality })));
 
     // ── Tempo picker ─────────────────────────────────────────────────────────
 
