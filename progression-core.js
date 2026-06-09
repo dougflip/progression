@@ -863,6 +863,8 @@ export function makeProgressionPlayer(config) {
 
   function _stopPlayback() {
     _pausedAt = null;
+    const order = resolvePlayOrder(_state.sections, _state.arrangement);
+    _state = { ..._state, activeSection: order.length > 0 ? order[0] : 1 };
     config.audio.stop();
     config.onPlaybackChange(false);
     _notify();
