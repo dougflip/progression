@@ -723,7 +723,6 @@
       setActiveChip(chipIndex);
       updateChipNames(resolvedChipNames);
       keyNoteBtnEl.textContent = resolvedKey;
-      if (app.getState().cycle === 'custom') readoutCycleEl.textContent = resolvedKey;
       keyScrubberTrack.querySelectorAll('.scrubber-seg').forEach(seg =>
         seg.classList.toggle('current', seg.textContent === resolvedKey));
       setScrubberCurrent(posIndex);
