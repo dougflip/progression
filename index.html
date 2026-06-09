@@ -704,12 +704,24 @@
 
     // ── Scrubber current position ───────────────────────────────────────────
 
+    function centerActiveSegment(track, seg) {
+      if (!seg) return;
+      track.scrollTo({
+        left: seg.offsetLeft - track.clientWidth / 2 + seg.offsetWidth / 2,
+        behavior: 'smooth',
+      });
+    }
+
     function setScrubberCurrent(posIndex) {
+      let activeSeg = null;
       scrubberTrack.querySelectorAll('.scrubber-seg').forEach(seg => {
         const sp = parseInt(seg.dataset.posIndex, 10);
-        seg.classList.toggle('current', sp === posIndex);
+        const isCurrent = sp === posIndex;
+        seg.classList.toggle('current', isCurrent);
         seg.classList.toggle('queued', sp === _pendingJump && sp !== posIndex);
+        if (isCurrent) activeSeg = seg;
       });
+      centerActiveSegment(scrubberTrack, activeSeg);
     }
 
     // ── Audio timing callbacks (fast path — no onStateChange) ───────────────
@@ -723,11 +735,15 @@
       setActiveChip(chipIndex);
       updateChipNames(resolvedChipNames);
       keyNoteBtnEl.textContent = resolvedKey;
+      let activeKeySeg = null;
       keyScrubberTrack.querySelectorAll('.scrubber-seg').forEach(seg => {
         const ki = parseInt(seg.dataset.keyIndex, 10);
-        seg.classList.toggle('current', seg.textContent === resolvedKey);
-        seg.classList.toggle('queued', ki === _pendingKeyJump && seg.textContent !== resolvedKey);
+        const isCurrent = seg.textContent === resolvedKey;
+        seg.classList.toggle('current', isCurrent);
+        seg.classList.toggle('queued', ki === _pendingKeyJump && !isCurrent);
+        if (isCurrent) activeKeySeg = seg;
       });
+      centerActiveSegment(keyScrubberTrack, activeKeySeg);
       setScrubberCurrent(posIndex);
       renderBarDots(bars, 0);
     }
