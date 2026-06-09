@@ -865,7 +865,11 @@
     }
 
     function handleKeySegmentTap(lapIndex) {
-      if (!audio.isPlaying()) return;
+      if (!audio.isPlaying()) {
+        centerActiveSegment(keyScrubberTrack,
+          keyScrubberTrack.querySelector(`[data-key-index="${lapIndex}"]`));
+        return;
+      }
       if (_pendingKeyJump === lapIndex) {
         _pendingKeyJump = null;
         app.cancelKeyJump();
