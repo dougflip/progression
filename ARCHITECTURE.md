@@ -27,7 +27,7 @@ progression-audio.js — Tone.js engine: plays what core gives it
 {
   isPlaying(),
   start({ chordSequence, tempo, style, bassVariant, voicing, advance,
-          startPosIndex, key, cycle, customCycleKeys, mix,
+          startPosIndex, startChipIndex, startLapIndex, key, cycle, customCycleKeys, mix,
           onChordTick, onBeatTick, onBarTick }),
   stop(),
   rebuild({ chordSequence, style, bassVariant, voicing, key, cycle, customCycleKeys }),
@@ -41,6 +41,8 @@ progression-audio.js — Tone.js engine: plays what core gives it
   cancelKeyJump(),
 }
 ```
+
+`startChipIndex` seeks to a specific chord within the starting section (used for pause/resume). `startLapIndex` seeks to a specific cycle lap. Both default to 0.
 
 Channels are created once on first `start()` and survive stop/rebuild cycles. Teardown disposes synths and sequences but never channels.
 
@@ -66,15 +68,28 @@ State is serialized as query parameters. Musical content (`key`, `tempo`, `bars`
 
 The action bar contains two stacked scrubber rows, each only visible when relevant:
 
-- **SONG scrubber** — appears when the arrangement has 2+ positions; segments are section references; tapping queues a section jump at the next chord boundary (auto mode) or holds until tapped again (manual mode).
-- **KEY scrubber** — appears when `cycle !== 'none'` and the key sequence has 2+ entries; segments are resolved key names; tapping queues a lap jump that fires at the end of the current full-song run.
+- **SONG scrubber** — appears when the arrangement has 2+ positions; segments are section references. While playing: tapping queues a section jump at the next chord boundary (auto mode) or holds until tapped again (manual mode). While stopped/paused: tapping highlights the segment and calls `seekToPos(posIndex)` so play starts from that exact arrangement position (not just the section number — repeated section refs like `1 1 2 1 1 2` resume from the tapped occurrence).
+- **KEY scrubber** — appears when `cycle !== 'none'` and the key sequence has 2+ entries; segments are resolved key names. While playing: tapping queues a lap jump that fires at the end of the current full-song run. While stopped/paused: tapping highlights the segment, calls `seekToLap(lapIndex)`, and immediately updates the chord chips and key display to reflect the selected key.
 
 Both scrubbers auto-scroll to keep the active segment centered on each chord tick using `getBoundingClientRect`-based centering (not `offsetLeft`, which is relative to the nearest positioned ancestor rather than the scroll container).
+
+The host tracks `_currentScrubPosIndex`, `_currentScrubKey`, and `_currentLapIndex` to restore `.current` highlights and correct chord display after DOM rebuilds (scrubbers do `innerHTML = ''` on every `render()` call).
 
 ## Known rough edges
 
 - **Full re-render on every state change.** `render()` calls all sub-renders on every `setState` including rapid slider drags. Fine for current app size; revisit if sluggishness appears.
-- **Intermittent auto+cycle scrubber jump bug.** No repro steps yet. Likely `posOffsets` not accounting for the current lap in cycle mode, jumping to wrong bar. Investigate when it reveals consistently.
+
+## Player factory public API
+
+`makeProgressionPlayer(config)` returns the app controller. Key playback methods:
+
+- `togglePlay()` — **pause** if playing, **resume** if paused or stopped. Resume uses `_pausedAt` (posIndex + chipIndex + lapIndex) so it continues from the exact chord and cycle lap where playback stopped.
+- `stop()` — full reset to beginning; clears `_pausedAt`.
+- `isPaused()` — returns true when paused (audio stopped, position saved).
+- `seekToPos(posIndex)` — sets the resume position to a specific arrangement slot; also updates `activeSection` for chip display. Works from stopped or paused state.
+- `seekToLap(lapIndex)` — sets the resume lap without affecting the song position. Works from stopped (defaults posIndex to 0) or paused (preserves posIndex/chipIndex).
+
+Pause state is stored in private `_pausedAt: { posIndex, chipIndex, lapIndex } | null`. It is cleared by `stop()`, `loadPreset()`, and any `_set()` call touching `sections`, `arrangement`, `cycle`, or `customCycleKeys` (structural changes that would make the saved position stale). Key, tempo, style, bass, voicing, and bars changes preserve `_pausedAt`.
 
 ## Planned features
 
