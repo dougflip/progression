@@ -430,6 +430,11 @@
           <button type="button" class="option-btn active" data-cycle="none">Loop</button>
           <button type="button" class="option-btn" data-cycle="4ths">Cycle 4ths</button>
           <button type="button" class="option-btn" data-cycle="5ths">Cycle 5ths</button>
+          <button type="button" class="option-btn" data-cycle="custom">Custom</button>
+        </div>
+        <div id="custom-keys-editor" hidden>
+          <input id="custom-keys-input" type="text" placeholder="A E D G" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" style="margin-top:0.5rem" />
+          <div class="hint">Space or comma-separated keys (e.g. <code>A E D G</code>)</div>
         </div>
         <label class="field-label">Style</label>
         <div class="option-group" id="style-group">
@@ -525,7 +530,7 @@
       STYLE_OPTIONS, STYLE_LABELS, BASS_OPTIONS, BASS_LABELS,
       VOICING_OPTIONS, VOICING_PILL_LABELS, CYCLE_OPTIONS, CYCLE_LABELS,
       BARS_OPTIONS, PRESETS, tokenize, resolvedChordName, resolvePlayOrder,
-      ROMAN, MAX_BARS,
+      ROMAN, MAX_BARS, VALID_KEYS,
     } from './progression-core.js';
     import { makeProgressionAudio } from './progression-audio.js';
 
@@ -569,7 +574,9 @@
     const readoutVoicingEl = $('readout-voicing');
     const readoutBarsEl   = $('readout-bars');
     const readoutCycleEl  = $('readout-cycle');
-    const readoutAdvanceEl = $('readout-advance');
+    const readoutAdvanceEl  = $('readout-advance');
+    const customKeysEditorEl = $('custom-keys-editor');
+    const customKeysInputEl  = $('custom-keys-input');
     const chordVolEl      = $('chord-vol');
     const bassVolEl       = $('bass-vol');
     const drumVolEl       = $('drum-vol');
@@ -701,6 +708,7 @@
       setActiveChip(chipIndex);
       updateChipNames(resolvedChipNames);
       keyNoteBtnEl.textContent = resolvedKey;
+      if (app.getState().cycle === 'custom') readoutCycleEl.textContent = resolvedKey;
       setScrubberCurrent(posIndex);
       renderBarDots(bars, 0);
     }
@@ -715,6 +723,12 @@
       readoutBarsEl.textContent   = `${state.bars} ${state.bars === 1 ? 'bar' : 'bars'}`;
       readoutCycleEl.textContent  = CYCLE_LABELS[state.cycle]   ?? state.cycle;
       readoutAdvanceEl.textContent = state.advance === 'manual' ? 'Manual' : 'Auto';
+
+      const isCustom = state.cycle === 'custom';
+      customKeysEditorEl.hidden = !isCustom;
+      if (isCustom && document.activeElement !== customKeysInputEl) {
+        customKeysInputEl.value = state.customCycleKeys.join(' ');
+      }
 
       if (document.activeElement !== tempoSliderEl) tempoSliderEl.value = String(state.tempo);
 
@@ -1048,7 +1062,15 @@
     document.querySelectorAll('[data-bars]').forEach(btn =>
       btn.addEventListener('click', () => app.setState({ bars: parseInt(btn.dataset.bars, 10) })));
     document.querySelectorAll('[data-cycle]').forEach(btn =>
-      btn.addEventListener('click', () => app.setState({ cycle: btn.dataset.cycle })));
+      btn.addEventListener('click', () => {
+        const newCycle = btn.dataset.cycle;
+        const state = app.getState();
+        if (newCycle === 'custom' && !state.customCycleKeys.length) {
+          app.setState({ cycle: newCycle, customCycleKeys: [state.key] });
+        } else {
+          app.setState({ cycle: newCycle });
+        }
+      }));
     document.querySelectorAll('[data-style]').forEach(btn =>
       btn.addEventListener('click', () => app.setState({ style: btn.dataset.style })));
     document.querySelectorAll('[data-bass]').forEach(btn =>
@@ -1065,8 +1087,27 @@
     readoutBassEl.addEventListener('click',    () => app.setState({ bass:    cycleOpt(BASS_OPTIONS,    app.getState().bass) }));
     readoutVoicingEl.addEventListener('click', () => app.setState({ voicing: cycleOpt(VOICING_OPTIONS, app.getState().voicing) }));
     readoutBarsEl.addEventListener('click',    () => app.setState({ bars:    cycleOpt(BARS_OPTIONS,    app.getState().bars) }));
-    readoutCycleEl.addEventListener('click',   () => app.setState({ cycle:   cycleOpt(CYCLE_OPTIONS,   app.getState().cycle) }));
+    readoutCycleEl.addEventListener('click', () => {
+      const state = app.getState();
+      const next = cycleOpt(CYCLE_OPTIONS, state.cycle);
+      if (next === 'custom' && !state.customCycleKeys.length) {
+        app.setState({ cycle: next, customCycleKeys: [state.key] });
+      } else {
+        app.setState({ cycle: next });
+      }
+    });
     readoutAdvanceEl.addEventListener('click', () => app.setState({ advance: app.getState().advance === 'auto' ? 'manual' : 'auto' }));
+
+    function parseCustomKeys(val) {
+      return val.trim().split(/[\s,]+/).filter(Boolean)
+        .map(k => k.charAt(0).toUpperCase() + k.slice(1).toLowerCase())
+        .filter(k => VALID_KEYS.includes(k));
+    }
+    customKeysInputEl.addEventListener('change', () =>
+      app.setState({ customCycleKeys: parseCustomKeys(customKeysInputEl.value) }));
+    customKeysInputEl.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); app.setState({ customCycleKeys: parseCustomKeys(customKeysInputEl.value) }); }
+    });
 
     // ── Sections ──────────────────────────────────────────────────────────────
 

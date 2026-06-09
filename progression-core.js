@@ -66,8 +66,24 @@ const CHORD_NAME_RE = /^([A-G])([#b]?)(.*)$/;
 const NOTE_RE = /^([A-G])([#b]?)(-?\d+)$/;
 
 export const CYCLE_SEMIS   = { none: 0, '4ths': 5, '5ths': 7 };
-export const CYCLE_OPTIONS = ['none', '4ths', '5ths'];
-export const CYCLE_LABELS  = { none: 'Loop', '4ths': 'Cycle 4ths', '5ths': 'Cycle 5ths' };
+export const CYCLE_OPTIONS = ['none', '4ths', '5ths', 'custom'];
+export const CYCLE_LABELS  = { none: 'Loop', '4ths': 'Cycle 4ths', '5ths': 'Cycle 5ths', custom: 'Custom' };
+
+/**
+ * Returns the semitone shifts to iterate for a given cycle mode.
+ * @param {string} cycle
+ * @param {string[]} customCycleKeys
+ * @returns {number[]}
+ */
+export function getShiftsForCycle(cycle, customCycleKeys) {
+  if (cycle === '4ths') return Array.from({ length: 12 }, (_, i) => 5 * i);
+  if (cycle === '5ths') return Array.from({ length: 12 }, (_, i) => 7 * i);
+  if (cycle === 'custom' && customCycleKeys.length > 0) {
+    const base = KEY_MIDI[customCycleKeys[0]];
+    return customCycleKeys.map(k => KEY_MIDI[k] - base);
+  }
+  return [0];
+}
 
 const ROMAN_NUMERALS = ['III','VII','iii','vii','II','IV','VI','ii','iv','vi','I','V','i','v'];
 
@@ -286,9 +302,10 @@ export function transposeNote(noteName, semis) {
  * @param {string} key
  * @returns {boolean}
  */
-export function cycleUsesFlats(cycle, key) {
+export function cycleUsesFlats(cycle, key, targetPc = null) {
   if (cycle === '4ths') return true;
   if (cycle === '5ths') return false;
+  if (cycle === 'custom' && targetPc !== null) return FLAT_KEYS.has(FLAT_NAMES[targetPc]);
   return FLAT_KEYS.has(key);
 }
 
@@ -301,7 +318,10 @@ export function cycleUsesFlats(cycle, key) {
  * @returns {string}
  */
 export function resolvedChordName(numeral, shift, key, cycle) {
-  const useFlats = cycleUsesFlats(cycle, key);
+  const targetPc = cycle === 'custom'
+    ? (((KEY_MIDI[key] % 12) + shift) % 12 + 12) % 12
+    : null;
+  const useFlats = cycleUsesFlats(cycle, key, targetPc);
   const names = useFlats ? FLAT_NAMES : SHARP_NAMES;
 
   const roman = parseRoman(numeral);
@@ -338,7 +358,8 @@ export function resolvedChordName(numeral, shift, key, cycle) {
 export function resolvedKeyName(key, shift, cycle) {
   const baseKeyPc = KEY_MIDI[key] % 12;
   const curPc = (((baseKeyPc + shift) % 12) + 12) % 12;
-  const names = cycleUsesFlats(cycle, key) ? FLAT_NAMES : SHARP_NAMES;
+  const targetPc = cycle === 'custom' ? curPc : null;
+  const names = cycleUsesFlats(cycle, key, targetPc) ? FLAT_NAMES : SHARP_NAMES;
   return names[curPc];
 }
 
@@ -566,6 +587,7 @@ export const VALID_KEYS = ['C','Db','D','Eb','E','F','F#','G','Ab','A','Bb','B']
  *   tempo: number,
  *   bars: number,
  *   cycle: string,
+ *   customCycleKeys: string[],
  *   style: string,
  *   bass: string,
  *   voicing: string,
@@ -588,8 +610,9 @@ export const DEFAULTS = {
   key:          'C',
   tempo:        85,
   bars:         2,
-  cycle:        'none',
-  style:        'funk',
+  cycle:           'none',
+  customCycleKeys: [],
+  style:           'funk',
   bass:         'busy',
   voicing:      'voice-lead-loop',
   sections:     [{ progression: 'I vi ii V' }],
@@ -624,6 +647,10 @@ export function parseUrl(searchString) {
   const bass    = str('bass',    DEFAULTS.bass);
   const voicing = str('voicing', DEFAULTS.voicing);
   const advance = str('advance', DEFAULTS.advance);
+  const rawCustomKeys = str('customKeys', '');
+  const customCycleKeys = rawCustomKeys
+    ? rawCustomKeys.split(',').map(k => k.trim()).filter(k => VALID_KEYS.includes(k))
+    : [];
   const rawSections = p.getAll('section');
   const sections = rawSections.length
     ? rawSections.map(prog => ({ progression: prog }))
@@ -634,8 +661,9 @@ export function parseUrl(searchString) {
     key:     VALID_KEYS.includes(key) ? key : DEFAULTS.key,
     tempo:   Math.max(40, Math.min(220, num('tempo', DEFAULTS.tempo))),
     bars:    BARS_OPTIONS.includes(bars) ? bars : DEFAULTS.bars,
-    cycle:   CYCLE_OPTIONS.includes(cycle) ? cycle : DEFAULTS.cycle,
-    style:   STYLE_OPTIONS.includes(style) ? style : DEFAULTS.style,
+    cycle:           CYCLE_OPTIONS.includes(cycle) ? cycle : DEFAULTS.cycle,
+    customCycleKeys,
+    style:           STYLE_OPTIONS.includes(style) ? style : DEFAULTS.style,
     bass:    BASS_OPTIONS.includes(bass) ? bass : DEFAULTS.bass,
     voicing: VOICING_OPTIONS.includes(voicing) ? voicing : DEFAULTS.voicing,
     sections,
@@ -663,6 +691,7 @@ export function serializeUrl(state) {
   p.set('tempo',   String(state.tempo));
   p.set('bars',    String(state.bars));
   p.set('cycle',   state.cycle);
+  if (state.customCycleKeys.length) p.set('customKeys', state.customCycleKeys.join(','));
   p.set('style',   state.style);
   p.set('bass',    state.bass);
   p.set('voicing', state.voicing);
@@ -720,7 +749,7 @@ export function makeProgressionPlayer(config) {
   let _state = { ...DEFAULTS };
 
   // Keys that require a full audio rebuild when changed during playback
-  const REBUILD_KEYS = new Set(['key', 'bars', 'style', 'bass', 'voicing', 'cycle', 'sections', 'arrangement']);
+  const REBUILD_KEYS = new Set(['key', 'bars', 'style', 'bass', 'voicing', 'cycle', 'customCycleKeys', 'sections', 'arrangement']);
 
   function _notify() { config.onStateChange({ ..._state }); }
 
@@ -752,12 +781,13 @@ export function makeProgressionPlayer(config) {
       try {
         const chords = buildSongChords(_state.sections, _state.arrangement, _state.key, _state.bars);
         config.audio.rebuild({
-          chordSequence: chords,
-          style:         STYLES[_state.style],
-          bassVariant:   _state.bass,
-          voicing:       _state.voicing,
-          key:           _state.key,
-          cycle:         _state.cycle,
+          chordSequence:   chords,
+          style:           STYLES[_state.style],
+          bassVariant:     _state.bass,
+          voicing:         _state.voicing,
+          key:             _state.key,
+          cycle:           _state.cycle,
+          customCycleKeys: _state.customCycleKeys,
         });
       } catch (e) {
         config.onError?.(`Rebuild error: ${e.message}`);
@@ -782,8 +812,9 @@ export function makeProgressionPlayer(config) {
       voicing:       _state.voicing,
       advance:       _state.advance,
       startPosIndex,
-      key:           _state.key,
-      cycle:         _state.cycle,
+      key:             _state.key,
+      cycle:           _state.cycle,
+      customCycleKeys: _state.customCycleKeys,
       mix: {
         chordVol:  _state.chordVol,
         bassVol:   _state.bassVol,

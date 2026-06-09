@@ -7,7 +7,7 @@
 
 import {
   resolvedChordName, resolvedKeyName,
-  clampShift, makeChord, CYCLE_SEMIS,
+  clampShift, makeChord, getShiftsForCycle,
 } from './progression-core.js';
 
 /**
@@ -34,6 +34,7 @@ export function makeProgressionAudio({ Tone }) {
   // ── Active start params (needed inside Draw callbacks) ─────────────────────
   let _key = 'C';
   let _cycle = 'none';
+  let _customCycleKeys = [];
 
   // ── Callbacks ──────────────────────────────────────────────────────────────
   let _onChordTick = null;
@@ -99,12 +100,12 @@ export function makeProgressionAudio({ Tone }) {
   /**
    * @param {import('./progression-core.js').SongChord[]} chords
    * @param {string} cycle
+   * @param {string[]} customCycleKeys
    * @param {string} voicing
    * @returns {{ songBars: number, posOffsets: Record<number,number> }}
    */
-  function _buildPart(chords, cycle, voicing) {
-    const semis        = CYCLE_SEMIS[cycle] || 0;
-    const laps         = semis ? 12 : 1;
+  function _buildPart(chords, cycle, customCycleKeys, voicing) {
+    const shifts       = getShiftsForCycle(cycle, customCycleKeys);
     const smooth       = voicing === 'voice-lead' || voicing === 'voice-lead-loop';
     const resetEachLap = voicing === 'voice-lead-loop';
 
@@ -132,9 +133,9 @@ export function makeProgressionAudio({ Tone }) {
     const events = [];
     let prevUpper = null;
 
-    for (let lap = 0; lap < laps; lap++) {
+    for (let i = 0; i < shifts.length; i++) {
       if (resetEachLap) prevUpper = null;
-      const rawShift   = semis * lap;
+      const rawShift   = shifts[i];
       const audioShift = clampShift(rawShift);
 
       for (const c of chords) {
@@ -272,7 +273,7 @@ export function makeProgressionAudio({ Tone }) {
    * @param {string} bassVariant
    * @param {boolean} bassOn
    */
-  function _buildBass(chords, cycle, style, bassVariant, bassOn) {
+  function _buildBass(chords, cycle, customCycleKeys, style, bassVariant, bassOn) {
     _bass = new Tone.MonoSynth({
       oscillator:     { type: 'sawtooth' },
       filter:         { Q: 2, type: 'lowpass' },
@@ -282,12 +283,11 @@ export function makeProgressionAudio({ Tone }) {
     _bass.volume.value = -6;
 
     const patterns = style.bass[bassVariant] || style.bass.simple;
-    const semis     = CYCLE_SEMIS[cycle] || 0;
-    const laps      = semis ? 12 : 1;
+    const shifts    = getShiftsForCycle(cycle, customCycleKeys);
     const steps     = [];
 
-    for (let lap = 0; lap < laps; lap++) {
-      const shift = clampShift(semis * lap);
+    for (let i = 0; i < shifts.length; i++) {
+      const shift = clampShift(shifts[i]);
       for (const c of chords) {
         const voiced  = shift ? makeChord(c.root + shift, c.quality) : c;
         const pattern = voiced.isMinor ? patterns.minor : patterns.major;
@@ -332,14 +332,15 @@ export function makeProgressionAudio({ Tone }) {
      * }} opts
      */
     async start({ chordSequence, tempo, style, bassVariant, voicing, advance,
-                  startPosIndex = 0, key, cycle, mix,
+                  startPosIndex = 0, key, cycle, customCycleKeys = [], mix,
                   onChordTick, onBeatTick, onBarTick }) {
       await Tone.start();
       if ('audioSession' in navigator) navigator.audioSession.type = 'playback';
 
-      _key          = key;
-      _cycle        = cycle;
-      _advance      = advance;
+      _key             = key;
+      _cycle           = cycle;
+      _customCycleKeys = customCycleKeys;
+      _advance         = advance;
       _onChordTick  = onChordTick;
       _onBeatTick   = onBeatTick;
       _onBarTick    = onBarTick;
@@ -352,9 +353,9 @@ export function makeProgressionAudio({ Tone }) {
       _teardown();
       _buildSynth();
 
-      const { posOffsets } = _buildPart(chordSequence, cycle, voicing);
+      const { posOffsets } = _buildPart(chordSequence, cycle, customCycleKeys, voicing);
       _buildDrums(style, mix.drumsOn);
-      _buildBass(chordSequence, cycle, style, bassVariant, mix.bassOn);
+      _buildBass(chordSequence, cycle, customCycleKeys, style, bassVariant, mix.bassOn);
 
       Tone.Transport.bpm.value = tempo;
       if (advance === 'manual') _currentPosIndex = startPosIndex;
@@ -371,18 +372,19 @@ export function makeProgressionAudio({ Tone }) {
     },
 
     /** Hot-swap chord sequence mid-playback (called inside scheduleOnce). */
-    rebuild({ chordSequence, style, bassVariant, voicing, key, cycle }) {
+    rebuild({ chordSequence, style, bassVariant, voicing, key, cycle, customCycleKeys = [] }) {
       if (Tone.Transport.state !== 'started') return;
       Tone.Transport.scheduleOnce(() => {
         if (Tone.Transport.state !== 'started') return;
-        _key   = key;
-        _cycle = cycle;
+        _key             = key;
+        _cycle           = cycle;
+        _customCycleKeys = customCycleKeys;
         try {
           _teardown();
           _buildSynth();
-          _buildPart(chordSequence, cycle, voicing);
+          _buildPart(chordSequence, cycle, customCycleKeys, voicing);
           _buildDrums(style, _muteState.drumsOn);
-          _buildBass(chordSequence, cycle, style, bassVariant, _muteState.bassOn);
+          _buildBass(chordSequence, cycle, customCycleKeys, style, bassVariant, _muteState.bassOn);
           if (_channels) _channels.chord.mute = !_muteState.chordsOn;
         } catch (e) {
           console.warn('Audio rebuild failed:', e);
