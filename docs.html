@@ -256,7 +256,8 @@
     <ul>
       <li><strong>Sections</strong> — add in Setup; reorder with ↑↓, delete with ×</li>
       <li><strong>Arrangement</strong> — optional playback order, e.g. <code>1 2 1 3</code> or <code>1:4 2:2</code> (section 1 four times, then section 2 twice); empty = all sections in order</li>
-      <li><strong>Scrubber</strong> — appears when the arrangement has two or more steps; tap a segment to jump to it</li>
+      <li><strong>SONG scrubber</strong> — appears when the arrangement has two or more steps; tap a segment to jump to it</li>
+      <li><strong>KEY scrubber</strong> — appears when a cycle mode is active; tap a segment to queue a key jump at the end of the current run</li>
       <li><strong>Auto / Manual</strong> — auto advances sections automatically; manual holds the current section until you tap the scrubber</li>
     </ul>
 
@@ -267,8 +268,16 @@
       <li><strong>Loop</strong> — repeat in the configured key</li>
       <li><strong>Cycle 4ths</strong> — play the progression through all 12 keys ascending by perfect fourths; spelling uses flats</li>
       <li><strong>Cycle 5ths</strong> — same, ascending by perfect fifths; spelling uses sharps</li>
+      <li><strong>Custom</strong> — define your own key sequence; see below</li>
     </ul>
     <p>Cycle mode works with any progression — <code>ii V I</code>, <code>I</code> (the circle of fifths itself), or anything else. The displayed key updates each lap. Pitch is octave-clamped so it doesn't climb out of range.</p>
+
+    <h3>Custom key sequence</h3>
+    <p>Select <strong>Custom</strong> in the Loop mode group inside Setup. A 12-key grid appears — tap any key to append it to your sequence (up to 12 keys). The sequence is shown as a numbered list above the grid; reorder with ↑↓ and remove with ×.</p>
+    <p>Each entry plays one complete run through the progression (all sections, full arrangement) before advancing to the next key. Accidentals follow the target key's natural spelling — flat keys use flats, sharp keys use sharps.</p>
+
+    <h3>KEY scrubber</h3>
+    <p>When any cycle mode is active, a <strong>KEY</strong> row appears above the SONG scrubber at the bottom of the screen. It shows every key in the cycle sequence and highlights the one currently playing. Tap a segment to queue a jump to that key — it takes effect at the end of the current run (after the full progression completes in the current key). Tap the same segment again to cancel.</p>
 
     <hr />
 
