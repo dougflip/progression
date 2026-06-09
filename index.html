@@ -58,6 +58,7 @@
     }
     .key-chip:active { background: var(--surface-alt-active); }
     .key-chip.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+    .key-chip:disabled { opacity: 0.35; cursor: default; }
 
     /* ── Chord strip ── */
     #chord-strip {
@@ -1135,13 +1136,18 @@
         row.append(num, nameEl, upBtn, downBtn, delBtn);
         customKeyRowsEl.appendChild(row);
       });
+      const atLimit = keys.length >= 12;
+      customKeyPickerEl.querySelectorAll('.key-chip').forEach(btn => { btn.disabled = atLimit; });
     }
 
     VALID_KEYS.forEach(k => {
       const btn = Object.assign(document.createElement('button'),
         { type: 'button', className: 'key-chip', textContent: k });
-      btn.addEventListener('click', () =>
-        app.setState({ customCycleKeys: [...app.getState().customCycleKeys, k] }));
+      btn.addEventListener('click', () => {
+        const keys = app.getState().customCycleKeys;
+        if (keys.length >= 12) return;
+        app.setState({ customCycleKeys: [...keys, k] });
+      });
       customKeyPickerEl.appendChild(btn);
     });
 
