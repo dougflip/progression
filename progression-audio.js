@@ -116,10 +116,14 @@ export function makeProgressionAudio({ Tone }) {
     _songBars = songBars;
 
     // Bar offset for each posIndex (needed for position scrubbing)
+    // chipOffsets[posIndex][chipIndex] = bar offset of that specific chord
     const posOffsets = {};
+    const chipOffsets = {};
     let offsetAcc = 0;
     for (const c of chords) {
       if (!(c.posIndex in posOffsets)) posOffsets[c.posIndex] = offsetAcc;
+      if (!chipOffsets[c.posIndex]) chipOffsets[c.posIndex] = {};
+      chipOffsets[c.posIndex][c.chipIndex] = offsetAcc;
       offsetAcc += c.bars;
     }
 
@@ -227,6 +231,7 @@ export function makeProgressionAudio({ Tone }) {
             resolvedKey:      resolvedKeyName(_key, ev.shift, _cycle),
             bars:             ev.bars,
             sectionTokens:    sectionChanged ? ev.sectionTokens : null,
+            lapIndex,
           });
         }
       }, time);
@@ -245,7 +250,7 @@ export function makeProgressionAudio({ Tone }) {
       Tone.Draw.schedule(() => { if (_onBeatTick) _onBeatTick(beat); }, time);
     }, [0, 1, 2, 3], '4n').start(0);
 
-    return { songBars, posOffsets };
+    return { songBars, posOffsets, chipOffsets };
   }
 
   /** @param {object} style @param {boolean} drumsOn */
@@ -341,6 +346,8 @@ export function makeProgressionAudio({ Tone }) {
      *   voicing: string,
      *   advance: string,
      *   startPosIndex: number,
+     *   startChipIndex: number,
+     *   startLapIndex: number,
      *   key: string,
      *   cycle: string,
      *   mix: { chordVol: number, bassVol: number, drumVol: number, masterVol: number, chordsOn: boolean, bassOn: boolean, drumsOn: boolean },
@@ -350,7 +357,8 @@ export function makeProgressionAudio({ Tone }) {
      * }} opts
      */
     async start({ chordSequence, tempo, style, bassVariant, voicing, advance,
-                  startPosIndex = 0, key, cycle, customCycleKeys = [], mix,
+                  startPosIndex = 0, startChipIndex = 0, startLapIndex = 0,
+                  key, cycle, customCycleKeys = [], mix,
                   onChordTick, onBeatTick, onBarTick }) {
       await Tone.start();
       if ('audioSession' in navigator) navigator.audioSession.type = 'playback';
@@ -365,7 +373,7 @@ export function makeProgressionAudio({ Tone }) {
       _pendingJump    = null;
       _pendingKeyJump = null;
       _manualLap      = 0;
-      _currentLap     = 0;
+      _currentLap     = startLapIndex;
       _currentPosIndex = startPosIndex;
       _muteState    = { chordsOn: mix.chordsOn, bassOn: mix.bassOn, drumsOn: mix.drumsOn };
 
@@ -373,13 +381,14 @@ export function makeProgressionAudio({ Tone }) {
       _teardown();
       _buildSynth();
 
-      const { posOffsets } = _buildPart(chordSequence, cycle, customCycleKeys, voicing);
+      const { posOffsets, chipOffsets } = _buildPart(chordSequence, cycle, customCycleKeys, voicing);
       _buildDrums(style, mix.drumsOn);
       _buildBass(chordSequence, cycle, customCycleKeys, style, bassVariant, mix.bassOn);
 
       Tone.Transport.bpm.value = tempo;
       if (advance === 'manual') _currentPosIndex = startPosIndex;
-      Tone.Transport.position  = `${posOffsets[startPosIndex] ?? 0}:0:0`;
+      const startBarOffset = chipOffsets[startPosIndex]?.[startChipIndex] ?? posOffsets[startPosIndex] ?? 0;
+      Tone.Transport.position  = `${startLapIndex * _songBars + startBarOffset}:0:0`;
       Tone.Transport.start();
     },
 

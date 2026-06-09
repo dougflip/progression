@@ -725,6 +725,7 @@ const PRESETS_STORAGE_KEY = 'progression-presets-v2';
  *   resolvedKey: string,
  *   bars: number,
  *   sectionTokens: string[] | null,
+ *   lapIndex: number,
  * }} ChordTickEvent
  */
 
@@ -734,7 +735,7 @@ const PRESETS_STORAGE_KEY = 'progression-presets-v2';
  *   persist: (key: string, value: string) => void,
  *   load: (key: string) => string | null,
  *   onStateChange: (state: AppState) => void,
- *   onPlaybackChange: (playing: boolean) => void,
+ *   onPlaybackChange: (playing: boolean, reason?: string) => void,
  *   onChordTick: (ev: ChordTickEvent) => void,
  *   onBeatTick: (beat: number) => void,
  *   onBarTick: (bar: number) => void,
@@ -747,15 +748,22 @@ const PRESETS_STORAGE_KEY = 'progression-presets-v2';
 export function makeProgressionPlayer(config) {
   /** @type {AppState} */
   let _state = { ...DEFAULTS };
+  let _lastChordPos = { posIndex: 0, lapIndex: 0 };
+  let _pausedAt = null;
 
   // Keys that require a full audio rebuild when changed during playback
   const REBUILD_KEYS = new Set(['key', 'bars', 'style', 'bass', 'voicing', 'cycle', 'customCycleKeys', 'sections', 'arrangement']);
+  // Keys that invalidate the paused position (structure changes make saved posIndex/lapIndex stale)
+  const PAUSE_INVALIDATING_KEYS = new Set(['sections', 'arrangement', 'cycle', 'customCycleKeys']);
 
   function _notify() { config.onStateChange({ ..._state }); }
 
   /** @param {Partial<AppState>} partial */
   function _set(partial) {
     _state = { ..._state, ...partial };
+    if (_pausedAt !== null && Object.keys(partial).some(k => PAUSE_INVALIDATING_KEYS.has(k))) {
+      _pausedAt = null;
+    }
     _notify();
     if (!config.audio?.isPlaying()) return;
 
@@ -799,7 +807,14 @@ export function makeProgressionPlayer(config) {
     const order  = resolvePlayOrder(_state.sections, _state.arrangement);
     const chords = buildSongChords(_state.sections, _state.arrangement, _state.key, _state.bars);
     let startPosIndex = 0;
-    if (order.length >= 2) {
+    let startLapIndex = 0;
+    let startChipIndex = 0;
+    if (_pausedAt !== null) {
+      startPosIndex = _pausedAt.posIndex;
+      startChipIndex = _pausedAt.chipIndex ?? 0;
+      startLapIndex = _pausedAt.lapIndex;
+      _pausedAt = null;
+    } else if (order.length >= 2) {
       const idx = order.findIndex(ref => ref === _state.activeSection);
       startPosIndex = idx >= 0 ? idx : 0;
     }
@@ -812,6 +827,8 @@ export function makeProgressionPlayer(config) {
       voicing:       _state.voicing,
       advance:       _state.advance,
       startPosIndex,
+      startChipIndex,
+      startLapIndex,
       key:             _state.key,
       cycle:           _state.cycle,
       customCycleKeys: _state.customCycleKeys,
@@ -824,8 +841,8 @@ export function makeProgressionPlayer(config) {
         bassOn:    _state.bassOn,
         drumsOn:   _state.drumsOn,
       },
-      // Core silently tracks active section; host gets the resolved display data
       onChordTick: (ev) => {
+        _lastChordPos = { posIndex: ev.posIndex, chipIndex: ev.chipIndex, lapIndex: ev.lapIndex };
         if (ev.sectionChanged) _state.activeSection = ev.sectionIndex + 1;
         config.onChordTick(ev);
       },
@@ -834,13 +851,21 @@ export function makeProgressionPlayer(config) {
     });
 
     config.onPlaybackChange(true);
-    _notify(); // re-render so section rows disable, etc.
+    _notify();
+  }
+
+  function _pausePlayback() {
+    _pausedAt = { ..._lastChordPos };
+    config.audio.stop();
+    config.onPlaybackChange(false, 'pause');
+    _notify();
   }
 
   function _stopPlayback() {
+    _pausedAt = null;
     config.audio.stop();
     config.onPlaybackChange(false);
-    _notify(); // re-render so section rows re-enable
+    _notify();
   }
 
   function _getUserPresets() {
@@ -905,6 +930,7 @@ export function makeProgressionPlayer(config) {
 
     /** @param {Partial<AppState>} presetState */
     loadPreset(presetState) {
+      _pausedAt = null;
       _state = { ...DEFAULTS, ...presetState };
       _notify();
       if (!config.audio?.isPlaying()) return;
@@ -942,13 +968,22 @@ export function makeProgressionPlayer(config) {
     togglePlay() {
       if (!config.audio) return Promise.resolve();
       if (config.audio.isPlaying()) {
-        _stopPlayback();
+        _pausePlayback();
         return Promise.resolve();
       }
       return _startPlayback().catch(e => {
         config.onError?.(`Playback error: ${e.message}`);
       });
     },
+
+    /** Stops playback and resets to the beginning. */
+    stop() {
+      if (!config.audio) return;
+      _stopPlayback();
+    },
+
+    /** @returns {boolean} */
+    isPaused: () => _pausedAt !== null,
 
     /** @param {number} posIndex */
     queueJump(posIndex) { config.audio?.queueJump(posIndex); },

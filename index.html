@@ -409,6 +409,7 @@
     </div>
     <div class="action-buttons">
       <button class="bar-btn" id="open-setup" type="button"><span class="bar-icon">⚙</span><span>Setup</span></button>
+      <button class="bar-btn" id="stop-btn" type="button" hidden><span class="bar-icon">|◀</span><span>Stop</span></button>
       <button id="play" type="button" aria-label="Play">▶</button>
       <button class="bar-btn" id="open-mix" type="button"><span class="bar-icon">🎚</span><span>Mix</span></button>
     </div>
@@ -570,6 +571,7 @@
     const stripEl         = $('chord-strip');
     const statusEl        = $('status');
     const playBtn         = $('play');
+    const stopBtn         = $('stop-btn');
     const keySelectEl     = $('key-select');
     const tempoSliderEl   = $('tempo-slider');
     const tempoDisplayEl  = $('tempo-display');
@@ -633,6 +635,7 @@
      * @param {string[]} tokens
      */
     function buildChipStructure(tokens) {
+      const activeIdx = [...stripEl.querySelectorAll('.chip')].findIndex(c => c.classList.contains('active'));
       stripEl.innerHTML = '';
       tokens.forEach(token => {
         const [numeral, durStr] = token.split(':');
@@ -649,6 +652,7 @@
         chip.appendChild(Object.assign(document.createElement('div'), { className: 'bar-progress' }));
         stripEl.appendChild(chip);
       });
+      if (activeIdx >= 0) setActiveChip(activeIdx);
     }
 
     /** Updates displayed chord name text without rebuilding chip DOM. */
@@ -813,6 +817,7 @@
     // Host-side pending jump trackers (for scrubber queued animation)
     let _pendingJump    = null;
     let _pendingKeyJump = null;
+    let _isPaused       = false;
 
     /** @param {import('./progression-core.js').AppState} state */
     function renderScrubber(state) {
@@ -1014,14 +1019,24 @@
 
     // ── Playback change ──────────────────────────────────────────────────────
 
-    /** @param {boolean} playing */
-    function onPlaybackChange(playing) {
-      playBtn.textContent = playing ? '■' : '▶';
+    /** @param {boolean} playing @param {string} [reason] */
+    function onPlaybackChange(playing, reason) {
+      _isPaused = reason === 'pause';
+      stopBtn.hidden = !_isPaused;
+      playBtn.textContent = playing ? '‖' : '▶';
       playBtn.classList.toggle('playing', playing);
-      playBtn.setAttribute('aria-label', playing ? 'Stop' : 'Play');
+      playBtn.setAttribute('aria-label', playing ? 'Pause' : 'Play');
       if (playing) {
         statusEl.textContent = '';
         if (keepAwakeEl.checked) acquireWakeLock();
+      } else if (_isPaused) {
+        releaseWakeLock();
+        clearBeats();
+        clearBars();
+        _pendingJump    = null;
+        _pendingKeyJump = null;
+        scrubberTrack.querySelectorAll('.scrubber-seg').forEach(s => s.classList.remove('queued'));
+        keyScrubberTrack.querySelectorAll('.scrubber-seg').forEach(s => s.classList.remove('queued'));
       } else {
         releaseWakeLock();
         clearActiveChip();
@@ -1281,6 +1296,7 @@
     playBtn.addEventListener('click', () => {
       app.togglePlay().catch(e => { statusEl.textContent = 'Error: ' + e.message; });
     });
+    stopBtn.addEventListener('click', () => app.stop());
     document.addEventListener('keydown', e => {
       if (e.code !== 'Space') return;
       const t = document.activeElement?.tagName;
