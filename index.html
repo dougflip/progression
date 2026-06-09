@@ -269,6 +269,10 @@
     }
     .empty-presets { font-size: 0.8rem; color: var(--text-3); padding: 0.25rem 0; }
 
+    /* ── Custom cycle editor ── */
+    #custom-key-picker { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.4rem; margin-top: 0.5rem; }
+    .custom-key-name { flex: 1; padding: 0.45rem 0.6rem; font-size: 0.95rem; font-weight: 600; }
+
     /* ── Section rows ── */
     .section-rows { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.25rem; }
     .section-row { display: flex; align-items: center; gap: 0.4rem; }
@@ -433,8 +437,8 @@
           <button type="button" class="option-btn" data-cycle="custom">Custom</button>
         </div>
         <div id="custom-keys-editor" hidden>
-          <input id="custom-keys-input" type="text" placeholder="A E D G" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" style="margin-top:0.5rem" />
-          <div class="hint">Space or comma-separated keys (e.g. <code>A E D G</code>)</div>
+          <div id="custom-key-picker"></div>
+          <div id="custom-key-rows" class="section-rows" style="margin-top:0.5rem"></div>
         </div>
         <label class="field-label">Style</label>
         <div class="option-group" id="style-group">
@@ -576,7 +580,8 @@
     const readoutCycleEl  = $('readout-cycle');
     const readoutAdvanceEl  = $('readout-advance');
     const customKeysEditorEl = $('custom-keys-editor');
-    const customKeysInputEl  = $('custom-keys-input');
+    const customKeyPickerEl  = $('custom-key-picker');
+    const customKeyRowsEl    = $('custom-key-rows');
     const chordVolEl      = $('chord-vol');
     const bassVolEl       = $('bass-vol');
     const drumVolEl       = $('drum-vol');
@@ -726,9 +731,7 @@
 
       const isCustom = state.cycle === 'custom';
       customKeysEditorEl.hidden = !isCustom;
-      if (isCustom && document.activeElement !== customKeysInputEl) {
-        customKeysInputEl.value = state.customCycleKeys.join(' ');
-      }
+      if (isCustom) renderCustomCycleEditor(state);
 
       if (document.activeElement !== tempoSliderEl) tempoSliderEl.value = String(state.tempo);
 
@@ -1098,15 +1101,48 @@
     });
     readoutAdvanceEl.addEventListener('click', () => app.setState({ advance: app.getState().advance === 'auto' ? 'manual' : 'auto' }));
 
-    function parseCustomKeys(val) {
-      return val.trim().split(/[\s,]+/).filter(Boolean)
-        .map(k => k.charAt(0).toUpperCase() + k.slice(1).toLowerCase())
-        .filter(k => VALID_KEYS.includes(k));
+    function renderCustomCycleEditor(state) {
+      const keys = state.customCycleKeys;
+      customKeyRowsEl.innerHTML = '';
+      if (!keys.length) {
+        customKeyRowsEl.appendChild(Object.assign(document.createElement('div'),
+          { className: 'empty-presets', textContent: 'Tap a key above to add it to the sequence.' }));
+        return;
+      }
+      keys.forEach((key, i) => {
+        const row = document.createElement('div');
+        row.className = 'section-row';
+        const num = Object.assign(document.createElement('div'),
+          { className: 'section-num', textContent: i + 1 });
+        const nameEl = Object.assign(document.createElement('div'),
+          { className: 'custom-key-name', textContent: key });
+        const upBtn = Object.assign(document.createElement('button'),
+          { type: 'button', className: 'icon-btn', textContent: '↑', disabled: i === 0 });
+        upBtn.addEventListener('click', () => {
+          const k = [...keys]; [k[i], k[i - 1]] = [k[i - 1], k[i]];
+          app.setState({ customCycleKeys: k });
+        });
+        const downBtn = Object.assign(document.createElement('button'),
+          { type: 'button', className: 'icon-btn', textContent: '↓', disabled: i === keys.length - 1 });
+        downBtn.addEventListener('click', () => {
+          const k = [...keys]; [k[i], k[i + 1]] = [k[i + 1], k[i]];
+          app.setState({ customCycleKeys: k });
+        });
+        const delBtn = Object.assign(document.createElement('button'),
+          { type: 'button', className: 'icon-btn', textContent: '×' });
+        delBtn.addEventListener('click', () =>
+          app.setState({ customCycleKeys: keys.filter((_, j) => j !== i) }));
+        row.append(num, nameEl, upBtn, downBtn, delBtn);
+        customKeyRowsEl.appendChild(row);
+      });
     }
-    customKeysInputEl.addEventListener('change', () =>
-      app.setState({ customCycleKeys: parseCustomKeys(customKeysInputEl.value) }));
-    customKeysInputEl.addEventListener('keydown', e => {
-      if (e.key === 'Enter') { e.preventDefault(); app.setState({ customCycleKeys: parseCustomKeys(customKeysInputEl.value) }); }
+
+    VALID_KEYS.forEach(k => {
+      const btn = Object.assign(document.createElement('button'),
+        { type: 'button', className: 'key-chip', textContent: k });
+      btn.addEventListener('click', () =>
+        app.setState({ customCycleKeys: [...app.getState().customCycleKeys, k] }));
+      customKeyPickerEl.appendChild(btn);
     });
 
     // ── Sections ──────────────────────────────────────────────────────────────
