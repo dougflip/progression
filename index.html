@@ -705,11 +705,13 @@
 
     // ── Scrubber current position ───────────────────────────────────────────
 
-    function centerActiveSegment(track, seg) {
+    function centerActiveSegment(track, seg, behavior = 'smooth') {
       if (!seg) return;
+      const trackRect = track.getBoundingClientRect();
+      const segRect   = seg.getBoundingClientRect();
       track.scrollTo({
-        left: seg.offsetLeft - track.clientWidth / 2 + seg.offsetWidth / 2,
-        behavior: 'smooth',
+        left: track.scrollLeft + segRect.left - trackRect.left - trackRect.width / 2 + segRect.width / 2,
+        behavior,
       });
     }
 
@@ -867,7 +869,7 @@
     function handleKeySegmentTap(lapIndex) {
       if (!audio.isPlaying()) {
         centerActiveSegment(keyScrubberTrack,
-          keyScrubberTrack.querySelector(`[data-key-index="${lapIndex}"]`));
+          keyScrubberTrack.querySelector(`[data-key-index="${lapIndex}"]`), 'instant');
         return;
       }
       if (_pendingKeyJump === lapIndex) {
