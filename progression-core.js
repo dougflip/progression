@@ -982,6 +982,32 @@ export function makeProgressionPlayer(config) {
       _stopPlayback();
     },
 
+    /**
+     * Sets the resume position without affecting playback state.
+     * When paused: updates _pausedAt to the new posIndex (chip 0, same lap).
+     * When stopped: updates activeSection so play starts from the right section.
+     * @param {number} posIndex
+     */
+    /**
+     * Sets the resume lap (key) without affecting the song position.
+     * @param {number} lapIndex
+     */
+    seekToLap(lapIndex) {
+      _pausedAt = _pausedAt !== null
+        ? { ..._pausedAt, lapIndex }
+        : { posIndex: 0, chipIndex: 0, lapIndex };
+      _notify();
+    },
+
+    seekToPos(posIndex) {
+      const lapIndex = _pausedAt !== null ? _pausedAt.lapIndex : 0;
+      _pausedAt = { posIndex, chipIndex: 0, lapIndex };
+      const order = resolvePlayOrder(_state.sections, _state.arrangement);
+      const section = order[Math.min(posIndex, order.length - 1)];
+      if (section !== undefined) _set({ activeSection: section });
+      else _notify();
+    },
+
     /** @returns {boolean} */
     isPaused: () => _pausedAt !== null,
 

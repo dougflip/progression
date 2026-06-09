@@ -158,10 +158,13 @@
       border-top: 1px solid var(--border); box-shadow: var(--shadow-top); z-index: 10;
     }
     .action-buttons {
-      display: flex; align-items: center; justify-content: space-around;
-      gap: 0.5rem; padding: 0.75rem 1rem;
+      display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+      width: 100%; max-width: 600px; margin: 0 auto;
+      padding: 0.75rem 1rem;
       padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
     }
+    #open-setup { justify-self: start; }
+    #open-mix   { justify-self: end; }
     .bar-btn {
       flex: 1; max-width: 140px; background: none; border: none; padding: 0.5rem;
       font-size: 0.85rem; color: var(--text-2); cursor: pointer;
@@ -169,6 +172,8 @@
     }
     .bar-btn:active { color: var(--text); }
     .bar-icon { font-size: 1.4rem; line-height: 1; }
+    .play-group { display: flex; align-items: center; gap: 0.6rem; }
+    #stop-btn { flex: 0 0 auto; }
     #play {
       flex: 0 0 auto; width: 64px; height: 64px; border-radius: 50%;
       background: var(--accent); color: var(--accent-text); border: none;
@@ -409,8 +414,10 @@
     </div>
     <div class="action-buttons">
       <button class="bar-btn" id="open-setup" type="button"><span class="bar-icon">⚙</span><span>Setup</span></button>
-      <button class="bar-btn" id="stop-btn" type="button" hidden><span class="bar-icon">|◀</span><span>Stop</span></button>
-      <button id="play" type="button" aria-label="Play">▶</button>
+      <div class="play-group">
+        <button class="bar-btn" id="stop-btn" type="button" hidden><span class="bar-icon">■</span><span>Stop</span></button>
+        <button id="play" type="button" aria-label="Play">▶</button>
+      </div>
       <button class="bar-btn" id="open-mix" type="button"><span class="bar-icon">🎚</span><span>Mix</span></button>
     </div>
   </nav>
@@ -720,6 +727,7 @@
     }
 
     function setScrubberCurrent(posIndex) {
+      if (_pendingJump === posIndex) _pendingJump = null;
       let activeSeg = null;
       scrubberTrack.querySelectorAll('.scrubber-seg').forEach(seg => {
         const sp = parseInt(seg.dataset.posIndex, 10);
@@ -735,7 +743,9 @@
 
     /** @param {import('./progression-audio.js').ChordTickEvent} ev */
     function onChordTick({ chipIndex, posIndex, sectionIndex, sectionChanged,
-                           resolvedChipNames, resolvedKey, bars, sectionTokens }) {
+                           resolvedChipNames, resolvedKey, bars, sectionTokens, lapIndex }) {
+      _currentScrubPosIndex = posIndex;
+      _currentScrubKey      = resolvedKey;
       if (sectionChanged && sectionTokens) {
         buildChipStructure(sectionTokens);
       }
@@ -746,6 +756,7 @@
       keyScrubberTrack.querySelectorAll('.scrubber-seg').forEach(seg => {
         const ki = parseInt(seg.dataset.keyIndex, 10);
         const isCurrent = seg.textContent === resolvedKey;
+        if (isCurrent && ki === _pendingKeyJump) _pendingKeyJump = null;
         seg.classList.toggle('current', isCurrent);
         seg.classList.toggle('queued', ki === _pendingKeyJump && !isCurrent);
         if (isCurrent) activeKeySeg = seg;
@@ -818,6 +829,9 @@
     let _pendingJump    = null;
     let _pendingKeyJump = null;
     let _isPaused       = false;
+    // Last known scrubber position — used to restore .current after DOM rebuild
+    let _currentScrubPosIndex = null;
+    let _currentScrubKey      = null;
 
     /** @param {import('./progression-core.js').AppState} state */
     function renderScrubber(state) {
@@ -835,6 +849,7 @@
         const seg = document.createElement('button');
         seg.type = 'button';
         seg.className = 'scrubber-seg';
+        if (posIndex === _currentScrubPosIndex) seg.classList.add('current');
         seg.textContent = sectionRef;
         seg.dataset.posIndex = posIndex;
         seg.addEventListener('click', () => handleScrubberTap(posIndex));
@@ -863,6 +878,7 @@
         const seg = document.createElement('button');
         seg.type = 'button';
         seg.className = 'scrubber-seg';
+        if (keyName === _currentScrubKey) seg.classList.add('current');
         seg.textContent = keyName;
         seg.dataset.keyIndex = i;
         seg.addEventListener('click', () => handleKeySegmentTap(i));
@@ -873,8 +889,10 @@
 
     function handleKeySegmentTap(lapIndex) {
       if (!audio.isPlaying()) {
-        centerActiveSegment(keyScrubberTrack,
-          keyScrubberTrack.querySelector(`[data-key-index="${lapIndex}"]`), 'instant');
+        const state = app.getState();
+        const shifts = getShiftsForCycle(state.cycle, state.customCycleKeys);
+        _currentScrubKey = resolvedKeyName(state.key, shifts[lapIndex] ?? 0, state.cycle);
+        app.seekToLap(lapIndex);
         return;
       }
       if (_pendingKeyJump === lapIndex) {
@@ -893,8 +911,8 @@
 
     function handleScrubberTap(posIndex) {
       if (!audio.isPlaying()) {
-        const order = resolvePlayOrder(app.getState().sections, app.getState().arrangement);
-        app.setState({ activeSection: order[Math.min(posIndex, order.length - 1)] ?? 1 });
+        _currentScrubPosIndex = posIndex;
+        app.seekToPos(posIndex);
         return;
       }
       // Cancel if tapping the queued segment again
@@ -1019,11 +1037,13 @@
 
     // ── Playback change ──────────────────────────────────────────────────────
 
+    const PAUSE_ICON = '<svg width="17" height="20" viewBox="0 0 17 20" fill="currentColor" aria-hidden="true"><rect x="0" y="0" width="6" height="20" rx="1.5"/><rect x="11" y="0" width="6" height="20" rx="1.5"/></svg>';
+
     /** @param {boolean} playing @param {string} [reason] */
     function onPlaybackChange(playing, reason) {
       _isPaused = reason === 'pause';
       stopBtn.hidden = !_isPaused;
-      playBtn.textContent = playing ? '‖' : '▶';
+      playBtn.innerHTML = playing ? PAUSE_ICON : '▶';
       playBtn.classList.toggle('playing', playing);
       playBtn.setAttribute('aria-label', playing ? 'Pause' : 'Play');
       if (playing) {
@@ -1042,8 +1062,10 @@
         clearActiveChip();
         clearBeats();
         clearBars();
-        _pendingJump    = null;
-        _pendingKeyJump = null;
+        _pendingJump          = null;
+        _pendingKeyJump       = null;
+        _currentScrubPosIndex = null;
+        _currentScrubKey      = null;
         statusEl.textContent = '';
         scrubberTrack.querySelectorAll('.scrubber-seg')
           .forEach(s => s.classList.remove('current', 'queued'));
