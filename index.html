@@ -178,7 +178,7 @@
     #play.playing { background: var(--playing); color: #fff; }
 
     /* ── Scrubber ── */
-    #scrubber-bar { border-bottom: 1px solid var(--border); }
+    #scrubber-bar, #key-scrubber-bar { border-bottom: 1px solid var(--border); }
     .scrubber-inner {
       display: flex; align-items: center; gap: 0.5rem;
       padding: 0.75rem 1rem 0.65rem; max-width: 600px; margin: 0 auto;
@@ -394,6 +394,12 @@
   </main>
 
   <nav id="action-bar">
+    <div id="key-scrubber-bar" hidden>
+      <div class="scrubber-inner">
+        <span class="scrubber-label">KEY</span>
+        <div id="key-scrubber-track"></div>
+      </div>
+    </div>
     <div id="scrubber-bar" hidden>
       <div class="scrubber-inner">
         <span class="scrubber-label">SONG</span>
@@ -535,7 +541,7 @@
       STYLE_OPTIONS, STYLE_LABELS, BASS_OPTIONS, BASS_LABELS,
       VOICING_OPTIONS, VOICING_PILL_LABELS, CYCLE_OPTIONS, CYCLE_LABELS,
       BARS_OPTIONS, PRESETS, tokenize, resolvedChordName, resolvePlayOrder,
-      ROMAN, MAX_BARS, VALID_KEYS,
+      ROMAN, MAX_BARS, VALID_KEYS, getShiftsForCycle, resolvedKeyName,
     } from './progression-core.js';
     import { makeProgressionAudio } from './progression-audio.js';
 
@@ -580,6 +586,8 @@
     const readoutBarsEl   = $('readout-bars');
     const readoutCycleEl  = $('readout-cycle');
     const readoutAdvanceEl  = $('readout-advance');
+    const keyScrubberBar     = $('key-scrubber-bar');
+    const keyScrubberTrack   = $('key-scrubber-track');
     const customKeysEditorEl = $('custom-keys-editor');
     const customKeyPickerEl  = $('custom-key-picker');
     const customKeyRowsEl    = $('custom-key-rows');
@@ -599,6 +607,7 @@
       renderReadout(state);
       renderSectionRows(state);
       renderScrubber(state);
+      renderKeyScrubber(state);
       renderMix(state);
       syncUrl(state);
     }
@@ -715,6 +724,8 @@
       updateChipNames(resolvedChipNames);
       keyNoteBtnEl.textContent = resolvedKey;
       if (app.getState().cycle === 'custom') readoutCycleEl.textContent = resolvedKey;
+      keyScrubberTrack.querySelectorAll('.scrubber-seg').forEach(seg =>
+        seg.classList.toggle('current', seg.textContent === resolvedKey));
       setScrubberCurrent(posIndex);
       renderBarDots(bars, 0);
     }
@@ -801,6 +812,33 @@
         seg.dataset.posIndex = posIndex;
         seg.addEventListener('click', () => handleScrubberTap(posIndex));
         scrubberTrack.appendChild(seg);
+      });
+      syncBodyPadding();
+    }
+
+    /** @param {import('./progression-core.js').AppState} state */
+    function renderKeyScrubber(state) {
+      if (state.cycle === 'none') {
+        keyScrubberBar.hidden = true;
+        syncBodyPadding();
+        return;
+      }
+      const shifts = getShiftsForCycle(state.cycle, state.customCycleKeys);
+      const keys   = shifts.map(s => resolvedKeyName(state.key, s, state.cycle));
+      if (keys.length < 2) {
+        keyScrubberBar.hidden = true;
+        syncBodyPadding();
+        return;
+      }
+      keyScrubberBar.hidden = false;
+      keyScrubberTrack.innerHTML = '';
+      keys.forEach((keyName, i) => {
+        const seg = document.createElement('button');
+        seg.type = 'button';
+        seg.className = 'scrubber-seg';
+        seg.textContent = keyName;
+        seg.dataset.keyIndex = i;
+        keyScrubberTrack.appendChild(seg);
       });
       syncBodyPadding();
     }
@@ -950,6 +988,8 @@
         statusEl.textContent = '';
         scrubberTrack.querySelectorAll('.scrubber-seg')
           .forEach(s => s.classList.remove('current', 'queued'));
+        keyScrubberTrack.querySelectorAll('.scrubber-seg')
+          .forEach(s => s.classList.remove('current'));
         renderChips(app.getState());
       }
     }
