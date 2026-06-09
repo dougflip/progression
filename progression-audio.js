@@ -25,6 +25,8 @@ export function makeProgressionAudio({ Tone }) {
   let _pendingJump    = null;
   let _pendingKeyJump = null;
   let _currentPosIndex = 0;
+  let _currentLap  = 0;
+  let _songBars    = 0;
   let _manualLap = 0;
   let _advance = 'auto';
   let _muteState = { chordsOn: true, bassOn: true, drumsOn: true };
@@ -111,6 +113,7 @@ export function makeProgressionAudio({ Tone }) {
     const resetEachLap = voicing === 'voice-lead-loop';
 
     const songBars = chords.reduce((s, c) => s + c.bars, 0);
+    _songBars = songBars;
 
     // Bar offset for each posIndex (needed for position scrubbing)
     const posOffsets = {};
@@ -163,14 +166,18 @@ export function makeProgressionAudio({ Tone }) {
     let lastPos = -1;
 
     _part = new Tone.Part((time, ev) => {
-      // ── Key jump: move to a different cycle lap ──
-      if (_pendingKeyJump !== null) {
-        const lap = _pendingKeyJump;
-        _pendingKeyJump  = null;
-        _currentPosIndex = 0;
-        _manualLap       = 0;
-        Tone.Transport.position = `${Math.round(lap * songBars)}:0:0`;
-        return;
+      // ── Key jump: fire at the next lap boundary (end of full song) ──
+      const lapIndex = Math.floor(Tone.Transport.ticks / (Tone.Transport.PPQ * 4) / songBars);
+      if (lapIndex > _currentLap) {
+        _currentLap = lapIndex;
+        if (_pendingKeyJump !== null) {
+          const lap        = _pendingKeyJump;
+          _pendingKeyJump  = null;
+          _currentPosIndex = 0;
+          _manualLap       = 0;
+          Tone.Transport.position = `${Math.round(lap * songBars)}:0:0`;
+          return;
+        }
       }
 
       // ── Manual mode: intercept section boundaries ──
@@ -355,8 +362,10 @@ export function makeProgressionAudio({ Tone }) {
       _onChordTick  = onChordTick;
       _onBeatTick   = onBeatTick;
       _onBarTick    = onBarTick;
-      _pendingJump  = null;
-      _manualLap    = 0;
+      _pendingJump    = null;
+      _pendingKeyJump = null;
+      _manualLap      = 0;
+      _currentLap     = 0;
       _currentPosIndex = startPosIndex;
       _muteState    = { chordsOn: mix.chordsOn, bassOn: mix.bassOn, drumsOn: mix.drumsOn };
 
@@ -380,6 +389,7 @@ export function makeProgressionAudio({ Tone }) {
       _pendingJump     = null;
       _pendingKeyJump  = null;
       _manualLap       = 0;
+      _currentLap      = 0;
       _currentPosIndex = 0;
     },
 
