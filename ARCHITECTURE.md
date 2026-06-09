@@ -27,23 +27,49 @@ progression-audio.js — Tone.js engine: plays what core gives it
 {
   isPlaying(),
   start({ chordSequence, tempo, style, bassVariant, voicing, advance,
-          startPosIndex, key, cycle, mix, onChordTick, onBeatTick, onBarTick }),
+          startPosIndex, key, cycle, customCycleKeys, mix,
+          onChordTick, onBeatTick, onBarTick }),
   stop(),
-  rebuild({ chordSequence, style, bassVariant, voicing, key, cycle }),
+  rebuild({ chordSequence, style, bassVariant, voicing, key, cycle, customCycleKeys }),
   setTempo(bpm),
   setVolume(channel, value),   // channel: 'chords' | 'bass' | 'drums' | 'master', value: 0–100
   setMute(channel, muted),
   setAdvance(mode),
   queueJump(posIndex),
   cancelJump(),
+  queueKeyJump(lapIndex),
+  cancelKeyJump(),
 }
 ```
 
 Channels are created once on first `start()` and survive stop/rebuild cycles. Teardown disposes synths and sequences but never channels.
 
+## Cycle modes
+
+`cycle` is a string: `'none' | '4ths' | '5ths' | 'custom'`. When `cycle === 'custom'`, a parallel `customCycleKeys: string[]` state field defines the key sequence (e.g. `['A', 'E', 'D', 'G']`). This two-field shape was chosen over a discriminated union to avoid polymorphism at every call site in plain JS.
+
+`getShiftsForCycle(cycle, customCycleKeys)` in core is the single source of truth for how many laps to play and what semitone shift each lap gets:
+- `'none'` → `[0]` (one lap, no shift)
+- `'4ths'` → 12 shifts of +5 semitones each
+- `'5ths'` → 12 shifts of +7 semitones each
+- `'custom'` → one shift per key relative to `customCycleKeys[0]`; falls back to `[0]` if the list is empty
+
+The audio engine replaces the old fixed 12-lap loop with an iteration over the array returned by `getShiftsForCycle`. No audio interface changes are needed to add new cycle modes — only core changes.
+
+Key jump timing: `queueKeyJump(lapIndex)` queues a jump that fires at the next lap boundary (when the full song arrangement completes in the current key), not at the next chord. The engine tracks `_currentLap` from transport ticks on every chord event and fires when `lapIndex > _currentLap`.
+
 ## URL serialization
 
-State is serialized as query parameters. Musical content (`key`, `tempo`, `bars`, `cycle`, `style`, `section`, `advance`, `arrangement`, `activeSection`) and mix state (`chordsOn`/`bassOn`/`drumsOn`, `*Vol`) are all encoded. Multiple `section` params carry each section's progression string. All values fall back to `DEFAULTS` on parse failure.
+State is serialized as query parameters. Musical content (`key`, `tempo`, `bars`, `cycle`, `customKeys`, `style`, `section`, `advance`, `arrangement`, `activeSection`) and mix state (`chordsOn`/`bassOn`/`drumsOn`, `*Vol`) are all encoded. Multiple `section` params carry each section's progression string. `customKeys` is a comma-joined list of key names (e.g. `customKeys=A,E,D,G`), only written when non-empty. All values fall back to `DEFAULTS` on parse failure.
+
+## Scrubbers
+
+The action bar contains two stacked scrubber rows, each only visible when relevant:
+
+- **SONG scrubber** — appears when the arrangement has 2+ positions; segments are section references; tapping queues a section jump at the next chord boundary (auto mode) or holds until tapped again (manual mode).
+- **KEY scrubber** — appears when `cycle !== 'none'` and the key sequence has 2+ entries; segments are resolved key names; tapping queues a lap jump that fires at the end of the current full-song run.
+
+Both scrubbers auto-scroll to keep the active segment centered on each chord tick using `getBoundingClientRect`-based centering (not `offsetLeft`, which is relative to the nearest positioned ancestor rather than the scroll container).
 
 ## Known rough edges
 
@@ -51,15 +77,6 @@ State is serialized as query parameters. Musical content (`key`, `tempo`, `bars`
 - **Intermittent auto+cycle scrubber jump bug.** No repro steps yet. Likely `posOffsets` not accounting for the current lap in cycle mode, jumping to wrong bar. Investigate when it reveals consistently.
 
 ## Planned features
-
-### Custom key cycles
-User defines their own key cycle sequence (e.g. `A → E → D → G`) instead of the built-in 4ths/5ths. Core expands the full chord sequence across each key before handing it to the audio engine — no audio interface changes needed. Proposed state shape:
-
-```js
-cycle: { type: 'custom', keys: ['A', 'E', 'D', 'G'] }
-// vs existing:
-cycle: 'none' | '4ths' | '5ths'
-```
 
 ### Foot pedal support
 HID-keyboard path: 2-switch + tap/long-press = 4 configurable actions. App-side mode toggle for more. Host-level feature — calls `app.togglePlay()` and `app.queueJump()`. Core needs no changes.
