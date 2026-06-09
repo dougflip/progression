@@ -22,7 +22,8 @@ export function makeProgressionAudio({ Tone }) {
   let _bass = null, _bassSeq = null, _beatSeq = null;
 
   // ── Playback state ─────────────────────────────────────────────────────────
-  let _pendingJump = null;
+  let _pendingJump    = null;
+  let _pendingKeyJump = null;
   let _currentPosIndex = 0;
   let _manualLap = 0;
   let _advance = 'auto';
@@ -162,6 +163,16 @@ export function makeProgressionAudio({ Tone }) {
     let lastPos = -1;
 
     _part = new Tone.Part((time, ev) => {
+      // ── Key jump: move to a different cycle lap ──
+      if (_pendingKeyJump !== null) {
+        const lap = _pendingKeyJump;
+        _pendingKeyJump  = null;
+        _currentPosIndex = 0;
+        _manualLap       = 0;
+        Tone.Transport.position = `${Math.round(lap * songBars)}:0:0`;
+        return;
+      }
+
       // ── Manual mode: intercept section boundaries ──
       if (_advance === 'manual' && ev.posIndex !== _currentPosIndex) {
         if (_pendingJump !== null) {
@@ -367,6 +378,7 @@ export function makeProgressionAudio({ Tone }) {
       Tone.Transport.stop();
       _teardown();
       _pendingJump     = null;
+      _pendingKeyJump  = null;
       _manualLap       = 0;
       _currentPosIndex = 0;
     },
@@ -434,5 +446,10 @@ export function makeProgressionAudio({ Tone }) {
     queueJump(posIndex) { _pendingJump = posIndex; },
 
     cancelJump() { _pendingJump = null; },
+
+    /** @param {number} lapIndex */
+    queueKeyJump(lapIndex) { _pendingKeyJump = lapIndex; },
+
+    cancelKeyJump() { _pendingKeyJump = null; },
   };
 }

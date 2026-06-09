@@ -723,8 +723,11 @@
       setActiveChip(chipIndex);
       updateChipNames(resolvedChipNames);
       keyNoteBtnEl.textContent = resolvedKey;
-      keyScrubberTrack.querySelectorAll('.scrubber-seg').forEach(seg =>
-        seg.classList.toggle('current', seg.textContent === resolvedKey));
+      keyScrubberTrack.querySelectorAll('.scrubber-seg').forEach(seg => {
+        const ki = parseInt(seg.dataset.keyIndex, 10);
+        seg.classList.toggle('current', seg.textContent === resolvedKey);
+        seg.classList.toggle('queued', ki === _pendingKeyJump && seg.textContent !== resolvedKey);
+      });
       setScrubberCurrent(posIndex);
       renderBarDots(bars, 0);
     }
@@ -788,8 +791,9 @@
       sectionCountEl.textContent = `(${sections.length} of 6)`;
     }
 
-    // Host-side pending jump tracker (for scrubber queued animation)
-    let _pendingJump = null;
+    // Host-side pending jump trackers (for scrubber queued animation)
+    let _pendingJump    = null;
+    let _pendingKeyJump = null;
 
     /** @param {import('./progression-core.js').AppState} state */
     function renderScrubber(state) {
@@ -837,9 +841,26 @@
         seg.className = 'scrubber-seg';
         seg.textContent = keyName;
         seg.dataset.keyIndex = i;
+        seg.addEventListener('click', () => handleKeySegmentTap(i));
         keyScrubberTrack.appendChild(seg);
       });
       syncBodyPadding();
+    }
+
+    function handleKeySegmentTap(lapIndex) {
+      if (!audio.isPlaying()) return;
+      if (_pendingKeyJump === lapIndex) {
+        _pendingKeyJump = null;
+        app.cancelKeyJump();
+        keyScrubberTrack.querySelectorAll('.scrubber-seg').forEach(s => s.classList.remove('queued'));
+        return;
+      }
+      _pendingKeyJump = lapIndex;
+      app.queueKeyJump(lapIndex);
+      keyScrubberTrack.querySelectorAll('.scrubber-seg').forEach(seg => {
+        const ki = parseInt(seg.dataset.keyIndex, 10);
+        seg.classList.toggle('queued', ki === lapIndex && !seg.classList.contains('current'));
+      });
     }
 
     function handleScrubberTap(posIndex) {
@@ -983,12 +1004,13 @@
         clearActiveChip();
         clearBeats();
         clearBars();
-        _pendingJump = null;
+        _pendingJump    = null;
+        _pendingKeyJump = null;
         statusEl.textContent = '';
         scrubberTrack.querySelectorAll('.scrubber-seg')
           .forEach(s => s.classList.remove('current', 'queued'));
         keyScrubberTrack.querySelectorAll('.scrubber-seg')
-          .forEach(s => s.classList.remove('current'));
+          .forEach(s => s.classList.remove('current', 'queued'));
         renderChips(app.getState());
       }
     }

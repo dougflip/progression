@@ -954,5 +954,10 @@ export function makeProgressionPlayer(config) {
     queueJump(posIndex) { config.audio?.queueJump(posIndex); },
 
     cancelJump() { config.audio?.cancelJump(); },
+
+    /** @param {number} lapIndex */
+    queueKeyJump(lapIndex) { config.audio?.queueKeyJump(lapIndex); },
+
+    cancelKeyJump() { config.audio?.cancelKeyJump(); },
   };
 }
