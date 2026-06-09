@@ -627,11 +627,12 @@
       const progStr = state.sections[state.activeSection - 1]?.progression ?? '';
       const tokens  = tokenize(progStr);
       buildChipStructure(tokens);
+      const displayShift = getShiftsForCycle(state.cycle, state.customCycleKeys)[_currentLapIndex] ?? 0;
       updateChipNames(tokens.map(t => {
         const [numeral] = t.split(':');
-        return resolvedChordName(numeral, 0, state.key, state.cycle);
+        return resolvedChordName(numeral, displayShift, state.key, state.cycle);
       }));
-      keyNoteBtnEl.textContent = state.key;
+      keyNoteBtnEl.textContent = _currentScrubKey ?? state.key;
       keySelectEl.value = state.key;
       keyPickerEl.querySelectorAll('.key-chip').forEach(b =>
         b.classList.toggle('active', b.dataset.key === state.key));
@@ -746,6 +747,7 @@
                            resolvedChipNames, resolvedKey, bars, sectionTokens, lapIndex }) {
       _currentScrubPosIndex = posIndex;
       _currentScrubKey      = resolvedKey;
+      _currentLapIndex      = lapIndex;
       if (sectionChanged && sectionTokens) {
         buildChipStructure(sectionTokens);
       }
@@ -832,6 +834,7 @@
     // Last known scrubber position — used to restore .current after DOM rebuild
     let _currentScrubPosIndex = null;
     let _currentScrubKey      = null;
+    let _currentLapIndex      = 0;
 
     /** @param {import('./progression-core.js').AppState} state */
     function renderScrubber(state) {
@@ -891,6 +894,7 @@
       if (!audio.isPlaying()) {
         const state = app.getState();
         const shifts = getShiftsForCycle(state.cycle, state.customCycleKeys);
+        _currentLapIndex = lapIndex;
         _currentScrubKey = resolvedKeyName(state.key, shifts[lapIndex] ?? 0, state.cycle);
         app.seekToLap(lapIndex);
         return;
@@ -1066,6 +1070,7 @@
         _pendingKeyJump       = null;
         _currentScrubPosIndex = null;
         _currentScrubKey      = null;
+        _currentLapIndex      = 0;
         statusEl.textContent = '';
         scrubberTrack.querySelectorAll('.scrubber-seg')
           .forEach(s => s.classList.remove('current', 'queued'));
