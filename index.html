@@ -7,6 +7,9 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');</script>
   <style>
+    @view-transition { navigation: auto; }
+    ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.2s; }
+
     :root {
       --bg: #fafafa; --surface: #ffffff; --surface-alt: #f1f1f1;
       --surface-alt-active: #e1e1e1; --border: #dddddd; --border-faint: #eeeeee;
