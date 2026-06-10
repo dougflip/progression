@@ -82,28 +82,6 @@
     strong { color: var(--text); }
     hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
     [role="tabpanel"] h2, [role="tabpanel"] h3 { scroll-margin-top: 7rem; }
-    .play-callout {
-      border-left: 3px solid var(--accent); padding: 0.4rem 0 0.4rem 1rem; margin: 0 0 1.5rem;
-    }
-    .play-callout p { margin: 0; font-size: 1rem; color: var(--text); }
-
-    /* ── Numbered steps ── */
-    .steps { counter-reset: step; list-style: none; padding: 0; margin: 0 0 1rem; }
-    .steps li {
-      counter-increment: step; position: relative;
-      padding: 0.65rem 0 0.65rem 2.75rem;
-      border-bottom: 1px solid var(--border-faint);
-      color: var(--text-2);
-    }
-    .steps li:last-child { border-bottom: none; }
-    .steps li::before {
-      content: counter(step);
-      position: absolute; left: 0; top: 0.65rem;
-      width: 1.6rem; height: 1.6rem; border-radius: 50%;
-      background: var(--accent); color: var(--accent-text);
-      font-size: 0.75rem; font-weight: 700;
-      display: inline-flex; align-items: center; justify-content: center;
-    }
 
     /* ── Practice idea cards ── */
     .idea-card {
@@ -112,11 +90,22 @@
     }
     .idea-card h3 { margin: 0 0 0.35rem; }
     .idea-card p { margin: 0 0 0.7rem; font-size: 0.9rem; }
+    .idea-card .back-hint { margin: 0.6rem 0 0; font-size: 0.82rem; color: var(--text-3); }
     .idea-link {
       display: inline-block; background: var(--accent); color: var(--accent-text);
       text-decoration: none; border-radius: 999px; padding: 0.35rem 0.9rem;
       font-size: 0.85rem; font-weight: 600;
     }
+
+    /* ── Inline app try-links ── */
+    .try-link {
+      display: inline-block; background: var(--surface-alt); color: var(--text);
+      text-decoration: none; border-radius: 999px; padding: 0.2rem 0.65rem;
+      font-size: 0.82rem; font-weight: 600; border: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    .try-link:hover { background: var(--surface-alt-active); }
+    .try-links { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.75rem; }
 
     /* ── Syntax table ── */
     .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 1rem; }
@@ -129,6 +118,23 @@
     .syntax-table td {
       padding: 0.5rem 0.65rem; border: 1px solid var(--border);
       color: var(--text-2); vertical-align: top;
+    }
+
+    /* ── Anchor copy buttons ── */
+    .anchor-copy {
+      background: none; border: none; cursor: pointer;
+      color: var(--text-4); font-size: 0.75em; font-weight: 400;
+      padding: 0.15rem 0.35rem; border-radius: 0.25rem;
+      margin-left: 0.3rem; vertical-align: middle;
+      transition: color 0.1s, background 0.1s;
+      font-family: inherit; line-height: 1;
+    }
+    .anchor-copy:hover { color: var(--text-2); background: var(--surface-alt); }
+    /* Desktop: reveal on heading hover only */
+    @media (hover: hover) {
+      .anchor-copy { opacity: 0; transition: opacity 0.1s, color 0.1s, background 0.1s; }
+      h2:hover .anchor-copy, h3:hover .anchor-copy,
+      .anchor-copy:focus { opacity: 1; }
     }
   </style>
 </head>
@@ -151,25 +157,25 @@
   <!-- ── Quick Start ── -->
   <section class="tab-panel active" id="tab-quick-start" role="tabpanel">
 
-    <h2>Start playing now!</h2>
     <p>Progression is a backing-track tool for musicians. Enter a chord progression, set your key and tempo, and loop it while you practice scales, solos, or chord shapes.</p>
+    <p>It's easy to get started in seconds — and when you're ready to go deeper, there's a lot to explore.</p>
 
-    <div class="play-callout">
+    <div class="idea-card">
+      <h3>Try it now</h3>
       <p>A progression is already loaded — press <strong>Play</strong> and you're off. Chord chips highlight as each chord plays.</p>
+      <a href="./" class="idea-link">Open App →</a>
+      <p class="back-hint">
+        Jump back here anytime using the
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:1.3rem;height:1.3rem;border-radius:50%;background:var(--surface-alt);border:1px solid var(--border);vertical-align:-3px;margin:0 2px;">
+          <svg viewBox="0 0 16 16" width="11" height="11" fill="currentColor" aria-label="docs icon"><path d="M0 1.75A.75.75 0 0 1 .75 1h4.253c1.227 0 2.317.59 3 1.501A3.743 3.743 0 0 1 11.006 1h4.245a.75.75 0 0 1 .75.75v10.5a.75.75 0 0 1-.75.75h-4.507a2.25 2.25 0 0 0-1.591.659l-.622.621a.75.75 0 0 1-1.06 0l-.622-.621A2.25 2.25 0 0 0 5.258 13H.75a.75.75 0 0 1-.75-.75Zm7.251 10.324.004-5.073-.002-2.253A2.25 2.25 0 0 0 5.003 2.5H1.5v9h3.757a3.75 3.75 0 0 1 1.994.574ZM8.755 4.75l-.004 7.322a3.752 3.752 0 0 1 1.992-.572H14.5v-9h-3.495a2.25 2.25 0 0 0-2.25 2.25Z"/></svg>
+        </span>
+        icon in the top-right corner. The <a href="#reference">Reference tab</a> has the full feature guide.
+      </p>
     </div>
-
-    <h3>Tweak the defaults</h3>
-    <ol class="steps">
-      <li>Tap the <strong>key display</strong> to change key — picks up on the next loop.</li>
-      <li>Tap any pill — <strong>Style</strong>, <strong>Bass</strong>, <strong>Bars</strong>, <strong>Loop mode</strong> — to cycle its options. Changes apply live, no need to stop.</li>
-      <li>Open <strong>Setup</strong> (bottom left) to edit the progression, adjust tempo, and save presets. Open <strong>Mix</strong> (bottom right) for per-instrument volume controls.</li>
-    </ol>
-
-    <p>Looking for something to practice? Try a <a href="#practice-ideas">Practice Idea</a> below, or browse the <a href="#reference">Reference</a> tab for a full feature guide.</p>
 
     <hr />
 
-    <h2 id="practice-ideas">Practice Ideas</h2>
+    <h2 id="practice-ideas">Practice Ideas <button class="anchor-copy" data-id="practice-ideas" title="Copy link to this section">#</button></h2>
     <p>Each example opens the app pre-configured. Press play and start practicing.</p>
 
     <div class="idea-card">
@@ -180,14 +186,14 @@
 
     <div class="idea-card">
       <h3>Triad Progression</h3>
-      <p>Play triads over a basic progression mixing major and minor chords. To start, try to stay on one string set and in one area of the neck. This example stays in a single key, but you can <a href="#controls">manually switch keys</a> or have the player <a href="#loop-modes">cycle the keys</a>.</p>
+      <p>Play triads over a basic progression mixing major and minor chords. To start, try to stay on one string set and in one area of the neck. This example stays in a single key, but you can <a href="#playback-screen">manually switch keys</a> or have the player <a href="#loop-modes">cycle the keys</a>.</p>
       <a href="./?key=C&tempo=75&bars=2&cycle=none&style=funk&bass=busy&voicing=voice-lead-loop&section=I+vi+ii+V&arrangement=&activeSection=1&advance=auto&chordVol=50&bassVol=100&drumVol=100&masterVol=100&chordsOn=1&bassOn=1&drumsOn=1" class="idea-link">Try it →</a>
     </div>
 
     <div class="idea-card">
       <h3>12-bar blues</h3>
-      <p>Classic I–IV–V form at a medium rock tempo. Solo over the changes or comp along. Swap the key to match a jam partner.</p>
-      <a href="./?section=I%20I%20I%20I%20IV%20IV%20I%20I%20V%20IV%20I%20V&bars=1&style=rock&tempo=90" class="idea-link">Try it →</a>
+      <p>Classic I–IV–V form with dominant 7ths at a medium rock tempo. Solo over the changes or comp along. Swap the key to match a jam partner.</p>
+      <a href="./?section=I7%3A4+IV7%3A2+I7%3A2+V7+IV7+I7+V7&bars=1&style=rock&tempo=90" class="idea-link">Try it →</a>
     </div>
 
     <div class="idea-card">
@@ -201,7 +207,105 @@
   <!-- ── Reference ── -->
   <section class="tab-panel" id="tab-reference" role="tabpanel">
 
-    <h2>Progression syntax</h2>
+    <h2 id="playback-screen">Playback screen <button class="anchor-copy" data-id="playback-screen" title="Copy link to this section">#</button></h2>
+    <p>The main screen shows everything you need while you play — no drawers required.</p>
+
+    <h3 id="key-display">Key display <button class="anchor-copy" data-id="key-display" title="Copy link to this section">#</button></h3>
+    <p>The large key name at the top (e.g. <strong>C</strong>) shows the current key. Tap it to open an inline key picker — select a new key and it takes effect at the start of the next loop.</p>
+
+    <h3 id="chord-chips">Chord chips <button class="anchor-copy" data-id="chord-chips" title="Copy link to this section">#</button></h3>
+    <p>Each chip shows the resolved chord name for the current key. The active chip highlights during playback, and bar-progress dots appear below it when <strong>Bars per chord</strong> is greater than 1.</p>
+
+    <h3 id="beat-indicator">Beat indicator <button class="anchor-copy" data-id="beat-indicator" title="Copy link to this section">#</button></h3>
+    <p>Four dots below the chord strip pulse on each beat.</p>
+
+    <h3 id="readout-pills">Readout pills <button class="anchor-copy" data-id="readout-pills" title="Copy link to this section">#</button></h3>
+    <p>The row of pills below the chord strip — <a href="#style-bass">Style</a>, <a href="#style-bass">Bass</a>, <a href="#voicing">Voicing</a>, <a href="#bars">Bars</a>, <a href="#tempo">BPM</a>, <a href="#loop-modes">Loop mode</a> — show the current values and cycle their options on tap. All changes apply live during playback. Full options for each are in <a href="#setup">Setup</a>.</p>
+    <p>Tapping <strong>BPM</strong> opens a popover with a slider, ± nudge buttons, and a tap-tempo button.</p>
+
+    <h3 id="play-pause-stop">Play / Pause / Stop <button class="anchor-copy" data-id="play-pause-stop" title="Copy link to this section">#</button></h3>
+    <p><strong>Play / Pause</strong> — tap once to start, tap again to pause at the current chord. Spacebar also works when no text input is focused.</p>
+    <p><strong>Stop</strong> (■) — appears next to Play while paused; resets playback to the beginning.</p>
+    <p><a href="#setup">Setup</a> and <a href="#mix">Mix</a> buttons live in the action bar at the bottom left and right.</p>
+
+    <hr />
+
+    <h2 id="setup">Setup <button class="anchor-copy" data-id="setup" title="Copy link to this section">#</button></h2>
+    <p>Open from the <strong>Setup</strong> button in the action bar. Controls are grouped into Playback, Progression, and App sections.</p>
+
+    <h3 id="key">Key <button class="anchor-copy" data-id="key" title="Copy link to this section">#</button></h3>
+    <p>A dropdown with all 12 keys. Same as tapping the key display on the main screen — changes take effect at the start of the next loop.</p>
+
+    <h3 id="tempo">Tempo <button class="anchor-copy" data-id="tempo" title="Copy link to this section">#</button></h3>
+    <p>A tempo slider with a <strong>Tap tempo</strong> button — tap the beat to detect tempo. Changes apply immediately, even during playback.</p>
+
+    <h3 id="bars">Bars per chord <button class="anchor-copy" data-id="bars" title="Copy link to this section">#</button></h3>
+    <p>Sets how many bars each chord plays before the progression advances: <strong>1</strong>, <strong>2</strong>, or <strong>4</strong>. Individual chords can override this with <a href="#progression-syntax">per-chord bar notation</a> (<code>V:4</code>). <a href="./?bars=4" class="try-link">Try 4 bars →</a></p>
+
+    <hr />
+
+    <h2 id="loop-modes">Loop modes <button class="anchor-copy" data-id="loop-modes" title="Copy link to this section">#</button></h2>
+    <p>Controls how the key changes (or doesn't) across repeated runs. Set via the Loop mode buttons in Setup or the Loop mode pill on the main screen.</p>
+
+    <h3 id="loop-mode-loop">Loop <button class="anchor-copy" data-id="loop-mode-loop" title="Copy link to this section">#</button></h3>
+    <p>Repeats the progression indefinitely in the configured key. The default mode.</p>
+
+    <h3 id="loop-4ths">Cycle 4ths <button class="anchor-copy" data-id="loop-4ths" title="Copy link to this section">#</button></h3>
+    <p>Plays the progression through all 12 keys ascending by perfect fourths. The key display updates each lap. <a href="./?cycle=4ths" class="try-link">Try Cycle 4ths →</a></p>
+
+    <h3 id="loop-5ths">Cycle 5ths <button class="anchor-copy" data-id="loop-5ths" title="Copy link to this section">#</button></h3>
+    <p>Same as Cycle 4ths, ascending by perfect fifths. <a href="./?cycle=5ths" class="try-link">Try Cycle 5ths →</a></p>
+
+    <h3 id="loop-custom">Custom key sequence <button class="anchor-copy" data-id="loop-custom" title="Copy link to this section">#</button></h3>
+    <p>Define your own key sequence in any order. Select <strong>Custom</strong> in the Loop mode group. A key grid appears; tap any key to append it to your sequence. The sequence is shown as a numbered list above the grid; reorder with ↑↓ and remove with ×.</p>
+    <p>Each entry plays one complete run through the progression before advancing to the next key. Accidentals follow the target key's natural spelling.</p>
+    <a href="./?cycle=custom&customKeys=C,F,Bb,Eb&section=ii+V+I" class="try-link">Try Custom (C→F→Bb→Eb) →</a>
+
+    <h3 id="key-scrubber">KEY scrubber <button class="anchor-copy" data-id="key-scrubber" title="Copy link to this section">#</button></h3>
+    <p>When any cycle mode is active, a <strong>KEY</strong> row appears in the action bar showing every key in the sequence. The current key is highlighted.</p>
+    <ul>
+      <li><strong>While playing</strong> — tap a segment to queue a jump to that key; it takes effect after the full progression completes in the current key. Tap the same segment again to cancel.</li>
+      <li><strong>While stopped or paused</strong> — tap a segment to set the starting key. Chord chips and the key display update immediately.</li>
+    </ul>
+
+    <hr />
+
+    <h2 id="style-bass">Style &amp; Bass <button class="anchor-copy" data-id="style-bass" title="Copy link to this section">#</button></h2>
+
+    <h3 id="style-pop">Pop <button class="anchor-copy" data-id="style-pop" title="Copy link to this section">#</button></h3>
+    <p>Straight and steady. <a href="./?style=pop" class="try-link">Try Pop →</a></p>
+
+    <h3 id="style-funk">Funk <button class="anchor-copy" data-id="style-funk" title="Copy link to this section">#</button></h3>
+    <p>Syncopated, tight pocket. <a href="./?style=funk" class="try-link">Try Funk →</a></p>
+
+    <h3 id="style-ballad">Ballad <button class="anchor-copy" data-id="style-ballad" title="Copy link to this section">#</button></h3>
+    <p>Half-time feel, sparse. Pairs well with slow tempos. <a href="./?style=ballad&tempo=65" class="try-link">Try Ballad →</a></p>
+
+    <h3 id="style-rock">Rock <button class="anchor-copy" data-id="style-rock" title="Copy link to this section">#</button></h3>
+    <p>Driving 8ths, heavier kick. <a href="./?style=rock" class="try-link">Try Rock →</a></p>
+
+    <h3 id="bass-simple">Bass: Simple <button class="anchor-copy" data-id="bass-simple" title="Copy link to this section">#</button></h3>
+    <p>Sparse, less motion. <a href="./?bass=simple" class="try-link">Try Simple bass →</a></p>
+
+    <h3 id="bass-busy">Bass: Busy <button class="anchor-copy" data-id="bass-busy" title="Copy link to this section">#</button></h3>
+    <p>More motion than Simple. <a href="./?bass=busy" class="try-link">Try Busy bass →</a></p>
+
+    <hr />
+
+    <h2 id="voicing">Voicing <button class="anchor-copy" data-id="voicing" title="Copy link to this section">#</button></h2>
+
+    <h3 id="voicing-root">Root <button class="anchor-copy" data-id="voicing-root" title="Copy link to this section">#</button></h3>
+    <p>Every chord in root position. Clearest chord identity; easiest for ear training. <a href="./?voicing=root" class="try-link">Try Root voicing →</a></p>
+
+    <h3 id="voicing-lead">Voice-lead <button class="anchor-copy" data-id="voicing-lead" title="Copy link to this section">#</button></h3>
+    <p>Each chord uses the inversion closest to the previous chord. Flows continuously across all chords and across Cycle laps. <a href="./?voicing=voice-lead&cycle=4ths" class="try-link">Try Voice-lead →</a></p>
+
+    <h3 id="voicing-loop">Voice-lead / loop <button class="anchor-copy" data-id="voicing-loop" title="Copy link to this section">#</button></h3>
+    <p>Voice leading within each iteration, resets to root position at the start of each Cycle lap. Same as Voice-lead in Loop mode. <a href="./?voicing=voice-lead-loop&cycle=4ths" class="try-link">Try Voice-lead/loop →</a></p>
+
+    <hr />
+
+    <h2 id="progression-syntax">Progression syntax <button class="anchor-copy" data-id="progression-syntax" title="Copy link to this section">#</button></h2>
     <p>The progression input accepts space-separated tokens. Roman numerals and absolute chord names can be freely mixed.</p>
 
     <div class="table-wrap">
@@ -210,148 +314,88 @@
           <tr><th>Type</th><th>Examples</th><th>Notes</th></tr>
         </thead>
         <tbody>
-          <tr><td>Major triad</td><td><code>I</code> <code>IV</code> <code>V</code></td><td>Uppercase Roman numerals</td></tr>
-          <tr><td>Minor triad</td><td><code>i</code> <code>iv</code> <code>vi</code></td><td>Lowercase Roman numerals</td></tr>
-          <tr><td>Flat scale degree</td><td><code>bIII</code> <code>bVI</code> <code>bVII</code></td><td>Prefix <code>b</code> lowers by a semitone; useful for natural minor (e.g. <code>i bVII bVI</code>)</td></tr>
-          <tr><td>Absolute chord</td><td><code>C</code> <code>Am</code> <code>F#</code> <code>Bbm</code></td><td>Suffix <code>m</code> for minor</td></tr>
-          <tr><td>Major 7th</td><td><code>Imaj7</code> <code>Cmaj7</code></td><td></td></tr>
-          <tr><td>Dominant 7th</td><td><code>V7</code> <code>G7</code></td><td>Uppercase numeral + <code>7</code></td></tr>
-          <tr><td>Minor 7th</td><td><code>iim7</code> <code>Dm7</code></td><td>Lowercase numeral + <code>7</code></td></tr>
-          <tr><td>Diminished triad</td><td><code>viidim</code> <code>Cdim</code></td><td>Also <code>°</code></td></tr>
-          <tr><td>Augmented triad</td><td><code>I+</code> <code>Iaug</code> <code>Caug</code></td><td>Also <code>aug</code></td></tr>
-          <tr><td>Suspended</td><td><code>Isus4</code> <code>Vsus2</code></td><td></td></tr>
-          <tr><td>Half-diminished</td><td><code>iim7b5</code> <code>Cm7b5</code></td><td>Also <code>ø</code></td></tr>
-          <tr><td>Fully dim 7th</td><td><code>viidim7</code> <code>Cdim7</code></td><td>Also <code>°7</code></td></tr>
-          <tr><td>Minor-major 7th</td><td><code>imMaj7</code> <code>CmMaj7</code></td><td></td></tr>
-          <tr><td>Dom 7 suspended</td><td><code>V7sus4</code> <code>G7sus4</code></td><td></td></tr>
-          <tr><td>Per-chord bars</td><td><code>V:4</code> <code>Am:1</code></td><td>Append <code>:n</code> (1, 2, or 4)</td></tr>
+          <tr><td>Major triad</td><td><a href="./?section=I+IV+V" class="try-link">I IV V →</a></td><td>Uppercase Roman numerals</td></tr>
+          <tr><td>Minor triad</td><td><a href="./?section=i+iv+vi" class="try-link">i iv vi →</a></td><td>Lowercase Roman numerals</td></tr>
+          <tr><td>Flat scale degree</td><td><a href="./?section=i+bVII+bVI" class="try-link">i bVII bVI →</a></td><td>Prefix <code>b</code> lowers by a semitone</td></tr>
+          <tr><td>Absolute chord</td><td><a href="./?section=I+IV+Am+V" class="try-link">I IV Am V →</a></td><td>Suffix <code>m</code> for minor; mix freely with Roman numerals</td></tr>
+          <tr><td>Major 7th</td><td><a href="./?section=Imaj7+IVmaj7+iim7+V7" class="try-link">Imaj7 IVmaj7 iim7 V7 →</a></td><td></td></tr>
+          <tr><td>Dominant 7th</td><td><a href="./?section=iim7+V7+I" class="try-link">iim7 V7 I →</a></td><td>Uppercase numeral + <code>7</code></td></tr>
+          <tr><td>Minor 7th</td><td><a href="./?section=iim7+V7+Imaj7" class="try-link">iim7 V7 Imaj7 →</a></td><td>Lowercase numeral + <code>7</code></td></tr>
+          <tr><td>Diminished triad</td><td><a href="./?section=I+viidim+I" class="try-link">I viidim I →</a></td><td>Also <code>°</code></td></tr>
+          <tr><td>Augmented triad</td><td><a href="./?section=Iaug+IV+I" class="try-link">Iaug IV I →</a></td><td>Also <code>I+</code></td></tr>
+          <tr><td>Suspended</td><td><a href="./?section=Isus4+I+Vsus4+V" class="try-link">Isus4 I Vsus4 V →</a></td><td></td></tr>
+          <tr><td>Half-diminished</td><td><a href="./?section=iim7b5+V7+i" class="try-link">iim7b5 V7 i →</a></td><td>Also <code>ø</code></td></tr>
+          <tr><td>Fully dim 7th</td><td><a href="./?section=viidim7+I" class="try-link">viidim7 I →</a></td><td>Also <code>°7</code></td></tr>
+          <tr><td>Minor-major 7th</td><td><a href="./?section=imMaj7+iv+i" class="try-link">imMaj7 iv i →</a></td><td></td></tr>
+          <tr><td>Dom 7 suspended</td><td><a href="./?section=V7sus4+V7+I" class="try-link">V7sus4 V7 I →</a></td><td></td></tr>
+          <tr><td>Per-chord bars</td><td><a href="./?section=I%3A4+IV%3A2+V%3A2" class="try-link">I:4 IV:2 V:2 →</a></td><td>Append <code>:n</code> to any chord</td></tr>
         </tbody>
       </table>
     </div>
 
-    <p>Repeat a token to extend its duration: <code>I I vi V</code> gives I two iterations at the default bar count. Chord chips below the input show resolved names and highlight during playback.</p>
+    <p>Repeat a token to extend its duration: <code>I I vi V</code> gives I two iterations at the default bar count. Chord chips show resolved names and highlight during playback.</p>
 
     <hr />
 
-    <h2 id="controls">Controls</h2>
+    <h2 id="sections">Sections &amp; arrangement <button class="anchor-copy" data-id="sections" title="Copy link to this section">#</button></h2>
+    <p>Build song structure with multiple sections. A single section (the default) just loops.</p>
 
-    <h3>Main screen</h3>
+    <h3 id="sections-list">Sections <button class="anchor-copy" data-id="sections-list" title="Copy link to this section">#</button></h3>
+    <p>Each section has its own <a href="#progression-syntax">progression</a>. Reorder with ↑↓, delete with ×.</p>
+
+    <h3 id="arrangement">Arrangement <button class="anchor-copy" data-id="arrangement" title="Copy link to this section">#</button></h3>
+    <p>An optional sequence of section numbers that controls playback order — <code>1</code> means section 1, <code>2</code> means section 2, and so on. Leave it empty to play all sections in order.</p>
+    <p>For example, <code>1 1 2 3 2 3</code> plays section 1 twice, then alternates sections 2 and 3 twice. Append <code>:n</code> to repeat a section multiple times: <code>1:4 2:2</code> plays section 1 four times then section 2 twice.</p>
+    <a href="./?key=C&tempo=100&bars=1&cycle=none&style=rock&bass=simple&voicing=voice-lead-loop&section=vi+IV+I+V&section=vi+iii+vi+iii+V+vi%3A2&section=iii%3A2+I%3A2&arrangement=1+1+2%3A2+1%3A2+3%3A2&activeSection=1&advance=auto&chordVol=50&bassVol=100&drumVol=100&masterVol=100&chordsOn=1&bassOn=1&drumsOn=1" class="try-link">Try 3-section song →</a>
+
+    <h3 id="auto-manual">Auto / Manual <button class="anchor-copy" data-id="auto-manual" title="Copy link to this section">#</button></h3>
+    <p>Auto advances sections automatically. Manual holds the current section until you tap the SONG scrubber.</p>
+
+    <h3 id="song-scrubber">SONG scrubber <button class="anchor-copy" data-id="song-scrubber" title="Copy link to this section">#</button></h3>
+    <p>Appears in the action bar when the arrangement has two or more steps.</p>
     <ul>
-      <li><strong>Key heading</strong> — tap to open an inline key picker</li>
-      <li><strong>BPM</strong> — tap to open a popover with a slider, ± nudge buttons, and tap-tempo</li>
-      <li><strong>Style / Bass / Bars / Loop mode</strong> pills — tap to cycle; all changes apply live during playback</li>
-    </ul>
-
-    <h3>Action bar</h3>
-    <ul>
-      <li><strong>Setup</strong> — key, tempo, progression input, presets, theme, share link</li>
-      <li><strong>Play / Pause</strong> — tap once to start, tap again to pause at the current chord. Spacebar also works when no text input is focused.</li>
-      <li><strong>Stop</strong> (■) — appears next to the play button while paused; resets playback to the beginning.</li>
-      <li><strong>Mix</strong> — per-instrument mute toggles and volume sliders</li>
-    </ul>
-
-    <hr />
-
-    <h2>Sections &amp; arrangement</h2>
-    <p>Build song structure with up to 6 sections, each with its own progression. A single section (the default) just loops.</p>
-    <ul>
-      <li><strong>Sections</strong> — add in Setup; reorder with ↑↓, delete with ×</li>
-      <li><strong>Arrangement</strong> — optional playback order, e.g. <code>1 2 1 3</code> or <code>1:4 2:2</code> (section 1 four times, then section 2 twice); empty = all sections in order</li>
-      <li><strong>SONG scrubber</strong> — appears when the arrangement has two or more steps; tap a segment while playing to jump to it, or while stopped/paused to set where playback will start</li>
-      <li><strong>KEY scrubber</strong> — appears when a cycle mode is active; tap a segment while playing to queue a key jump at the end of the current run, or while stopped/paused to set the starting key (chord chips and key display update immediately)</li>
-      <li><strong>Auto / Manual</strong> — auto advances sections automatically; manual holds the current section until you tap the scrubber</li>
+      <li><strong>While playing</strong> — tap a segment to queue a jump to it; takes effect after the current section completes. Tap again to cancel.</li>
+      <li><strong>While stopped or paused</strong> — tap a segment to set where playback will start.</li>
     </ul>
 
     <hr />
 
-    <h2 id="loop-modes">Loop modes</h2>
-    <ul>
-      <li><strong>Loop</strong> — repeat in the configured key</li>
-      <li><strong>Cycle 4ths</strong> — play the progression through all 12 keys ascending by perfect fourths; spelling uses flats</li>
-      <li><strong>Cycle 5ths</strong> — same, ascending by perfect fifths; spelling uses sharps</li>
-      <li><strong>Custom</strong> — define your own key sequence; see below</li>
-    </ul>
-    <p>Cycle mode works with any progression — <code>ii V I</code>, <code>I</code> (the circle of fifths itself), or anything else. The displayed key updates each lap. Pitch is octave-clamped so it doesn't climb out of range.</p>
-
-    <h3>Custom key sequence</h3>
-    <p>Select <strong>Custom</strong> in the Loop mode group inside Setup. A 12-key grid appears — tap any key to append it to your sequence (up to 12 keys). The sequence is shown as a numbered list above the grid; reorder with ↑↓ and remove with ×.</p>
-    <p>Each entry plays one complete run through the progression (all sections, full arrangement) before advancing to the next key. Accidentals follow the target key's natural spelling — flat keys use flats, sharp keys use sharps.</p>
-
-    <h3>KEY scrubber</h3>
-    <p>When any cycle mode is active, a <strong>KEY</strong> row appears above the SONG scrubber at the bottom of the screen. It shows every key in the cycle sequence and highlights the one currently playing.</p>
-    <ul>
-      <li><strong>While playing</strong> — tap a segment to queue a jump to that key; it takes effect at the end of the current run (after the full progression completes in the current key). Tap the same segment again to cancel.</li>
-      <li><strong>While stopped or paused</strong> — tap a segment to set the starting key for the next playback. The chord chips and key display update immediately to reflect the selection.</li>
-    </ul>
-
-    <hr />
-
-    <h2>Style &amp; Bass</h2>
-
-    <h3>Style</h3>
-    <ul>
-      <li><strong>Pop</strong> — straight and steady</li>
-      <li><strong>Funk</strong> — syncopated, tight pocket</li>
-      <li><strong>Ballad</strong> — half-time feel, sparse; pairs well with slow tempos</li>
-      <li><strong>Rock</strong> — driving 8ths, heavier kick</li>
-    </ul>
-
-    <h3>Bass</h3>
-    <ul>
-      <li><strong>Simple</strong> — sparse, root-focused</li>
-      <li><strong>Busy</strong> — more motion, weaves in chord tones (root, 3rd, 5th); the 3rd adapts to chord quality</li>
-    </ul>
-
-    <hr />
-
-    <h2>Voicing</h2>
-    <ul>
-      <li><strong>Root</strong> — every chord in root position; clearest chord identity, easiest for ear training</li>
-      <li><strong>Voice-lead</strong> — each chord uses the inversion closest to the previous; flows continuously across all chords and across Cycle laps</li>
-      <li><strong>Voice-lead/loop</strong> — voice leading within each iteration, resets to root at the start of each Cycle lap; same as Voice-lead in Loop mode</li>
-    </ul>
-
-    <hr />
-
-    <h2>Presets</h2>
+    <h2 id="presets">Presets <button class="anchor-copy" data-id="presets" title="Copy link to this section">#</button></h2>
 
     <h3>Built-in</h3>
-    <p>Quick-load chips in Setup: <code>I V vi IV</code>, <code>I vi ii V</code>, <code>ii V I</code>, jazz <code>iim7 V7 Imaj7</code>, <code>I IV V</code>, minor <code>i iv v</code>, 12-bar blues, and Cycle 4ths / Cycle 5ths starters. Selecting a preset preserves your key, tempo, volumes, and mutes.</p>
+    <p>A set of common progressions ready to load — tap any chip in Setup to apply.</p>
 
-    <h3>Saved presets</h3>
+    <h3 id="saved-presets">Saved presets <button class="anchor-copy" data-id="saved-presets" title="Copy link to this section">#</button></h3>
     <p>Tap <strong>+ Save current</strong> in Setup to snapshot the full app state. Saved presets appear above the built-ins. Rename with the pencil icon, delete with ×.</p>
 
     <hr />
 
-    <h2>URL sharing</h2>
-    <p>The full app state syncs to the URL automatically. Use <strong>Copy share link</strong> in Setup to copy it. Opening the link restores the exact setup — progression, key, tempo, style, voicing, volumes, mutes, and more. Play state is intentionally excluded.</p>
+    <h2 id="app-settings">App settings <button class="anchor-copy" data-id="app-settings" title="Copy link to this section">#</button></h2>
 
-    <hr />
-
-    <h2>Mix</h2>
-    <p>Open Mix from the action bar. Each instrument (chords, bass, drums) has a mute toggle and volume slider, plus a master volume. All changes apply live during playback.</p>
-
-    <hr />
-
-    <h2>Theme</h2>
+    <h3 id="theme">Theme <button class="anchor-copy" data-id="theme" title="Copy link to this section">#</button></h3>
     <p>Light / Dark toggle in Setup. Defaults to dark. Stored per-device — not included in URLs or saved presets.</p>
+
+    <h3 id="keep-awake">Keep screen on <button class="anchor-copy" data-id="keep-awake" title="Copy link to this section">#</button></h3>
+    <p>Toggle in Setup. When enabled, prevents your screen from dimming during playback.</p>
+
+    <h3 id="share-link">Share link <button class="anchor-copy" data-id="share-link" title="Copy link to this section">#</button></h3>
+    <p>Every change you make is reflected in the URL — key, progression, tempo, mix, and more. Use <strong>Copy share link</strong> in Setup to copy it and share or bookmark your exact setup.</p>
+
+    <hr />
+
+    <h2 id="mix">Mix <button class="anchor-copy" data-id="mix" title="Copy link to this section">#</button></h2>
+    <p>Open from the <strong>Mix</strong> button in the action bar. Each instrument — <strong>Chords</strong>, <strong>Bass</strong>, <strong>Drums</strong> — has a mute toggle and volume slider, plus a master volume. All changes apply live during playback.</p>
 
   </section>
 
 </main>
 
 <script>
-  const tabs = document.querySelectorAll('.tab-btn');
+  const tabs   = document.querySelectorAll('.tab-btn');
   const panels = document.querySelectorAll('.tab-panel');
 
-  const SECTION_TAB = {
-    'practice-ideas': 'quick-start',
-    'controls': 'reference',
-    'loop-modes': 'reference',
-  };
-
   function activate(id) {
-    const target = ['quick-start', 'reference'].includes(id) ? id : 'quick-start';
+    const target = (id === 'quick-start' || id === 'reference') ? id : 'quick-start';
     tabs.forEach(t => {
       const active = t.dataset.tab === target;
       t.classList.toggle('active', active);
@@ -362,12 +406,17 @@
 
   function fromHash() {
     const hash = location.hash.slice(1);
-    if (SECTION_TAB[hash]) {
-      activate(SECTION_TAB[hash]);
-      setTimeout(() => document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth' }), 50);
-    } else {
-      activate(hash);
+    if (!hash || hash === 'quick-start' || hash === 'reference') {
+      activate(hash || 'quick-start');
       window.scrollTo({ top: 0, behavior: 'instant' });
+      return;
+    }
+    const el = document.getElementById(hash);
+    if (!el) return;
+    const panel = el.closest('.tab-panel');
+    if (panel) {
+      activate(panel.id.replace('tab-', ''));
+      setTimeout(() => el.scrollIntoView({ behavior: 'smooth' }), 50);
     }
   }
 
@@ -380,6 +429,30 @@
   window.addEventListener('popstate', fromHash);
   window.addEventListener('hashchange', fromHash);
   fromHash();
+
+  // ── Anchor copy buttons ───────────────────────────────────────────────────
+
+  document.querySelectorAll('.anchor-copy').forEach(btn => {
+    btn.addEventListener('click', async e => {
+      e.stopPropagation();
+      const id  = btn.dataset.id;
+      const url = location.href.replace(/#.*$/, '') + '#' + id;
+      try {
+        await navigator.clipboard.writeText(url);
+        const prev = btn.textContent;
+        btn.textContent = '✓';
+        btn.style.color = 'var(--accent)';
+        btn.style.opacity = '1';
+        setTimeout(() => {
+          btn.textContent = prev;
+          btn.style.color = '';
+          btn.style.opacity = '';
+        }, 1400);
+      } catch {
+        // silent fail — browser may deny without HTTPS
+      }
+    });
+  });
 </script>
 
 </body>
