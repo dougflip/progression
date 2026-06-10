@@ -61,7 +61,7 @@ The app is fully URL-addressable. Use that. Any feature being described can have
 
 **For complex features** (sections, arrangement), use a richer URL that tells a real musical story:
 ```html
-<a href="./?key=C&tempo=100&bars=1&style=rock&section=vi+IV+I+V&section=vi+iii+V+vi%3A2&section=iii%3A2+I%3A2&arrangement=1+1+2%3A2+1%3A2+3%3A2&..." class="try-link">Try 3-section song →</a>
+<a href="./?key=C&tempo=100&bars=1&cycle=none&style=rock&bass=simple&voicing=voice-lead-loop&section=vi+IV+I+V&section=vi+iii+vi+iii+vi+iii+V+vi%3A2&section=iii%3A2+I%3A2&arrangement=1+1+2%3A2+1%3A2+3%3A2&advance=auto&chordVol=50&bassVol=100&drumVol=100&masterVol=100&chordsOn=1&bassOn=1&drumsOn=1" class="try-link">Try 3-section song →</a>
 ```
 
 **For syntax tables**, make the example itself the link — the progression IS the try-it action:
