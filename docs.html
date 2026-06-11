@@ -12,18 +12,19 @@
     ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.2s; }
 
     :root {
-      --bg: #fafafa; --surface: #ffffff; --surface-alt: #f1f1f1;
-      --surface-alt-active: #e1e1e1; --border: #dddddd; --border-faint: #eeeeee;
-      --text: #222222; --text-2: #555555; --text-3: #888888; --text-4: #aaaaaa;
-      --accent: #222222; --accent-text: #ffffff;
-    }
-    [data-theme="dark"] {
       --bg: #121212; --surface: #1e1e1e; --surface-alt: #2a2a2a;
       --surface-alt-active: #353535; --border: #333333; --border-faint: #262626;
       --text: #f0f0f0; --text-2: #b8b8b8; --text-3: #888888; --text-4: #666666;
       --accent: #f0f0f0; --accent-text: #121212;
     }
+    [data-theme="light"] {
+      --bg: #fafafa; --surface: #ffffff; --surface-alt: #f1f1f1;
+      --surface-alt-active: #e1e1e1; --border: #dddddd; --border-faint: #eeeeee;
+      --text: #222222; --text-2: #555555; --text-3: #888888; --text-4: #aaaaaa;
+      --accent: #222222; --accent-text: #ffffff;
+    }
     * { box-sizing: border-box; }
+    html { background: var(--bg); }
     body {
       font-family: system-ui, sans-serif;
       color: var(--text);

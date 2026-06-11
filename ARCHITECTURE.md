@@ -3,10 +3,11 @@
 ## File layout
 
 ```
-index.html           — host: CSS, HTML markup
-app.js               — host: DOM wiring, render callbacks, event handlers
-progression-core.js  — pure logic: music theory, state, URL, presets, factory
-progression-audio.js — Tone.js engine: plays what core gives it
+index.html               — host: CSS, HTML markup
+src/app.js               — host: DOM wiring, render callbacks, event handlers
+src/progression-core.js  — pure logic: music theory, state, URL, presets, factory
+src/progression-audio.js — Tone.js engine: plays what core gives it
+public/favicon.svg       — static asset, copied to dist/ as-is
 ```
 
 ## Key decisions
@@ -22,7 +23,7 @@ progression-audio.js — Tone.js engine: plays what core gives it
 
 ## Audio interface
 
-`makeProgressionAudio({ Tone })` returns:
+`makeProgressionAudio()` returns:
 
 ```js
 {

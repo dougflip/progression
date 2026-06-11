@@ -5,15 +5,13 @@
  * display data for the host to consume.
  */
 
+import * as Tone from 'tone';
 import {
   resolvedChordName, resolvedKeyName,
   clampShift, makeChord, getShiftsForCycle,
 } from './progression-core.js';
 
-/**
- * @param {{ Tone: any }} deps
- */
-export function makeProgressionAudio({ Tone }) {
+export function makeProgressionAudio() {
   // ── Audio nodes ────────────────────────────────────────────────────────────
   let _channels = null; // created once, survives rebuild
   let _synth = null, _reverb = null, _part = null;

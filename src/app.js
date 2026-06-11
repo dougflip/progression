@@ -10,7 +10,7 @@ import { makeProgressionAudio } from './progression-audio.js';
 
 // ── App instance ────────────────────────────────────────────────────────
 
-const audio = makeProgressionAudio({ Tone });
+const audio = makeProgressionAudio();
 
 const app = makeProgressionPlayer({
   audio,
