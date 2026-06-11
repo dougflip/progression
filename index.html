@@ -728,13 +728,13 @@
     }
 
     function setScrubberCurrent(posIndex) {
-      if (_pendingJump === posIndex) _pendingJump = null;
+      const pendingJump = app.getPendingJump();
       let activeSeg = null;
       scrubberTrack.querySelectorAll('.scrubber-seg').forEach(seg => {
         const sp = parseInt(seg.dataset.posIndex, 10);
         const isCurrent = sp === posIndex;
         seg.classList.toggle('current', isCurrent);
-        seg.classList.toggle('queued', sp === _pendingJump && sp !== posIndex);
+        seg.classList.toggle('queued', sp === pendingJump && sp !== posIndex);
         if (isCurrent) activeSeg = seg;
       });
       centerActiveSegment(scrubberTrack, activeSeg);
@@ -754,13 +754,13 @@
       setActiveChip(chipIndex);
       updateChipNames(resolvedChipNames);
       keyNoteBtnEl.textContent = resolvedKey;
+      const pendingKeyJump = app.getPendingKeyJump();
       let activeKeySeg = null;
       keyScrubberTrack.querySelectorAll('.scrubber-seg').forEach(seg => {
         const ki = parseInt(seg.dataset.keyIndex, 10);
         const isCurrent = seg.textContent === resolvedKey;
-        if (isCurrent && ki === _pendingKeyJump) _pendingKeyJump = null;
         seg.classList.toggle('current', isCurrent);
-        seg.classList.toggle('queued', ki === _pendingKeyJump && !isCurrent);
+        seg.classList.toggle('queued', ki === pendingKeyJump && !isCurrent);
         if (isCurrent) activeKeySeg = seg;
       });
       centerActiveSegment(keyScrubberTrack, activeKeySeg);
@@ -827,9 +827,6 @@
       sectionCountEl.textContent = `(${sections.length} of 6)`;
     }
 
-    // Host-side pending jump trackers (for scrubber queued animation)
-    let _pendingJump    = null;
-    let _pendingKeyJump = null;
     // Last known scrubber position — used to restore .current after DOM rebuild
     let _currentScrubPosIndex = null;
     let _currentScrubKey      = null;
@@ -898,13 +895,11 @@
         app.seekToLap(lapIndex);
         return;
       }
-      if (_pendingKeyJump === lapIndex) {
-        _pendingKeyJump = null;
+      if (app.getPendingKeyJump() === lapIndex) {
         app.cancelKeyJump();
         keyScrubberTrack.querySelectorAll('.scrubber-seg').forEach(s => s.classList.remove('queued'));
         return;
       }
-      _pendingKeyJump = lapIndex;
       app.queueKeyJump(lapIndex);
       keyScrubberTrack.querySelectorAll('.scrubber-seg').forEach(seg => {
         const ki = parseInt(seg.dataset.keyIndex, 10);
@@ -919,13 +914,11 @@
         return;
       }
       // Cancel if tapping the queued segment again
-      if (_pendingJump === posIndex) {
-        _pendingJump = null;
+      if (app.getPendingJump() === posIndex) {
         app.cancelJump();
         scrubberTrack.querySelectorAll('.scrubber-seg').forEach(s => s.classList.remove('queued'));
         return;
       }
-      _pendingJump = posIndex;
       app.queueJump(posIndex);
       scrubberTrack.querySelectorAll('.scrubber-seg').forEach(seg => {
         const sp = parseInt(seg.dataset.posIndex, 10);
@@ -1055,8 +1048,6 @@
         releaseWakeLock();
         clearBeats();
         clearBars();
-        _pendingJump    = null;
-        _pendingKeyJump = null;
         scrubberTrack.querySelectorAll('.scrubber-seg').forEach(s => s.classList.remove('queued'));
         keyScrubberTrack.querySelectorAll('.scrubber-seg').forEach(s => s.classList.remove('queued'));
       } else {
@@ -1064,8 +1055,6 @@
         clearActiveChip();
         clearBeats();
         clearBars();
-        _pendingJump          = null;
-        _pendingKeyJump       = null;
         _currentScrubPosIndex = null;
         _currentScrubKey      = null;
         _currentLapIndex      = 0;

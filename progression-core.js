@@ -1060,5 +1060,8 @@ export function makeProgressionPlayer(config) {
     queueKeyJump(lapIndex) { config.audio?.queueKeyJump(lapIndex); },
 
     cancelKeyJump() { config.audio?.cancelKeyJump(); },
+
+    getPendingJump: () => config.audio?.getPendingJump() ?? null,
+    getPendingKeyJump: () => config.audio?.getPendingKeyJump() ?? null,
   };
 }

@@ -470,5 +470,8 @@ export function makeProgressionAudio({ Tone }) {
     queueKeyJump(lapIndex) { _pendingKeyJump = lapIndex; },
 
     cancelKeyJump() { _pendingKeyJump = null; },
+
+    getPendingJump: () => _pendingJump,
+    getPendingKeyJump: () => _pendingKeyJump,
   };
 }
