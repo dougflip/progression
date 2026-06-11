@@ -552,8 +552,8 @@
       makeProgressionPlayer, serializeUrl,
       STYLE_OPTIONS, STYLE_LABELS, BASS_OPTIONS, BASS_LABELS,
       VOICING_OPTIONS, VOICING_PILL_LABELS, CYCLE_OPTIONS, CYCLE_LABELS,
-      BARS_OPTIONS, PRESETS, tokenize, resolvePlayOrder,
-      MAX_BARS, VALID_KEYS, getShiftsForCycle, resolvedKeyName,
+      BARS_OPTIONS, PRESETS, tokenize, parseToken, resolvePlayOrder,
+      VALID_KEYS, getShiftsForCycle, resolvedKeyName,
       getResolvedChipNames, isAbsoluteChord,
     } from './progression-core.js';
     import { makeProgressionAudio } from './progression-audio.js';
@@ -646,9 +646,8 @@
       const activeIdx = [...stripEl.querySelectorAll('.chip')].findIndex(c => c.classList.contains('active'));
       stripEl.innerHTML = '';
       tokens.forEach(token => {
-        const [numeral, durStr] = token.split(':');
-        const durDisplay   = durStr ? String(Math.min(parseInt(durStr, 10), MAX_BARS)) : '';
-        const displayToken = durDisplay ? `${numeral}:${durDisplay}` : numeral;
+        const { numeral, bars } = parseToken(token, 0);
+        const displayToken = token.includes(':') ? `${numeral}:${bars}` : numeral;
         const isAbsolute   = isAbsoluteChord(numeral);
         const chip = document.createElement('div');
         chip.className = 'chip';
