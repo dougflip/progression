@@ -945,6 +945,19 @@ export function makeProgressionPlayer(config) {
     },
 
     /**
+     * Sets the cycle mode. When switching to 'custom' with no keys defined,
+     * seeds customCycleKeys with the current key.
+     * @param {string} cycle
+     */
+    setCycle(cycle) {
+      if (cycle === 'custom' && !_state.customCycleKeys.length) {
+        _set({ cycle, customCycleKeys: [_state.key] });
+      } else {
+        _set({ cycle });
+      }
+    },
+
+    /**
      * @param {number} index
      * @param {string} progression
      */

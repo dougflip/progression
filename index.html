@@ -1190,15 +1190,7 @@
     document.querySelectorAll('[data-bars]').forEach(btn =>
       btn.addEventListener('click', () => app.setState({ bars: parseInt(btn.dataset.bars, 10) })));
     document.querySelectorAll('[data-cycle]').forEach(btn =>
-      btn.addEventListener('click', () => {
-        const newCycle = btn.dataset.cycle;
-        const state = app.getState();
-        if (newCycle === 'custom' && !state.customCycleKeys.length) {
-          app.setState({ cycle: newCycle, customCycleKeys: [state.key] });
-        } else {
-          app.setState({ cycle: newCycle });
-        }
-      }));
+      btn.addEventListener('click', () => app.setCycle(btn.dataset.cycle)));
     document.querySelectorAll('[data-style]').forEach(btn =>
       btn.addEventListener('click', () => app.setState({ style: btn.dataset.style })));
     document.querySelectorAll('[data-bass]').forEach(btn =>
@@ -1215,15 +1207,8 @@
     readoutBassEl.addEventListener('click',    () => app.setState({ bass:    cycleOpt(BASS_OPTIONS,    app.getState().bass) }));
     readoutVoicingEl.addEventListener('click', () => app.setState({ voicing: cycleOpt(VOICING_OPTIONS, app.getState().voicing) }));
     readoutBarsEl.addEventListener('click',    () => app.setState({ bars:    cycleOpt(BARS_OPTIONS,    app.getState().bars) }));
-    readoutCycleEl.addEventListener('click', () => {
-      const state = app.getState();
-      const next = cycleOpt(CYCLE_OPTIONS, state.cycle);
-      if (next === 'custom' && !state.customCycleKeys.length) {
-        app.setState({ cycle: next, customCycleKeys: [state.key] });
-      } else {
-        app.setState({ cycle: next });
-      }
-    });
+    readoutCycleEl.addEventListener('click', () =>
+      app.setCycle(cycleOpt(CYCLE_OPTIONS, app.getState().cycle)));
     readoutAdvanceEl.addEventListener('click', () => app.setState({ advance: app.getState().advance === 'auto' ? 'manual' : 'auto' }));
 
     function renderCustomCycleEditor(state) {
