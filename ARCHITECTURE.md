@@ -14,7 +14,7 @@ progression-audio.js — Tone.js engine: plays what core gives it
 - **Headless controller pattern.** `progression-core.js` owns all state and logic. `index.html` is a skin — it translates user gestures into core commands and implements callbacks to update the DOM. Swapping to React or a CLI would be a visual-only lift.
 - **Single config object, all callbacks.** `makeProgressionPlayer(config)` takes one flat object. Everything is a callback — even "dependencies" like localStorage are abstracted as `persist`/`load` behaviors. No concrete API references in core.
 - **Audio engine is a swappable dep.** `makeProgressionAudio({ Tone })` is passed into the factory as `config.audio`. Core is programmed to the audio interface, not to Tone.js directly. The engine is replaceable without touching core.
-- **`Tone` is a deliberate global.** Loaded via `<script>` tag and passed into the factory — an intentional choice that keeps the audio engine loosely coupled and avoids a bundler requirement. Would need to change if adopting a bundler.
+- **`Tone` is a deliberate global.** Loaded via `<script>` tag and passed into the factory — an intentional choice that keeps the audio engine loosely coupled and avoids a bundler requirement. When a bundler is introduced (see Planned features), this becomes `import * as Tone from 'tone'` and the global pattern is dropped.
 - **ES modules throughout.** Requires a local server (`file://` won't work).
 - **JSDoc types using TS syntax** on all public API surfaces.
 - **Host receives only resolved display data.** `onChordTick` carries `resolvedChipNames` (chord names in the current key), `resolvedKey`, position/section indices, `bars`, and `sectionTokens` (raw tokens, only on section change) — no raw semitone shifts or music theory math reaches the host.
@@ -113,6 +113,24 @@ Three files is intentional. The no-bundler constraint keeps the project portable
 `progression-audio.js` is well-scoped and not under pressure.
 
 ## Planned features
+
+### Vite + TypeScript migration
+
+**Motivation:** JSDoc types are documentation, not enforcement. Real TypeScript would catch shape mismatches at the public API boundaries (`makeProgressionPlayer`, `makeProgressionAudio`, `ChordTickEvent`, etc.) that JSDoc silently ignores. The types are already well-written — migration is largely mechanical.
+
+**Plan:**
+- Add Vite as the dev server and build tool (replaces the current bare server)
+- Convert `.js` → `.ts`; JSDoc annotations become real type signatures
+- Drop the CDN `<script>` for Tone.js; import it properly: `import * as Tone from 'tone'`
+- Configure a vendor chunk so Tone.js is bundled separately from app code — it changes rarely and should be cached independently
+
+**What changes at each layer:**
+- `progression-core.ts` — minimal changes; types already defined, just move to TS syntax
+- `progression-audio.ts` — `{ Tone }: { Tone: typeof import('tone') }` parameter type; some `as` casts likely needed in synth setup
+- `app.ts` — straightforward; mostly removing JSDoc in favor of inline types
+- `index.html` — CDN script tag removed; Vite injects the bundle reference
+
+**Side benefit:** `progression-core` is pure logic with no runtime dependencies — Vitest unit tests become trivial once the build pipeline exists.
 
 ### Foot pedal support
 HID-keyboard path: 2-switch + tap/long-press = 4 configurable actions. App-side mode toggle for more. Host-level feature — calls `app.togglePlay()` and `app.queueJump()`. Core needs no changes.
