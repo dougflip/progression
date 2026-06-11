@@ -91,6 +91,26 @@ The host tracks `_currentScrubPosIndex`, `_currentScrubKey`, and `_currentLapInd
 
 Pause state is stored in private `_pausedAt: { posIndex, chipIndex, lapIndex } | null`. It is cleared by `stop()`, `loadPreset()`, and any `_set()` call touching `sections`, `arrangement`, `cycle`, or `customCycleKeys` (structural changes that would make the saved position stale). Key, tempo, style, bass, voicing, and bars changes preserve `_pausedAt`.
 
+## File structure and split thresholds
+
+Three files is intentional. The no-bundler constraint keeps the project portable and the per-file purpose is immediately clear: logic, audio, view. The structure has absorbed multi-section, custom cycle, scrubbers, and seek without breaking down — evidence the split is right.
+
+**Current pressure points:**
+
+`progression-core.js` carries two distinct concerns that share a file comfortably at current size:
+- **Music theory** — constants, note math, chord building, name resolution (`resolvedChordName`, `buildChord`, `STYLES`, etc.)
+- **App architecture** — `AppState`, `DEFAULTS`, URL serialization, `makeProgressionPlayer`
+
+`index.html` contains inline JS (~800 lines alongside CSS and markup). This works but prevents linters and formatters from operating on the script, and the module is a flat mix of render functions, event handlers, and initialization.
+
+**Triggers to split:**
+
+- `progression-core.js` crossing ~1500 lines → separate music-theory utilities from state/player factory. The cut is clean; coupling between the two halves is already minimal.
+- `STYLES` patterns growing significantly (new styles added) → extract to `styles.js`. It's pure data with no logic dependencies.
+- Foot pedal, sample loading, or another host-side feature adding substantial JS → extract inline script to `app.js`. Minor structural change, large quality-of-life gain for tooling.
+
+`progression-audio.js` is well-scoped and not under pressure.
+
 ## Planned features
 
 ### Foot pedal support
