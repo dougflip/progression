@@ -349,6 +349,31 @@ export function resolvedChordName(numeral, shift, key, cycle) {
 }
 
 /**
+ * Returns true if the token is an absolute chord (e.g. "Am", "G7") rather than a Roman numeral.
+ * @param {string} numeral
+ * @returns {boolean}
+ */
+export function isAbsoluteChord(numeral) {
+  return !(numeral in ROMAN) && /^[A-G]/.test(numeral);
+}
+
+/**
+ * Returns resolved display names for all chips in the active section at a given cycle lap.
+ * @param {AppState} state
+ * @param {number} lapIndex
+ * @returns {string[]}
+ */
+export function getResolvedChipNames(state, lapIndex) {
+  const progStr = state.sections[state.activeSection - 1]?.progression ?? '';
+  const tokens  = tokenize(progStr);
+  const shift   = getShiftsForCycle(state.cycle, state.customCycleKeys)[lapIndex] ?? 0;
+  return tokens.map(t => {
+    const { numeral } = parseToken(t, state.bars);
+    return resolvedChordName(numeral, shift, state.key, state.cycle);
+  });
+}
+
+/**
  * Returns the display key name at a given cycle shift.
  * @param {string} key
  * @param {number} shift

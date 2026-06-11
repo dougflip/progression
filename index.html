@@ -552,8 +552,9 @@
       makeProgressionPlayer, serializeUrl,
       STYLE_OPTIONS, STYLE_LABELS, BASS_OPTIONS, BASS_LABELS,
       VOICING_OPTIONS, VOICING_PILL_LABELS, CYCLE_OPTIONS, CYCLE_LABELS,
-      BARS_OPTIONS, PRESETS, tokenize, resolvedChordName, resolvePlayOrder,
-      ROMAN, MAX_BARS, VALID_KEYS, getShiftsForCycle, resolvedKeyName,
+      BARS_OPTIONS, PRESETS, tokenize, resolvePlayOrder,
+      MAX_BARS, VALID_KEYS, getShiftsForCycle, resolvedKeyName,
+      getResolvedChipNames, isAbsoluteChord,
     } from './progression-core.js';
     import { makeProgressionAudio } from './progression-audio.js';
 
@@ -630,11 +631,7 @@
       const progStr = state.sections[state.activeSection - 1]?.progression ?? '';
       const tokens  = tokenize(progStr);
       buildChipStructure(tokens);
-      const displayShift = getShiftsForCycle(state.cycle, state.customCycleKeys)[_currentLapIndex] ?? 0;
-      updateChipNames(tokens.map(t => {
-        const [numeral] = t.split(':');
-        return resolvedChordName(numeral, displayShift, state.key, state.cycle);
-      }));
+      updateChipNames(getResolvedChipNames(state, _currentLapIndex));
       keyNoteBtnEl.textContent = _currentScrubKey ?? state.key;
       keySelectEl.value = state.key;
       keyPickerEl.querySelectorAll('.key-chip').forEach(b =>
@@ -652,7 +649,7 @@
         const [numeral, durStr] = token.split(':');
         const durDisplay   = durStr ? String(Math.min(parseInt(durStr, 10), MAX_BARS)) : '';
         const displayToken = durDisplay ? `${numeral}:${durDisplay}` : numeral;
-        const isAbsolute   = !(numeral in ROMAN) && /^[A-G]/.test(numeral);
+        const isAbsolute   = isAbsoluteChord(numeral);
         const chip = document.createElement('div');
         chip.className = 'chip';
         if (!isAbsolute) {
