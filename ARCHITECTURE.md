@@ -3,7 +3,8 @@
 ## File layout
 
 ```
-index.html           — host: CSS, HTML, DOM wiring, render callbacks
+index.html           — host: CSS, HTML markup
+app.js               — host: DOM wiring, render callbacks, event handlers
 progression-core.js  — pure logic: music theory, state, URL, presets, factory
 progression-audio.js — Tone.js engine: plays what core gives it
 ```
