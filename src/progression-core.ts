@@ -1,94 +1,210 @@
 /**
- * progression-core.js
+ * progression-core.ts
  * Pure music theory layer — no DOM, no audio, no runtime dependencies.
  */
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-/** @typedef {{ progression: string }} Section */
+export interface Section {
+  progression: string;
+}
 
-/** @typedef {'major'|'minor'|'maj7'|'m7'|'dom7'|'dim'|'aug'|'sus2'|'sus4'|'m7b5'|'dim7'|'mMaj7'|'dom7sus4'} ChordQuality */
+export type ChordQuality =
+  | 'major' | 'minor' | 'maj7' | 'm7' | 'dom7' | 'dim' | 'aug'
+  | 'sus2' | 'sus4' | 'm7b5' | 'dim7' | 'mMaj7' | 'dom7sus4';
 
-/**
- * @typedef {{
- *   notes: string[],
- *   upperVoicing: number[],
- *   bassRoot: string,
- *   bassThird: string,
- *   bassFifth: string,
- *   isMinor: boolean,
- *   root: number,
- *   quality: ChordQuality,
- * }} ChordVoicing
- */
+export interface ChordVoicing {
+  notes: string[];
+  upperVoicing: number[];
+  bassRoot: string;
+  bassThird: string;
+  bassFifth: string;
+  isMinor: boolean;
+  root: number;
+  quality: ChordQuality;
+}
 
-/**
- * @typedef {ChordVoicing & {
- *   token: string,
- *   numeral: string,
- *   bars: number,
- * }} ParsedChord
- */
+export type ParsedChord = ChordVoicing & {
+  token: string;
+  numeral: string;
+  bars: number;
+};
 
-/**
- * @typedef {ParsedChord & {
- *   sectionIndex: number,
- *   posIndex: number,
- *   chipIndex: number,
- * }} SongChord
- */
+export type SongChord = ParsedChord & {
+  sectionIndex: number;
+  posIndex: number;
+  chipIndex: number;
+};
+
+export type BassStep = 'R' | '3' | '5' | 0;
+
+export interface StyleBassPhrase {
+  major: BassStep[];
+  minor: BassStep[];
+}
+
+export interface StyleDef {
+  kick: number[];
+  snare: number[];
+  hat: number[];
+  bass: {
+    simple: StyleBassPhrase;
+    busy: StyleBassPhrase;
+  };
+}
+
+export interface MixState {
+  chordVol: number;
+  bassVol: number;
+  drumVol: number;
+  masterVol: number;
+  chordsOn: boolean;
+  bassOn: boolean;
+  drumsOn: boolean;
+}
+
+export interface ChordTickEvent {
+  chipIndex: number;
+  posIndex: number;
+  sectionIndex: number;
+  sectionChanged: boolean;
+  resolvedChipNames: string[];
+  resolvedKey: string;
+  bars: number;
+  sectionTokens: string[] | null;
+  lapIndex: number;
+}
+
+export interface AudioStartOpts {
+  chordSequence: SongChord[];
+  tempo: number;
+  style: StyleDef;
+  bassVariant: string;
+  voicing: string;
+  advance: string;
+  startPosIndex: number;
+  startChipIndex: number;
+  startLapIndex: number;
+  key: string;
+  cycle: string;
+  customCycleKeys: string[];
+  mix: MixState;
+  onChordTick: (ev: ChordTickEvent) => void;
+  onBeatTick: (beat: number) => void;
+  onBarTick: (bar: number) => void;
+}
+
+export interface AudioRebuildOpts {
+  chordSequence: SongChord[];
+  style: StyleDef;
+  bassVariant: string;
+  voicing: string;
+  key: string;
+  cycle: string;
+  customCycleKeys: string[];
+}
+
+export interface AudioEngine {
+  isPlaying(): boolean;
+  start(opts: AudioStartOpts): Promise<void>;
+  stop(): void;
+  rebuild(opts: AudioRebuildOpts): void;
+  setTempo(bpm: number): void;
+  setVolume(channel: 'chords' | 'bass' | 'drums' | 'master', value: number): void;
+  setMute(channel: 'chords' | 'bass' | 'drums', muted: boolean): void;
+  setAdvance(mode: string): void;
+  queueJump(posIndex: number): void;
+  cancelJump(): void;
+  queueKeyJump(lapIndex: number): void;
+  cancelKeyJump(): void;
+  getPendingJump(): number | null;
+  getPendingKeyJump(): number | null;
+}
+
+export interface AppState {
+  key: string;
+  tempo: number;
+  bars: number;
+  cycle: string;
+  customCycleKeys: string[];
+  style: string;
+  bass: string;
+  voicing: string;
+  sections: Section[];
+  arrangement: string;
+  activeSection: number;
+  advance: string;
+  chordVol: number;
+  bassVol: number;
+  drumVol: number;
+  masterVol: number;
+  chordsOn: boolean;
+  bassOn: boolean;
+  drumsOn: boolean;
+}
+
+export interface UserPreset {
+  id: string;
+  name: string;
+  state: AppState;
+}
+
+export interface PlayerConfig {
+  audio?: AudioEngine;
+  persist: (key: string, value: string) => void;
+  load: (key: string) => string | null;
+  onStateChange: (state: AppState) => void;
+  onPlaybackChange: (playing: boolean, reason?: string) => void;
+  onChordTick: (ev: ChordTickEvent) => void;
+  onBeatTick: (beat: number) => void;
+  onBarTick: (bar: number) => void;
+  onError?: (msg: string) => void;
+}
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-export const BARS_OPTIONS = [1, 2, 4];
+export const BARS_OPTIONS = [1, 2, 4] as const;
 export const MAX_BARS = 16;
 export const MAX_CHORDS = 24;
 
-export const MAJOR_SCALE = [0, 2, 4, 5, 7, 9, 11];
+export const MAJOR_SCALE = [0, 2, 4, 5, 7, 9, 11] as const;
 
-export const ROMAN = {
+export const ROMAN: Record<string, number> = {
   I: 0, II: 1, III: 2, IV: 3, V: 4, VI: 5, VII: 6,
   i: 0, ii: 1, iii: 2, iv: 3, v: 4, vi: 5, vii: 6,
 };
 
-/** @type {Record<string, number>} */
-export const KEY_MIDI = {
+export const KEY_MIDI: Record<string, number> = {
   C: 60, 'C#': 61, Db: 61, D: 62, 'D#': 63, Eb: 63, E: 64, F: 65,
   'F#': 66, Gb: 66, G: 67, 'G#': 68, Ab: 68, A: 69, 'A#': 70, Bb: 70, B: 71,
 };
 
-export const SHARP_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
-export const FLAT_NAMES  = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
+export const SHARP_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'] as const;
+export const FLAT_NAMES  = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'] as const;
 export const FLAT_KEYS   = new Set(['F','Bb','Eb','Ab','Db','Gb']);
 
-const PITCH_CLASS = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+const PITCH_CLASS: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 const CHORD_NAME_RE = /^([A-G])([#b]?)(.*)$/;
 const NOTE_RE = /^([A-G])([#b]?)(-?\d+)$/;
 
 export const CYCLE_SEMIS   = { none: 0, '4ths': 5, '5ths': 7 };
-export const CYCLE_OPTIONS = ['none', '4ths', '5ths', 'custom'];
-export const CYCLE_LABELS  = { none: 'Loop', '4ths': 'Cycle 4ths', '5ths': 'Cycle 5ths', custom: 'Custom' };
+export const CYCLE_OPTIONS = ['none', '4ths', '5ths', 'custom'] as const;
+export const CYCLE_LABELS: Record<string, string> = { none: 'Loop', '4ths': 'Cycle 4ths', '5ths': 'Cycle 5ths', custom: 'Custom' };
 
-/**
- * Returns the semitone shifts to iterate for a given cycle mode.
- * @param {string} cycle
- * @param {string[]} customCycleKeys
- * @returns {number[]}
- */
-export function getShiftsForCycle(cycle, customCycleKeys) {
+export function getShiftsForCycle(cycle: string, customCycleKeys: string[]): number[] {
   if (cycle === '4ths') return Array.from({ length: 12 }, (_, i) => 5 * i);
   if (cycle === '5ths') return Array.from({ length: 12 }, (_, i) => 7 * i);
   if (cycle === 'custom' && customCycleKeys.length > 0) {
-    const base = KEY_MIDI[customCycleKeys[0]];
-    return customCycleKeys.map(k => KEY_MIDI[k] - base);
+    const firstKey = customCycleKeys[0]!;
+    const base = KEY_MIDI[firstKey] ?? 0;
+    return customCycleKeys.map(k => (KEY_MIDI[k] ?? 0) - base);
   }
   return [0];
 }
 
-const ROMAN_NUMERALS = ['III','VII','iii','vii','II','IV','VI','ii','iv','vi','I','V','i','v'];
+const ROMAN_NUMERALS = ['III','VII','iii','vii','II','IV','VI','ii','iv','vi','I','V','i','v'] as const;
 
-/** @type {Record<ChordQuality, number[]>} */
-const QUALITY_INTERVALS = {
+const QUALITY_INTERVALS: Record<ChordQuality, number[]> = {
   major: [0, 4, 7],
   minor: [0, 3, 7],
   dim:   [0, 3, 6],
@@ -105,35 +221,33 @@ const QUALITY_INTERVALS = {
   dom7sus4: [0, 5, 7, 10],
 };
 
-/** @type {Record<ChordQuality, boolean>} */
-const QUALITY_IS_MINOR = {
+const QUALITY_IS_MINOR: Record<ChordQuality, boolean> = {
   major: false, minor: true,
   dim:   true,  aug:   false, sus2: false, sus4: false,
   maj7:  false, m7:    true,  dom7: false,
   m7b5:  true,  dim7:  true,  mMaj7: true, dom7sus4: false,
 };
 
-/** @type {Record<ChordQuality, string>} */
-export const QUALITY_DISPLAY = {
+export const QUALITY_DISPLAY: Record<ChordQuality, string> = {
   major: '', minor: 'm',
   dim: 'dim', aug: 'aug', sus2: 'sus2', sus4: 'sus4',
   maj7: 'maj7', m7: 'm7', dom7: '7',
   m7b5: 'm7b5', dim7: 'dim7', mMaj7: 'mMaj7', dom7sus4: '7sus4',
 };
 
-export const STYLE_OPTIONS       = ['pop', 'funk', 'ballad', 'rock'];
-export const STYLE_LABELS        = { pop: 'Pop', funk: 'Funk', ballad: 'Ballad', rock: 'Rock' };
-export const BASS_OPTIONS        = ['simple', 'busy'];
-export const BASS_LABELS         = { simple: 'Simple', busy: 'Busy' };
-export const VOICING_OPTIONS     = ['root', 'voice-lead', 'voice-lead-loop'];
-export const VOICING_PILL_LABELS = { 'root': 'Root', 'voice-lead': 'Lead', 'voice-lead-loop': 'Lead/loop' };
+export const STYLE_OPTIONS       = ['pop', 'funk', 'ballad', 'rock'] as const;
+export const STYLE_LABELS: Record<string, string>        = { pop: 'Pop', funk: 'Funk', ballad: 'Ballad', rock: 'Rock' };
+export const BASS_OPTIONS        = ['simple', 'busy'] as const;
+export const BASS_LABELS: Record<string, string>         = { simple: 'Simple', busy: 'Busy' };
+export const VOICING_OPTIONS     = ['root', 'voice-lead', 'voice-lead-loop'] as const;
+export const VOICING_PILL_LABELS: Record<string, string> = { 'root': 'Root', 'voice-lead': 'Lead', 'voice-lead-loop': 'Lead/loop' };
 
 // ─── Style Patterns ──────────────────────────────────────────────────────────
 
 // 16-step patterns (one bar of 16th notes).
 // Drums: 1 = hit, 0 = rest.
 // Bass: 'R' = root, '3' = third, '5' = fifth, 0 = rest.
-export const STYLES = {
+export const STYLES: Record<string, StyleDef> = {
   pop: {
     kick:  [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
     snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
@@ -198,14 +312,14 @@ export const STYLES = {
 
 // ─── Built-in Presets ────────────────────────────────────────────────────────
 
-export const PRESETS = [
+export const PRESETS: Array<{ label: string; state: Partial<AppState> }> = [
   { label: 'I vi ii V',    state: { sections: [{ progression: 'I vi ii V' }],                      arrangement: '', cycle: 'none' } },
   { label: '12-bar blues', state: { sections: [{ progression: 'I7:4 IV7:2 I7:2 V7:1 IV7:1 I7:1 V7:1' }], arrangement: '', cycle: 'none', tempo: 120, style: 'rock' } },
   { label: 'Sample Song',  state: {
     sections: [
-      { progression: 'I V vi IV' },   // verse
-      { progression: 'IV V I vi' },   // chorus
-      { progression: 'ii V I I' },    // bridge
+      { progression: 'I V vi IV' },
+      { progression: 'IV V I vi' },
+      { progression: 'ii V I I' },
     ],
     arrangement: '1 2 1 2 3 2',
     cycle: 'none',
@@ -218,19 +332,11 @@ export const PRESETS = [
 
 // ─── Token utilities ─────────────────────────────────────────────────────────
 
-/**
- * @param {string} input
- * @returns {string[]}
- */
-export function tokenize(input) {
+export function tokenize(input: string): string[] {
   return input.trim().split(/\s+/).filter(Boolean).slice(0, MAX_CHORDS);
 }
 
-/**
- * @param {string} token
- * @returns {{ numeral: string, suffix: string, flat: boolean } | null}
- */
-function parseRoman(token) {
+function parseRoman(token: string): { numeral: string; suffix: string; flat: boolean } | null {
   const flat = token.startsWith('b');
   const rest = flat ? token.slice(1) : token;
   for (const r of ROMAN_NUMERALS) {
@@ -239,12 +345,7 @@ function parseRoman(token) {
   return null;
 }
 
-/**
- * @param {string} suffix
- * @param {boolean} isLowerCase
- * @returns {ChordQuality | null}
- */
-function suffixToQuality(suffix, isLowerCase) {
+function suffixToQuality(suffix: string, isLowerCase: boolean): ChordQuality | null {
   if (suffix === '')      return isLowerCase ? 'minor' : 'major';
   if (suffix === 'm')     return 'minor';
   if (suffix === 'maj7')  return 'maj7';
@@ -263,63 +364,39 @@ function suffixToQuality(suffix, isLowerCase) {
 
 // ─── Note / MIDI utilities ───────────────────────────────────────────────────
 
-/**
- * @param {number} m - MIDI note number
- * @returns {string}
- */
-export function midiToNote(m) {
-  return SHARP_NAMES[m % 12] + (Math.floor(m / 12) - 1);
+export function midiToNote(m: number): string {
+  return SHARP_NAMES[m % 12]! + (Math.floor(m / 12) - 1);
 }
 
-/**
- * @param {number} shift
- * @returns {number}
- */
-export function clampShift(shift) {
+export function clampShift(shift: number): number {
   const s = ((shift % 12) + 12) % 12;
   return s > 6 ? s - 12 : s;
 }
 
-/**
- * @param {string} noteName
- * @param {number} semis
- * @returns {string}
- */
-export function transposeNote(noteName, semis) {
+export function transposeNote(noteName: string, semis: number): string {
   if (!semis) return noteName;
   const m = NOTE_RE.exec(noteName);
   if (!m) return noteName;
-  const [, letter, acc, octave] = m;
+  const letter = m[1]!;
+  const acc    = m[2]!;
+  const octave = m[3]!;
   const acci = acc === '#' ? 1 : acc === 'b' ? -1 : 0;
-  const midi = PITCH_CLASS[letter] + acci + (parseInt(octave, 10) + 1) * 12 + semis;
-  return SHARP_NAMES[((midi % 12) + 12) % 12] + (Math.floor(midi / 12) - 1);
+  const midi = (PITCH_CLASS[letter] ?? 0) + acci + (parseInt(octave, 10) + 1) * 12 + semis;
+  return SHARP_NAMES[((midi % 12) + 12) % 12]! + (Math.floor(midi / 12) - 1);
 }
 
 // ─── Key / cycle display utilities ───────────────────────────────────────────
 
-/**
- * @param {string} cycle
- * @param {string} key
- * @returns {boolean}
- */
-export function cycleUsesFlats(cycle, key, targetPc = null) {
+export function cycleUsesFlats(cycle: string, key: string, targetPc: number | null = null): boolean {
   if (cycle === '4ths') return true;
   if (cycle === '5ths') return false;
-  if (cycle === 'custom' && targetPc !== null) return FLAT_KEYS.has(FLAT_NAMES[targetPc]);
+  if (cycle === 'custom' && targetPc !== null) return FLAT_KEYS.has(FLAT_NAMES[targetPc]!);
   return FLAT_KEYS.has(key);
 }
 
-/**
- * Returns the display name of a chord numeral at a given cycle shift.
- * @param {string} numeral
- * @param {number} shift - semitones from base key
- * @param {string} key
- * @param {string} cycle
- * @returns {string}
- */
-export function resolvedChordName(numeral, shift, key, cycle) {
+export function resolvedChordName(numeral: string, shift: number, key: string, cycle: string): string {
   const targetPc = cycle === 'custom'
-    ? (((KEY_MIDI[key] % 12) + shift) % 12 + 12) % 12
+    ? (((( KEY_MIDI[key] ?? 0) % 12) + shift) % 12 + 12) % 12
     : null;
   const useFlats = cycleUsesFlats(cycle, key, targetPc);
   const names = useFlats ? FLAT_NAMES : SHARP_NAMES;
@@ -329,41 +406,32 @@ export function resolvedChordName(numeral, shift, key, cycle) {
     const isLowerCase = roman.numeral === roman.numeral.toLowerCase();
     const quality = suffixToQuality(roman.suffix, isLowerCase);
     if (quality) {
-      const degree = ROMAN[roman.numeral];
-      const semis = MAJOR_SCALE[degree] - (roman.flat ? 1 : 0);
-      const rootPc = (((KEY_MIDI[key] + semis + shift) % 12) + 12) % 12;
-      return names[rootPc] + QUALITY_DISPLAY[quality];
+      const degree = ROMAN[roman.numeral]!;
+      const semis = (MAJOR_SCALE[degree] ?? 0) - (roman.flat ? 1 : 0);
+      const rootPc = ((((KEY_MIDI[key] ?? 0) + semis + shift) % 12) + 12) % 12;
+      return names[rootPc]! + QUALITY_DISPLAY[quality];
     }
   }
 
   const m = CHORD_NAME_RE.exec(numeral);
   if (m) {
-    const [, letter, acc, suffix] = m;
+    const letter = m[1]!;
+    const acc    = m[2]!;
+    const suffix = m[3]!;
     if (suffixToQuality(suffix, false) === null) return '?';
     if (shift === 0) return numeral;
     const acci = acc === '#' ? 1 : acc === 'b' ? -1 : 0;
-    const pc = (((PITCH_CLASS[letter] + acci + shift) % 12) + 12) % 12;
-    return names[pc] + suffix;
+    const pc = ((((PITCH_CLASS[letter] ?? 0) + acci + shift) % 12) + 12) % 12;
+    return names[pc]! + suffix;
   }
   return '?';
 }
 
-/**
- * Returns true if the token is an absolute chord (e.g. "Am", "G7") rather than a Roman numeral.
- * @param {string} numeral
- * @returns {boolean}
- */
-export function isAbsoluteChord(numeral) {
+export function isAbsoluteChord(numeral: string): boolean {
   return !(numeral in ROMAN) && /^[A-G]/.test(numeral);
 }
 
-/**
- * Returns resolved display names for all chips in the active section at a given cycle lap.
- * @param {AppState} state
- * @param {number} lapIndex
- * @returns {string[]}
- */
-export function getResolvedChipNames(state, lapIndex) {
+export function getResolvedChipNames(state: AppState, lapIndex: number): string[] {
   const progStr = state.sections[state.activeSection - 1]?.progression ?? '';
   const tokens  = tokenize(progStr);
   const shift   = getShiftsForCycle(state.cycle, state.customCycleKeys)[lapIndex] ?? 0;
@@ -373,53 +441,40 @@ export function getResolvedChipNames(state, lapIndex) {
   });
 }
 
-/**
- * Returns the display key name at a given cycle shift.
- * @param {string} key
- * @param {number} shift
- * @param {string} cycle
- * @returns {string}
- */
-export function resolvedKeyName(key, shift, cycle) {
-  const baseKeyPc = KEY_MIDI[key] % 12;
+export function resolvedKeyName(key: string, shift: number, cycle: string): string {
+  const baseKeyPc = (KEY_MIDI[key] ?? 0) % 12;
   const curPc = (((baseKeyPc + shift) % 12) + 12) % 12;
   const targetPc = cycle === 'custom' ? curPc : null;
   const names = cycleUsesFlats(cycle, key, targetPc) ? FLAT_NAMES : SHARP_NAMES;
-  return names[curPc];
+  return names[curPc]!;
 }
 
 // ─── Chord building ──────────────────────────────────────────────────────────
 
-/**
- * @param {number} root - MIDI root note
- * @param {ChordQuality} quality
- * @param {number[] | null} [prevUpper] - previous upper voicing for voice leading
- * @returns {ChordVoicing}
- */
-export function makeChord(root, quality, prevUpper = null) {
+export function makeChord(root: number, quality: ChordQuality, prevUpper: number[] | null = null): ChordVoicing {
   const intervals = QUALITY_INTERVALS[quality];
   const topMax = intervals.length > 3 ? 72 : 76;
   let r = root;
-  while (r + intervals[intervals.length - 1] > topMax && r > 48) r -= 12;
+  while (r + (intervals[intervals.length - 1] ?? 0) > topMax && r > 48) r -= 12;
 
-  let chordNotes;
+  let chordNotes: number[];
   if (prevUpper) {
-    const candidates = [];
+    const candidates: number[][] = [];
     for (let inv = 0; inv < intervals.length; inv++) {
-      let notes = [];
+      let notes: number[] = [];
       for (let i = 0; i < intervals.length; i++) {
         const idx = (inv + i) % intervals.length;
         const oct = (inv + i) >= intervals.length ? 12 : 0;
-        notes.push(r + intervals[idx] + oct);
+        notes.push(r + (intervals[idx] ?? 0) + oct);
       }
-      while (notes[notes.length - 1] > topMax) notes = notes.map(n => n - 12);
+      while ((notes[notes.length - 1] ?? 0) > topMax) notes = notes.map(n => n - 12);
       candidates.push(notes);
     }
-    let best = candidates[0];
+    let best = candidates[0]!;
     let bestScore = Infinity;
     for (const cand of candidates) {
       let score = 0;
-      for (let i = 0; i < cand.length; i++) score += Math.abs(cand[i] - prevUpper[i]);
+      for (let i = 0; i < cand.length; i++) score += Math.abs((cand[i] ?? 0) - (prevUpper[i] ?? 0));
       if (score < bestScore) { bestScore = score; best = cand; }
     }
     chordNotes = best;
@@ -434,37 +489,34 @@ export function makeChord(root, quality, prevUpper = null) {
     notes: [chordBass, ...chordNotes].map(midiToNote),
     upperVoicing: chordNotes,
     bassRoot:  midiToNote(synthBass),
-    bassThird: midiToNote(synthBass + intervals[1]),
-    bassFifth: midiToNote(synthBass + intervals[2]),
+    bassThird: midiToNote(synthBass + (intervals[1] ?? 0)),
+    bassFifth: midiToNote(synthBass + (intervals[2] ?? 0)),
     isMinor,
     root,
     quality,
   };
 }
 
-/**
- * @param {string} token
- * @param {number} keyMidi
- * @returns {ChordVoicing}
- */
-export function buildChord(token, keyMidi) {
+export function buildChord(token: string, keyMidi: number): ChordVoicing {
   const roman = parseRoman(token);
   if (roman && roman.numeral in ROMAN) {
     const isLowerCase = roman.numeral === roman.numeral.toLowerCase();
     const quality = suffixToQuality(roman.suffix, isLowerCase);
     if (quality) {
-      const degree = ROMAN[roman.numeral];
-      const semis = MAJOR_SCALE[degree] - (roman.flat ? 1 : 0);
+      const degree = ROMAN[roman.numeral]!;
+      const semis = (MAJOR_SCALE[degree] ?? 0) - (roman.flat ? 1 : 0);
       return makeChord(keyMidi + semis, quality);
     }
   }
   const m = CHORD_NAME_RE.exec(token);
   if (m) {
-    const [, letter, acc, suffix] = m;
+    const letter = m[1]!;
+    const acc    = m[2]!;
+    const suffix = m[3]!;
     const quality = suffixToQuality(suffix, false);
     if (quality) {
       const acci = acc === '#' ? 1 : acc === 'b' ? -1 : 0;
-      const pc = ((PITCH_CLASS[letter] + acci) % 12 + 12) % 12;
+      const pc = (((PITCH_CLASS[letter] ?? 0) + acci) % 12 + 12) % 12;
       return makeChord(60 + pc, quality);
     }
   }
@@ -473,13 +525,10 @@ export function buildChord(token, keyMidi) {
 
 // ─── Progression parsing ─────────────────────────────────────────────────────
 
-/**
- * @param {string} token
- * @param {number} defaultBars
- * @returns {{ numeral: string, bars: number }}
- */
-export function parseToken(token, defaultBars) {
-  const [numeral, durStr] = token.split(':');
+export function parseToken(token: string, defaultBars: number): { numeral: string; bars: number } {
+  const parts = token.split(':');
+  const numeral = parts[0]!;
+  const durStr  = parts[1];
   let bars = defaultBars;
   if (durStr !== undefined) {
     const n = parseInt(durStr, 10);
@@ -488,14 +537,8 @@ export function parseToken(token, defaultBars) {
   return { numeral, bars };
 }
 
-/**
- * @param {string} input
- * @param {string} key
- * @param {number} defaultBars
- * @returns {ParsedChord[]}
- */
-export function parseProgression(input, key, defaultBars) {
-  const keyMidi = KEY_MIDI[key];
+export function parseProgression(input: string, key: string, defaultBars: number): ParsedChord[] {
+  const keyMidi = KEY_MIDI[key]!;
   const tokens = tokenize(input);
   if (tokens.length === 0) throw new Error('Progression is empty');
   return tokens.map(t => {
@@ -504,15 +547,12 @@ export function parseProgression(input, key, defaultBars) {
   });
 }
 
-/**
- * @param {string} str
- * @param {number} count - number of sections
- * @returns {number[]}
- */
-export function parseArrangement(str, count) {
-  const out = [];
+export function parseArrangement(str: string, count: number): number[] {
+  const out: number[] = [];
   for (const tok of str.trim().split(/\s+/).filter(Boolean)) {
-    const [refStr, repStr] = tok.split(':');
+    const parts  = tok.split(':');
+    const refStr = parts[0]!;
+    const repStr = parts[1];
     const ref = parseInt(refStr, 10);
     if (!Number.isInteger(ref) || ref < 1 || ref > count) continue;
     const reps = repStr === undefined ? 1 : parseInt(repStr, 10);
@@ -522,40 +562,25 @@ export function parseArrangement(str, count) {
   return out;
 }
 
-/**
- * Returns the ordered list of 1-based section references for playback.
- * @param {Section[]} sections
- * @param {string} arrangement
- * @returns {number[]}
- */
-export function resolvePlayOrder(sections, arrangement) {
+export function resolvePlayOrder(sections: Section[], arrangement: string): number[] {
   const count = sections.length;
   if (count < 2) return [];
   const validRefs = sections
     .map((s, i) => tokenize(s.progression).length > 0 ? i + 1 : null)
-    .filter(/** @type {(v: number | null) => v is number} */ Boolean);
+    .filter((v): v is number => v !== null);
   if (validRefs.length < 2) return [];
   const parsed = parseArrangement(arrangement, count).filter(ref => validRefs.includes(ref));
   return parsed.length ? parsed : validRefs;
 }
 
-/**
- * Builds the full ordered chord sequence for a song, expanding all sections
- * and the arrangement into a flat list of SongChords.
- * @param {Section[]} sections
- * @param {string} arrangementStr
- * @param {string} key
- * @param {number} bars
- * @returns {SongChord[]}
- */
-export function buildSongChords(sections, arrangementStr, key, bars) {
+export function buildSongChords(sections: Section[], arrangementStr: string, key: string, bars: number): SongChord[] {
   const count = sections.length;
   const parsed = parseArrangement(arrangementStr, count);
   const order = parsed.length ? parsed : Array.from({ length: count }, (_, i) => i + 1);
-  /** @type {SongChord[]} */
-  const chords = [];
+  const chords: SongChord[] = [];
   order.forEach((ref, posIndex) => {
     const sec = sections[ref - 1];
+    if (!sec) return;
     const secChords = parseProgression(sec.progression, key, bars);
     secChords.forEach((c, chipIndex) => {
       chords.push({ ...c, sectionIndex: ref - 1, posIndex, chipIndex });
@@ -566,35 +591,26 @@ export function buildSongChords(sections, arrangementStr, key, bars) {
 
 // ─── Arrangement mutation helpers ────────────────────────────────────────────
 
-/**
- * Rewrites an arrangement string after a section is deleted.
- * @param {string} str
- * @param {number} deletedIdx - 0-based index of deleted section
- * @returns {string}
- */
-export function remapArrangementDelete(str, deletedIdx) {
+export function remapArrangementDelete(str: string, deletedIdx: number): string {
   const deleted = deletedIdx + 1;
   return str.trim().split(/\s+/).filter(Boolean).map(tok => {
-    const [refStr, repStr] = tok.split(':');
+    const parts  = tok.split(':');
+    const refStr = parts[0]!;
+    const repStr = parts[1];
     const ref = parseInt(refStr, 10);
     if (!Number.isInteger(ref)) return tok;
     if (ref === deleted) return null;
     const newRef = ref > deleted ? ref - 1 : ref;
     return repStr !== undefined ? `${newRef}:${repStr}` : String(newRef);
-  }).filter(Boolean).join(' ');
+  }).filter((v): v is string => v !== null).join(' ');
 }
 
-/**
- * Rewrites an arrangement string after two sections are swapped.
- * @param {string} str
- * @param {number} idxA - 0-based index
- * @param {number} idxB - 0-based index
- * @returns {string}
- */
-export function remapArrangementSwap(str, idxA, idxB) {
+export function remapArrangementSwap(str: string, idxA: number, idxB: number): string {
   const a = idxA + 1, b = idxB + 1;
   return str.trim().split(/\s+/).filter(Boolean).map(tok => {
-    const [refStr, repStr] = tok.split(':');
+    const parts  = tok.split(':');
+    const refStr = parts[0]!;
+    const repStr = parts[1];
     const ref = parseInt(refStr, 10);
     if (!Number.isInteger(ref)) return tok;
     const newRef = ref === a ? b : ref === b ? a : ref;
@@ -604,34 +620,9 @@ export function remapArrangementSwap(str, idxA, idxB) {
 
 // ─── App State ───────────────────────────────────────────────────────────────
 
-export const VALID_KEYS = ['C','Db','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
+export const VALID_KEYS = ['C','Db','D','Eb','E','F','F#','G','Ab','A','Bb','B'] as const;
 
-/**
- * @typedef {{
- *   key: string,
- *   tempo: number,
- *   bars: number,
- *   cycle: string,
- *   customCycleKeys: string[],
- *   style: string,
- *   bass: string,
- *   voicing: string,
- *   sections: Section[],
- *   arrangement: string,
- *   activeSection: number,
- *   advance: string,
- *   chordVol: number,
- *   bassVol: number,
- *   drumVol: number,
- *   masterVol: number,
- *   chordsOn: boolean,
- *   bassOn: boolean,
- *   drumsOn: boolean,
- * }} AppState
- */
-
-/** @type {AppState} */
-export const DEFAULTS = {
+export const DEFAULTS: AppState = {
   key:          'C',
   tempo:        85,
   bars:         2,
@@ -655,15 +646,11 @@ export const DEFAULTS = {
 
 // ─── URL serialization ───────────────────────────────────────────────────────
 
-/**
- * @param {string} searchString - window.location.search
- * @returns {AppState}
- */
-export function parseUrl(searchString) {
+export function parseUrl(searchString: string): AppState {
   const p    = new URLSearchParams(searchString);
-  const num  = (k, def) => { const v = parseInt(p.get(k), 10); return Number.isFinite(v) ? v : def; };
-  const bool = (k, def) => { const v = p.get(k); if (v === '1') return true; if (v === '0') return false; return def; };
-  const str  = (k, def) => p.get(k) ?? def;
+  const num  = (k: string, def: number): number => { const v = parseInt(p.get(k) ?? '', 10); return Number.isFinite(v) ? v : def; };
+  const bool = (k: string, def: boolean): boolean => { const v = p.get(k); if (v === '1') return true; if (v === '0') return false; return def; };
+  const str  = (k: string, def: string): string => p.get(k) ?? def;
 
   const key     = str('key',     DEFAULTS.key);
   const bars    = num('bars',    DEFAULTS.bars);
@@ -674,7 +661,7 @@ export function parseUrl(searchString) {
   const advance = str('advance', DEFAULTS.advance);
   const rawCustomKeys = str('customKeys', '');
   const customCycleKeys = rawCustomKeys
-    ? rawCustomKeys.split(',').map(k => k.trim()).filter(k => VALID_KEYS.includes(k))
+    ? rawCustomKeys.split(',').map(k => k.trim()).filter((k): k is string => (VALID_KEYS as readonly string[]).includes(k))
     : [];
   const rawSections = p.getAll('section');
   const sections = rawSections.length
@@ -683,14 +670,14 @@ export function parseUrl(searchString) {
   const rawActive = num('activeSection', DEFAULTS.activeSection);
 
   return {
-    key:     VALID_KEYS.includes(key) ? key : DEFAULTS.key,
+    key:     (VALID_KEYS as readonly string[]).includes(key) ? key : DEFAULTS.key,
     tempo:   Math.max(40, Math.min(220, num('tempo', DEFAULTS.tempo))),
-    bars:    BARS_OPTIONS.includes(bars) ? bars : DEFAULTS.bars,
-    cycle:           CYCLE_OPTIONS.includes(cycle) ? cycle : DEFAULTS.cycle,
+    bars:    (BARS_OPTIONS as readonly number[]).includes(bars) ? bars : DEFAULTS.bars,
+    cycle:           (CYCLE_OPTIONS as readonly string[]).includes(cycle) ? cycle : DEFAULTS.cycle,
     customCycleKeys,
-    style:           STYLE_OPTIONS.includes(style) ? style : DEFAULTS.style,
-    bass:    BASS_OPTIONS.includes(bass) ? bass : DEFAULTS.bass,
-    voicing: VOICING_OPTIONS.includes(voicing) ? voicing : DEFAULTS.voicing,
+    style:           (STYLE_OPTIONS as readonly string[]).includes(style) ? style : DEFAULTS.style,
+    bass:    (BASS_OPTIONS as readonly string[]).includes(bass) ? bass : DEFAULTS.bass,
+    voicing: (VOICING_OPTIONS as readonly string[]).includes(voicing) ? voicing : DEFAULTS.voicing,
     sections,
     arrangement:   str('arrangement', DEFAULTS.arrangement),
     activeSection: (Number.isInteger(rawActive) && rawActive >= 1 && rawActive <= sections.length)
@@ -706,11 +693,7 @@ export function parseUrl(searchString) {
   };
 }
 
-/**
- * @param {AppState} state
- * @returns {string} query string (no leading ?)
- */
-export function serializeUrl(state) {
+export function serializeUrl(state: AppState): string {
   const p = new URLSearchParams();
   p.set('key',     state.key);
   p.set('tempo',   String(state.tempo));
@@ -738,53 +721,19 @@ export function serializeUrl(state) {
 
 const PRESETS_STORAGE_KEY = 'progression-presets-v2';
 
-/** @typedef {{ id: string, name: string, state: AppState }} UserPreset */
+type PausedAt = { posIndex: number; chipIndex: number; lapIndex: number };
 
-/**
- * @typedef {{
- *   chipIndex: number,
- *   posIndex: number,
- *   sectionIndex: number,
- *   sectionChanged: boolean,
- *   resolvedChipNames: string[],
- *   resolvedKey: string,
- *   bars: number,
- *   sectionTokens: string[] | null,
- *   lapIndex: number,
- * }} ChordTickEvent
- */
+export function makeProgressionPlayer(config: PlayerConfig) {
+  let _state: AppState = { ...DEFAULTS };
+  let _lastChordPos: PausedAt = { posIndex: 0, chipIndex: 0, lapIndex: 0 };
+  let _pausedAt: PausedAt | null = null;
 
-/**
- * @typedef {{
- *   audio?: object,
- *   persist: (key: string, value: string) => void,
- *   load: (key: string) => string | null,
- *   onStateChange: (state: AppState) => void,
- *   onPlaybackChange: (playing: boolean, reason?: string) => void,
- *   onChordTick: (ev: ChordTickEvent) => void,
- *   onBeatTick: (beat: number) => void,
- *   onBarTick: (bar: number) => void,
- * }} PlayerConfig
- */
-
-/**
- * @param {PlayerConfig} config
- */
-export function makeProgressionPlayer(config) {
-  /** @type {AppState} */
-  let _state = { ...DEFAULTS };
-  let _lastChordPos = { posIndex: 0, lapIndex: 0 };
-  let _pausedAt = null;
-
-  // Keys that require a full audio rebuild when changed during playback
   const REBUILD_KEYS = new Set(['key', 'bars', 'style', 'bass', 'voicing', 'cycle', 'customCycleKeys', 'sections', 'arrangement']);
-  // Keys that invalidate the paused position (structure changes make saved posIndex/lapIndex stale)
   const PAUSE_INVALIDATING_KEYS = new Set(['sections', 'arrangement', 'cycle', 'customCycleKeys']);
 
-  function _notify() { config.onStateChange({ ..._state }); }
+  function _notify(): void { config.onStateChange({ ..._state }); }
 
-  /** @param {Partial<AppState>} partial */
-  function _set(partial) {
+  function _set(partial: Partial<AppState>): void {
     _state = { ..._state, ...partial };
     if (_pausedAt !== null && Object.keys(partial).some(k => PAUSE_INVALIDATING_KEYS.has(k))) {
       _pausedAt = null;
@@ -792,30 +741,28 @@ export function makeProgressionPlayer(config) {
     _notify();
     if (!config.audio?.isPlaying()) return;
 
-    // Live updates that don't need a full rebuild
-    if ('tempo'    in partial) config.audio.setTempo(_state.tempo);
-    if ('chordVol' in partial) config.audio.setVolume('chords', _state.chordVol);
-    if ('bassVol'  in partial) config.audio.setVolume('bass',   _state.bassVol);
-    if ('drumVol'  in partial) config.audio.setVolume('drums',  _state.drumVol);
+    if ('tempo'     in partial) config.audio.setTempo(_state.tempo);
+    if ('chordVol'  in partial) config.audio.setVolume('chords', _state.chordVol);
+    if ('bassVol'   in partial) config.audio.setVolume('bass',   _state.bassVol);
+    if ('drumVol'   in partial) config.audio.setVolume('drums',  _state.drumVol);
     if ('masterVol' in partial) config.audio.setVolume('master', _state.masterVol);
-    if ('chordsOn' in partial) config.audio.setMute('chords', !_state.chordsOn);
-    if ('bassOn'   in partial) config.audio.setMute('bass',   !_state.bassOn);
-    if ('drumsOn'  in partial) config.audio.setMute('drums',  !_state.drumsOn);
-    if ('advance'  in partial) config.audio.setAdvance(_state.advance);
+    if ('chordsOn'  in partial) config.audio.setMute('chords', !_state.chordsOn);
+    if ('bassOn'    in partial) config.audio.setMute('bass',   !_state.bassOn);
+    if ('drumsOn'   in partial) config.audio.setMute('drums',  !_state.drumsOn);
+    if ('advance'   in partial) config.audio.setAdvance(_state.advance);
 
-    // Debounced rebuild for musical param changes
-    if ([...Object.keys(partial)].some(k => REBUILD_KEYS.has(k))) _scheduleRebuild();
+    if (Object.keys(partial).some(k => REBUILD_KEYS.has(k))) _scheduleRebuild();
   }
 
-  let _rebuildTimer = null;
-  function _scheduleRebuild() {
-    clearTimeout(_rebuildTimer);
+  let _rebuildTimer: ReturnType<typeof setTimeout> | null = null;
+  function _scheduleRebuild(): void {
+    clearTimeout(_rebuildTimer ?? undefined);
     _rebuildTimer = setTimeout(() => {
       try {
         const chords = buildSongChords(_state.sections, _state.arrangement, _state.key, _state.bars);
-        config.audio.rebuild({
+        config.audio!.rebuild({
           chordSequence:   chords,
-          style:           STYLES[_state.style],
+          style:           STYLES[_state.style]!,
           bassVariant:     _state.bass,
           voicing:         _state.voicing,
           key:             _state.key,
@@ -823,31 +770,31 @@ export function makeProgressionPlayer(config) {
           customCycleKeys: _state.customCycleKeys,
         });
       } catch (e) {
-        config.onError?.(`Rebuild error: ${e.message}`);
+        config.onError?.(`Rebuild error: ${(e as Error).message}`);
       }
     }, 250);
   }
 
-  async function _startPlayback() {
+  async function _startPlayback(): Promise<void> {
     const order  = resolvePlayOrder(_state.sections, _state.arrangement);
     const chords = buildSongChords(_state.sections, _state.arrangement, _state.key, _state.bars);
     let startPosIndex = 0;
     let startLapIndex = 0;
     let startChipIndex = 0;
     if (_pausedAt !== null) {
-      startPosIndex = _pausedAt.posIndex;
-      startChipIndex = _pausedAt.chipIndex ?? 0;
-      startLapIndex = _pausedAt.lapIndex;
+      startPosIndex  = _pausedAt.posIndex;
+      startChipIndex = _pausedAt.chipIndex;
+      startLapIndex  = _pausedAt.lapIndex;
       _pausedAt = null;
     } else if (order.length >= 2) {
       const idx = order.findIndex(ref => ref === _state.activeSection);
       startPosIndex = idx >= 0 ? idx : 0;
     }
 
-    await config.audio.start({
+    await config.audio!.start({
       chordSequence: chords,
       tempo:         _state.tempo,
-      style:         STYLES[_state.style],
+      style:         STYLES[_state.style]!,
       bassVariant:   _state.bass,
       voicing:       _state.voicing,
       advance:       _state.advance,
@@ -879,77 +826,63 @@ export function makeProgressionPlayer(config) {
     _notify();
   }
 
-  function _pausePlayback() {
+  function _pausePlayback(): void {
     _pausedAt = { ..._lastChordPos };
-    config.audio.stop();
+    config.audio!.stop();
     config.onPlaybackChange(false, 'pause');
     _notify();
   }
 
-  function _stopPlayback() {
+  function _stopPlayback(): void {
     _pausedAt = null;
     const order = resolvePlayOrder(_state.sections, _state.arrangement);
-    _state = { ..._state, activeSection: order.length > 0 ? order[0] : 1 };
-    config.audio.stop();
+    _state = { ..._state, activeSection: order.length > 0 ? order[0]! : 1 };
+    config.audio!.stop();
     config.onPlaybackChange(false);
     _notify();
   }
 
-  function _getUserPresets() {
-    try { return /** @type {UserPreset[]} */ (JSON.parse(config.load(PRESETS_STORAGE_KEY) || '[]')); }
+  function _getUserPresets(): UserPreset[] {
+    try { return JSON.parse(config.load(PRESETS_STORAGE_KEY) ?? '[]') as UserPreset[]; }
     catch { return []; }
   }
 
   return {
-    /** @returns {AppState} */
-    getState: () => ({ ..._state }),
+    getState: (): AppState => ({ ..._state }),
 
-    /** @param {Partial<AppState>} partial */
-    setState: (partial) => _set(partial),
+    setState: (partial: Partial<AppState>): void => _set(partial),
 
-    /** Initializes state from a URL search string and notifies. */
-    applyUrl(searchString) { _state = parseUrl(searchString); _notify(); },
+    applyUrl(searchString: string): void { _state = parseUrl(searchString); _notify(); },
 
-    /** @returns {string} */
-    serializeUrl: () => serializeUrl(_state),
+    serializeUrl: (): string => serializeUrl(_state),
 
     // ── Sections ──────────────────────────────────────────────────────────
 
-    addSection() {
+    addSection(): void {
       if (_state.sections.length >= 6) return;
       _set({ sections: [..._state.sections, { progression: '' }] });
     },
 
-    /** @param {number} index */
-    removeSection(index) {
+    removeSection(index: number): void {
       if (_state.sections.length <= 1) return;
-      const sections   = _state.sections.filter((_, i) => i !== index);
+      const sections    = _state.sections.filter((_, i) => i !== index);
       const arrangement = remapArrangementDelete(_state.arrangement, index);
       _set({ sections, arrangement, activeSection: Math.min(_state.activeSection, sections.length) });
     },
 
-    /**
-     * @param {number} index
-     * @param {'up'|'down'} direction
-     */
-    moveSection(index, direction) {
+    moveSection(index: number, direction: 'up' | 'down'): void {
       const sections = [..._state.sections];
       const target   = direction === 'up' ? index - 1 : index + 1;
       if (target < 0 || target >= sections.length) return;
-      [sections[index], sections[target]] = [sections[target], sections[index]];
+      [sections[index], sections[target]] = [sections[target]!, sections[index]!];
       const arrangement = remapArrangementSwap(_state.arrangement, index, target);
       let { activeSection } = _state;
-      if (activeSection === index + 1)  activeSection = target + 1;
-      else if (activeSection === target + 1) activeSection = index + 1;
+      if (activeSection === index + 1)        activeSection = target + 1;
+      else if (activeSection === target + 1)  activeSection = index + 1;
       _set({ sections, arrangement, activeSection });
     },
 
-    /**
-     * Sets the cycle mode. When switching to 'custom' with no keys defined,
-     * seeds customCycleKeys with the current key.
-     * @param {string} cycle
-     */
-    setCycle(cycle) {
+    setCycle(cycle: string): void {
       if (cycle === 'custom' && !_state.customCycleKeys.length) {
         _set({ cycle, customCycleKeys: [_state.key] });
       } else {
@@ -957,19 +890,14 @@ export function makeProgressionPlayer(config) {
       }
     },
 
-    /**
-     * @param {number} index
-     * @param {string} progression
-     */
-    updateSection(index, progression) {
+    updateSection(index: number, progression: string): void {
       const sections = _state.sections.map((s, i) => i === index ? { ...s, progression } : s);
       _set({ sections });
     },
 
     // ── Presets ───────────────────────────────────────────────────────────
 
-    /** @param {Partial<AppState>} presetState */
-    loadPreset(presetState) {
+    loadPreset(presetState: Partial<AppState>): void {
       _pausedAt = null;
       _state = { ...DEFAULTS, ...presetState };
       _notify();
@@ -979,67 +907,51 @@ export function makeProgressionPlayer(config) {
       _scheduleRebuild();
     },
 
-    /** @returns {UserPreset[]} */
     getUserPresets: _getUserPresets,
 
-    /** @param {string} name @returns {string} id */
-    saveUserPreset(name) {
+    saveUserPreset(name: string): string {
       const id = Date.now().toString(36);
       config.persist(PRESETS_STORAGE_KEY,
         JSON.stringify([..._getUserPresets(), { id, name, state: { ..._state } }]));
       return id;
     },
 
-    /** @param {string} id @param {string} name */
-    renameUserPreset(id, name) {
+    renameUserPreset(id: string, name: string): void {
       config.persist(PRESETS_STORAGE_KEY,
         JSON.stringify(_getUserPresets().map(p => p.id === id ? { ...p, name } : p)));
     },
 
-    /** @param {string} id */
-    deleteUserPreset(id) {
+    deleteUserPreset(id: string): void {
       config.persist(PRESETS_STORAGE_KEY,
         JSON.stringify(_getUserPresets().filter(p => p.id !== id)));
     },
 
     // ── Playback ──────────────────────────────────────────────────────────
 
-    /** @returns {Promise<void>} */
-    togglePlay() {
+    togglePlay(): Promise<void> {
       if (!config.audio) return Promise.resolve();
       if (config.audio.isPlaying()) {
         _pausePlayback();
         return Promise.resolve();
       }
       return _startPlayback().catch(e => {
-        config.onError?.(`Playback error: ${e.message}`);
+        config.onError?.(`Playback error: ${(e as Error).message}`);
       });
     },
 
-    /** Stops playback and resets to the beginning. */
-    stop() {
+    stop(): void {
       if (!config.audio) return;
       _stopPlayback();
     },
 
-    /**
-     * Sets the resume position without affecting playback state.
-     * When paused: updates _pausedAt to the new posIndex (chip 0, same lap).
-     * When stopped: updates activeSection so play starts from the right section.
-     * @param {number} posIndex
-     */
-    /**
-     * Sets the resume lap (key) without affecting the song position.
-     * @param {number} lapIndex
-     */
-    seekToLap(lapIndex) {
+    seekToLap(lapIndex: number): void {
       _pausedAt = _pausedAt !== null
         ? { ..._pausedAt, lapIndex }
         : { posIndex: 0, chipIndex: 0, lapIndex };
       _notify();
     },
 
-    seekToPos(posIndex) {
+    seekToPos(posIndex: number): void {
       const lapIndex = _pausedAt !== null ? _pausedAt.lapIndex : 0;
       _pausedAt = { posIndex, chipIndex: 0, lapIndex };
       const order = resolvePlayOrder(_state.sections, _state.arrangement);
@@ -1048,20 +960,17 @@ export function makeProgressionPlayer(config) {
       else _notify();
     },
 
-    /** @returns {boolean} */
-    isPaused: () => _pausedAt !== null,
+    isPaused: (): boolean => _pausedAt !== null,
 
-    /** @param {number} posIndex */
-    queueJump(posIndex) { config.audio?.queueJump(posIndex); },
+    queueJump(posIndex: number): void { config.audio?.queueJump(posIndex); },
 
-    cancelJump() { config.audio?.cancelJump(); },
+    cancelJump(): void { config.audio?.cancelJump(); },
 
-    /** @param {number} lapIndex */
-    queueKeyJump(lapIndex) { config.audio?.queueKeyJump(lapIndex); },
+    queueKeyJump(lapIndex: number): void { config.audio?.queueKeyJump(lapIndex); },
 
-    cancelKeyJump() { config.audio?.cancelKeyJump(); },
+    cancelKeyJump(): void { config.audio?.cancelKeyJump(); },
 
-    getPendingJump: () => config.audio?.getPendingJump() ?? null,
-    getPendingKeyJump: () => config.audio?.getPendingKeyJump() ?? null,
+    getPendingJump: (): number | null => config.audio?.getPendingJump() ?? null,
+    getPendingKeyJump: (): number | null => config.audio?.getPendingKeyJump() ?? null,
   };
 }

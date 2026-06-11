@@ -1,5 +1,5 @@
 /**
- * progression-audio.js
+ * progression-audio.ts
  * Tone.js-coupled audio engine. Accepts a state snapshot and plays it.
  * Knows nothing about DOM or app state — fires callbacks with resolved
  * display data for the host to consume.
@@ -9,56 +9,95 @@ import * as Tone from 'tone';
 import {
   resolvedChordName, resolvedKeyName,
   clampShift, makeChord, getShiftsForCycle,
+  type SongChord, type StyleDef, type ChordTickEvent,
+  type AudioStartOpts, type AudioRebuildOpts, type AudioEngine,
 } from './progression-core.js';
 
-export function makeProgressionAudio() {
+interface Channels {
+  chord: Tone.Channel;
+  bass:  Tone.Channel;
+  drum:  Tone.Channel;
+  master: Tone.Channel;
+}
+
+interface PartEvent {
+  time:             string;
+  bars:             number;
+  notes:            string[];
+  chipIndex:        number;
+  sectionIndex:     number;
+  posIndex:         number;
+  shift:            number;
+  sectionNumerals:  string[];
+  sectionTokens:    string[];
+}
+
+interface PartOffsets {
+  songBars:    number;
+  posOffsets:  Record<number, number>;
+  chipOffsets: Record<number, Record<number, number>>;
+}
+
+function safeCall(obj: unknown, method: 'stop' | 'dispose'): void {
+  if (!obj) return;
+  try { (obj as Record<string, () => void>)[method]?.(); }
+  catch (e) { console.warn(`Tone.${method} suppressed:`, e); }
+}
+
+export function makeProgressionAudio(): AudioEngine {
   // ── Audio nodes ────────────────────────────────────────────────────────────
-  let _channels = null; // created once, survives rebuild
-  let _synth = null, _reverb = null, _part = null;
-  let _kick = null, _snare = null, _hat = null;
-  let _kickSeq = null, _snareSeq = null, _hatSeq = null;
-  let _bass = null, _bassSeq = null, _beatSeq = null;
+  let _channels: Channels | null = null; // created once, survives rebuild
+  let _synth:    Tone.PolySynth | null  = null;
+  let _reverb:   Tone.Reverb | null     = null;
+  let _part:     Tone.Part<PartEvent> | null = null;
+  let _kick:     Tone.MembraneSynth | null   = null;
+  let _snare:    Tone.NoiseSynth | null      = null;
+  let _hat:      Tone.MetalSynth | null      = null;
+  let _kickSeq:  Tone.Sequence<number> | null      = null;
+  let _snareSeq: Tone.Sequence<number> | null      = null;
+  let _hatSeq:   Tone.Sequence<number> | null      = null;
+  let _bass:     Tone.MonoSynth | null             = null;
+  let _bassSeq:  Tone.Sequence<string | null> | null = null;
+  let _beatSeq:  Tone.Sequence<number> | null      = null;
 
   // ── Playback state ─────────────────────────────────────────────────────────
-  let _pendingJump    = null;
-  let _pendingKeyJump = null;
+  let _pendingJump:    number | null = null;
+  let _pendingKeyJump: number | null = null;
   let _currentPosIndex = 0;
   let _currentLap  = 0;
   let _songBars    = 0;
-  let _manualLap = 0;
-  let _advance = 'auto';
-  let _muteState = { chordsOn: true, bassOn: true, drumsOn: true };
+  let _manualLap   = 0;
+  let _advance     = 'auto';
+  let _muteState   = { chordsOn: true, bassOn: true, drumsOn: true };
   // Track last-set volume per channel so setMute can reapply it on unmute,
   // guarding against Tone.js silently ignoring -Infinity assignments.
-  let _volState  = { chords: 50, bass: 100, drums: 100, master: 100 };
+  let _volState    = { chords: 50, bass: 100, drums: 100, master: 100 };
 
   // ── Active start params (needed inside Draw callbacks) ─────────────────────
-  let _key = 'C';
-  let _cycle = 'none';
-  let _customCycleKeys = [];
+  let _key             = 'C';
+  let _cycle           = 'none';
+  let _customCycleKeys: string[] = [];
 
   // ── Callbacks ──────────────────────────────────────────────────────────────
-  let _onChordTick = null;
-  let _onBeatTick  = null;
-  let _onBarTick   = null;
+  let _onChordTick: ((ev: ChordTickEvent) => void) | null = null;
+  let _onBeatTick:  ((beat: number) => void) | null = null;
+  let _onBarTick:   ((bar: number) => void) | null  = null;
 
   // ── Private helpers ────────────────────────────────────────────────────────
 
-  /** @param {number} v - 0–100 */
-  function _toDb(v) {
+  function _toDb(v: number): number {
     if (!Number.isFinite(v) || v <= 0) return -Infinity;
     return Tone.gainToDb(Math.min(100, v) / 100);
   }
 
-  function _safe(fn) {
+  function _safe(fn: () => void): void {
     try { fn(); } catch (e) { console.warn('Tone suppressed:', e); }
   }
-  function _safeCall(obj, method) {
-    if (!obj) return;
-    try { obj[method](); } catch (e) { console.warn(`Tone.${method} suppressed:`, e); }
-  }
 
-  function _initChannels({ chordVol, bassVol, drumVol, masterVol, chordsOn, bassOn }) {
+  function _initChannels({ chordVol, bassVol, drumVol, masterVol, chordsOn, bassOn }: {
+    chordVol: number; bassVol: number; drumVol: number; masterVol: number;
+    chordsOn: boolean; bassOn: boolean;
+  }): void {
     if (_channels) return;
     _volState = { chords: chordVol, bass: bassVol, drums: drumVol, master: masterVol };
     const master = new Tone.Channel().toDestination();
@@ -74,23 +113,23 @@ export function makeProgressionAudio() {
     _channels = { chord, bass, drum, master };
   }
 
-  function _teardown() {
-    _safeCall(_part, 'stop');
-    _safeCall(_part, 'dispose');
+  function _teardown(): void {
+    safeCall(_part, 'stop');
+    safeCall(_part, 'dispose');
     _part = null;
     for (const s of [_kickSeq, _snareSeq, _hatSeq, _bassSeq, _beatSeq]) {
-      _safeCall(s, 'stop');
-      _safeCall(s, 'dispose');
+      safeCall(s, 'stop');
+      safeCall(s, 'dispose');
     }
     _kickSeq = _snareSeq = _hatSeq = _bassSeq = _beatSeq = null;
-    for (const v of [_synth, _kick, _snare, _hat, _bass, _reverb]) _safeCall(v, 'dispose');
+    for (const v of [_synth, _kick, _snare, _hat, _bass, _reverb]) safeCall(v, 'dispose');
     _synth = _kick = _snare = _hat = _bass = _reverb = null;
     _safe(() => Tone.Draw.cancel(0));
     _safe(() => Tone.Transport.cancel());
   }
 
-  function _buildSynth() {
-    _reverb = new Tone.Reverb({ decay: 2.5, wet: 0.25 }).connect(_channels.chord);
+  function _buildSynth(): void {
+    _reverb = new Tone.Reverb({ decay: 2.5, wet: 0.25 }).connect(_channels!.chord);
     _synth  = new Tone.PolySynth(Tone.Synth, {
       oscillator: { type: 'triangle' },
       envelope:   { attack: 0.05, decay: 0.3, sustain: 0.6, release: 1.5 },
@@ -98,14 +137,7 @@ export function makeProgressionAudio() {
     _synth.volume.value = -13;
   }
 
-  /**
-   * @param {import('./progression-core.js').SongChord[]} chords
-   * @param {string} cycle
-   * @param {string[]} customCycleKeys
-   * @param {string} voicing
-   * @returns {{ songBars: number, posOffsets: Record<number,number> }}
-   */
-  function _buildPart(chords, cycle, customCycleKeys, voicing) {
+  function _buildPart(chords: SongChord[], cycle: string, customCycleKeys: string[], voicing: string): PartOffsets {
     const shifts       = getShiftsForCycle(cycle, customCycleKeys);
     const smooth       = voicing === 'voice-lead' || voicing === 'voice-lead-loop';
     const resetEachLap = voicing === 'voice-lead-loop';
@@ -113,53 +145,50 @@ export function makeProgressionAudio() {
     const songBars = chords.reduce((s, c) => s + c.bars, 0);
     _songBars = songBars;
 
-    // Bar offset for each posIndex (needed for position scrubbing)
-    // chipOffsets[posIndex][chipIndex] = bar offset of that specific chord
-    const posOffsets = {};
-    const chipOffsets = {};
+    const posOffsets:  Record<number, number>                  = {};
+    const chipOffsets: Record<number, Record<number, number>>  = {};
     let offsetAcc = 0;
     for (const c of chords) {
       if (!(c.posIndex in posOffsets)) posOffsets[c.posIndex] = offsetAcc;
       if (!chipOffsets[c.posIndex]) chipOffsets[c.posIndex] = {};
-      chipOffsets[c.posIndex][c.chipIndex] = offsetAcc;
+      chipOffsets[c.posIndex]![c.chipIndex] = offsetAcc;
       offsetAcc += c.bars;
     }
 
-    // Per posIndex: numerals (for name resolution) and raw tokens (for chip structure)
-    const posSectionNumerals = {};
-    const posSectionTokens   = {};
+    const posSectionNumerals: Record<number, string[]> = {};
+    const posSectionTokens:   Record<number, string[]> = {};
     for (const c of chords) {
       if (!posSectionNumerals[c.posIndex]) posSectionNumerals[c.posIndex] = [];
       if (!posSectionTokens[c.posIndex])   posSectionTokens[c.posIndex]   = [];
-      posSectionNumerals[c.posIndex].push(c.numeral);
-      posSectionTokens[c.posIndex].push(c.token);
+      posSectionNumerals[c.posIndex]!.push(c.numeral);
+      posSectionTokens[c.posIndex]!.push(c.token);
     }
 
     let cumBars = 0;
-    const events = [];
-    let prevUpper = null;
+    const events: PartEvent[] = [];
+    let prevUpper: number[] | null = null;
 
     for (let i = 0; i < shifts.length; i++) {
       if (resetEachLap) prevUpper = null;
-      const rawShift   = shifts[i];
+      const rawShift   = shifts[i]!;
       const audioShift = clampShift(rawShift);
 
       for (const c of chords) {
-        const voiced = (audioShift || smooth)
+        const voiced: ReturnType<typeof makeChord> = (audioShift || smooth)
           ? makeChord(c.root + audioShift, c.quality, smooth ? prevUpper : null)
           : c;
         if (smooth) prevUpper = voiced.upperVoicing;
 
         events.push({
-          time:             `${cumBars}m`,
-          bars:             c.bars,
-          notes:            voiced.notes,
-          chipIndex:        c.chipIndex,
-          sectionIndex:     c.sectionIndex,
-          posIndex:         c.posIndex,
-          shift:            rawShift,
-          sectionNumerals:  posSectionNumerals[c.posIndex],
-          sectionTokens:    posSectionTokens[c.posIndex],
+          time:            `${cumBars}m`,
+          bars:            c.bars,
+          notes:           voiced.notes,
+          chipIndex:       c.chipIndex,
+          sectionIndex:    c.sectionIndex,
+          posIndex:        c.posIndex,
+          shift:           rawShift,
+          sectionNumerals: posSectionNumerals[c.posIndex] ?? [],
+          sectionTokens:   posSectionTokens[c.posIndex]   ?? [],
         });
         cumBars += c.bars;
       }
@@ -167,7 +196,7 @@ export function makeProgressionAudio() {
 
     let lastPos = -1;
 
-    _part = new Tone.Part((time, ev) => {
+    _part = new Tone.Part<PartEvent>((time, ev) => {
       // ── Key jump: fire at the next lap boundary (end of full song) ──
       const lapIndex = Math.floor(Tone.Transport.ticks / (Tone.Transport.PPQ * 4) / songBars);
       if (lapIndex > _currentLap) {
@@ -210,7 +239,7 @@ export function makeProgressionAudio() {
       }
 
       // ── Play chord ──
-      if (_synth) _safe(() => _synth.triggerAttackRelease(ev.notes, `${ev.bars}m`, time));
+      if (_synth) _safe(() => _synth!.triggerAttackRelease(ev.notes, `${ev.bars}m`, time));
 
       // ── Visual callbacks (animation frame, not audio thread) ──
       Tone.Draw.schedule(() => {
@@ -218,7 +247,7 @@ export function makeProgressionAudio() {
         if (sectionChanged) lastPos = ev.posIndex;
 
         if (_onChordTick) {
-          const resolvedChipNames = (ev.sectionNumerals || []).map(n =>
+          const resolvedChipNames = ev.sectionNumerals.map(n =>
             resolvedChordName(n, ev.shift, _key, _cycle));
           _onChordTick({
             chipIndex:        ev.chipIndex,
@@ -234,7 +263,7 @@ export function makeProgressionAudio() {
         }
       }, time);
 
-      const measureSec = Tone.Time('1m').toSeconds();
+      const measureSec = Tone.Time('1m').toSeconds() as number;
       for (let b = 1; b < ev.bars; b++) {
         Tone.Draw.schedule(() => { if (_onBarTick) _onBarTick(b); }, time + measureSec * b);
       }
@@ -244,71 +273,64 @@ export function makeProgressionAudio() {
     _part.loopEnd = `${cumBars}m`;
     _part.start(0);
 
-    _beatSeq = new Tone.Sequence((time, beat) => {
+    _beatSeq = new Tone.Sequence<number>((time, beat) => {
       Tone.Draw.schedule(() => { if (_onBeatTick) _onBeatTick(beat); }, time);
     }, [0, 1, 2, 3], '4n').start(0);
 
     return { songBars, posOffsets, chipOffsets };
   }
 
-  /** @param {object} style @param {boolean} drumsOn */
-  function _buildDrums(style, drumsOn) {
+  function _buildDrums(style: StyleDef, drumsOn: boolean): void {
     _kick = new Tone.MembraneSynth({
       pitchDecay: 0.05, octaves: 6,
       envelope: { attack: 0.005, decay: 0.4, sustain: 0, release: 1.4 },
-    }).connect(_channels.drum);
+    }).connect(_channels!.drum);
     _kick.volume.value = -4;
 
     _snare = new Tone.NoiseSynth({
       noise: { type: 'white' },
       envelope: { attack: 0.005, decay: 0.15, sustain: 0 },
-    }).connect(_channels.drum);
+    }).connect(_channels!.drum);
     _snare.volume.value = -10;
 
     _hat = new Tone.MetalSynth({
-      frequency: 250, envelope: { attack: 0.002, decay: 0.05, release: 0.01 },
+      envelope: { attack: 0.002, decay: 0.05, release: 0.01 },
       harmonicity: 5.1, modulationIndex: 32, resonance: 4000, octaves: 1.5,
-    }).connect(_channels.drum);
+    }).connect(_channels!.drum);
+    _hat.frequency.value = 250;
     _hat.volume.value = -28;
 
-    _kickSeq = new Tone.Sequence((time, hit) => {
-      if (hit && _kick) _safe(() => _kick.triggerAttackRelease('C1', '8n', time));
+    _kickSeq = new Tone.Sequence<number>((time, hit) => {
+      if (hit && _kick) _safe(() => _kick!.triggerAttackRelease('C1', '8n', time));
     }, style.kick, '16n').start(0);
 
-    _snareSeq = new Tone.Sequence((time, hit) => {
-      if (hit && _snare) _safe(() => _snare.triggerAttackRelease('16n', time));
+    _snareSeq = new Tone.Sequence<number>((time, hit) => {
+      if (hit && _snare) _safe(() => _snare!.triggerAttackRelease('16n', time));
     }, style.snare, '16n').start(0);
 
-    _hatSeq = new Tone.Sequence((time, hit) => {
-      if (hit && _hat) _safe(() => _hat.triggerAttackRelease('32n', time));
+    _hatSeq = new Tone.Sequence<number>((time, hit) => {
+      if (hit && _hat) _safe(() => _hat!.triggerAttackRelease('32n', time));
     }, style.hat, '16n').start(0);
 
     const muted = !drumsOn;
-    for (const s of [_kickSeq, _snareSeq, _hatSeq]) s.mute = muted;
+    for (const s of [_kickSeq, _snareSeq, _hatSeq]) if (s) s.mute = muted;
   }
 
-  /**
-   * @param {import('./progression-core.js').SongChord[]} chords
-   * @param {string} cycle
-   * @param {object} style
-   * @param {string} bassVariant
-   * @param {boolean} bassOn
-   */
-  function _buildBass(chords, cycle, customCycleKeys, style, bassVariant, bassOn) {
+  function _buildBass(chords: SongChord[], cycle: string, customCycleKeys: string[], style: StyleDef, bassVariant: string, bassOn: boolean): void {
     _bass = new Tone.MonoSynth({
       oscillator:     { type: 'sawtooth' },
       filter:         { Q: 2, type: 'lowpass' },
       envelope:       { attack: 0.01, decay: 0.25, sustain: 0.4, release: 0.3 },
       filterEnvelope: { attack: 0.01, decay: 0.2,  sustain: 0.4, release: 0.3, baseFrequency: 80, octaves: 2.5 },
-    }).connect(_channels.bass);
+    }).connect(_channels!.bass);
     _bass.volume.value = -6;
 
-    const patterns = style.bass[bassVariant] || style.bass.simple;
+    const patterns = style.bass[bassVariant as keyof typeof style.bass] ?? style.bass.simple;
     const shifts    = getShiftsForCycle(cycle, customCycleKeys);
-    const steps     = [];
+    const steps: (string | null)[] = [];
 
     for (let i = 0; i < shifts.length; i++) {
-      const shift = clampShift(shifts[i]);
+      const shift = clampShift(shifts[i]!);
       for (const c of chords) {
         const voiced  = shift ? makeChord(c.root + shift, c.quality) : c;
         const pattern = voiced.isMinor ? patterns.minor : patterns.major;
@@ -323,8 +345,8 @@ export function makeProgressionAudio() {
       }
     }
 
-    _bassSeq = new Tone.Sequence((time, note) => {
-      if (note && _bass) _safe(() => _bass.triggerAttackRelease(note, '8n', time));
+    _bassSeq = new Tone.Sequence<string | null>((time, note) => {
+      if (note && _bass) _safe(() => _bass!.triggerAttackRelease(note, '8n', time));
     }, steps, '16n').start(0);
 
     _bassSeq.mute = !bassOn;
@@ -335,31 +357,12 @@ export function makeProgressionAudio() {
   return {
     isPlaying: () => Tone.Transport.state === 'started',
 
-    /**
-     * @param {{
-     *   chordSequence: import('./progression-core.js').SongChord[],
-     *   tempo: number,
-     *   style: object,
-     *   bassVariant: string,
-     *   voicing: string,
-     *   advance: string,
-     *   startPosIndex: number,
-     *   startChipIndex: number,
-     *   startLapIndex: number,
-     *   key: string,
-     *   cycle: string,
-     *   mix: { chordVol: number, bassVol: number, drumVol: number, masterVol: number, chordsOn: boolean, bassOn: boolean, drumsOn: boolean },
-     *   onChordTick: function,
-     *   onBeatTick: function,
-     *   onBarTick: function,
-     * }} opts
-     */
     async start({ chordSequence, tempo, style, bassVariant, voicing, advance,
                   startPosIndex = 0, startChipIndex = 0, startLapIndex = 0,
                   key, cycle, customCycleKeys = [], mix,
-                  onChordTick, onBeatTick, onBarTick }) {
+                  onChordTick, onBeatTick, onBarTick }: AudioStartOpts): Promise<void> {
       await Tone.start();
-      if ('audioSession' in navigator) navigator.audioSession.type = 'playback';
+      if ('audioSession' in navigator) (navigator as unknown as { audioSession: { type: string } }).audioSession.type = 'playback';
 
       _key             = key;
       _cycle           = cycle;
@@ -390,7 +393,7 @@ export function makeProgressionAudio() {
       Tone.Transport.start();
     },
 
-    stop() {
+    stop(): void {
       Tone.Transport.stop();
       _teardown();
       _pendingJump     = null;
@@ -400,8 +403,7 @@ export function makeProgressionAudio() {
       _currentPosIndex = 0;
     },
 
-    /** Hot-swap chord sequence mid-playback (called inside scheduleOnce). */
-    rebuild({ chordSequence, style, bassVariant, voicing, key, cycle, customCycleKeys = [] }) {
+    rebuild({ chordSequence, style, bassVariant, voicing, key, cycle, customCycleKeys = [] }: AudioRebuildOpts): void {
       if (Tone.Transport.state !== 'started') return;
       Tone.Transport.scheduleOnce(() => {
         if (Tone.Transport.state !== 'started') return;
@@ -421,16 +423,11 @@ export function makeProgressionAudio() {
       }, '+0');
     },
 
-    /** @param {number} bpm */
-    setTempo(bpm) { Tone.Transport.bpm.value = bpm; },
+    setTempo(bpm: number): void { Tone.Transport.bpm.value = bpm; },
 
-    /**
-     * @param {'chords'|'bass'|'drums'|'master'} channel
-     * @param {number} value - 0–100
-     */
-    setVolume(channel, value) {
+    setVolume(channel: 'chords' | 'bass' | 'drums' | 'master', value: number): void {
       if (!_channels) return;
-      _volState[channel] = value;
+      _volState[channel === 'chords' ? 'chords' : channel === 'bass' ? 'bass' : channel === 'drums' ? 'drums' : 'master'] = value;
       const db = _toDb(value);
       if      (channel === 'chords') _channels.chord.volume.value  = db;
       else if (channel === 'bass')   _channels.bass.volume.value   = db;
@@ -438,11 +435,7 @@ export function makeProgressionAudio() {
       else if (channel === 'master') _channels.master.volume.value = db;
     },
 
-    /**
-     * @param {'chords'|'bass'|'drums'} channel
-     * @param {boolean} muted
-     */
-    setMute(channel, muted) {
+    setMute(channel: 'chords' | 'bass' | 'drums', muted: boolean): void {
       _muteState[channel === 'chords' ? 'chordsOn' : channel === 'bass' ? 'bassOn' : 'drumsOn'] = !muted;
       if (channel === 'chords' && _channels) {
         _channels.chord.mute = muted;
@@ -456,20 +449,17 @@ export function makeProgressionAudio() {
       }
     },
 
-    /** @param {'auto'|'manual'} mode */
-    setAdvance(mode) { _advance = mode; },
+    setAdvance(mode: string): void { _advance = mode; },
 
-    /** @param {number} posIndex */
-    queueJump(posIndex) { _pendingJump = posIndex; },
+    queueJump(posIndex: number): void { _pendingJump = posIndex; },
 
-    cancelJump() { _pendingJump = null; },
+    cancelJump(): void { _pendingJump = null; },
 
-    /** @param {number} lapIndex */
-    queueKeyJump(lapIndex) { _pendingKeyJump = lapIndex; },
+    queueKeyJump(lapIndex: number): void { _pendingKeyJump = lapIndex; },
 
-    cancelKeyJump() { _pendingKeyJump = null; },
+    cancelKeyJump(): void { _pendingKeyJump = null; },
 
-    getPendingJump: () => _pendingJump,
-    getPendingKeyJump: () => _pendingKeyJump,
+    getPendingJump:    (): number | null => _pendingJump,
+    getPendingKeyJump: (): number | null => _pendingKeyJump,
   };
 }
