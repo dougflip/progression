@@ -132,5 +132,33 @@ Three files is intentional. The no-bundler constraint keeps the project portable
 
 **Side benefit:** `progression-core` is pure logic with no runtime dependencies — Vitest unit tests become trivial once the build pipeline exists.
 
+### AppState restructure + typed setters
+
+**Motivation:** `AppState` is currently flat — playback settings, mix settings, and structural state all live at the same level. This is a historical accident of incremental growth, not a deliberate design. Three named buckets would be more honest:
+
+```ts
+interface AppState {
+  playback: PlaybackSettings;  // key, tempo, bars, style, bass, voicing, cycle, customCycleKeys, advance
+  mix: MixSettings;            // chordVol, bassVol, drumVol, masterVol, chordsOn, bassOn, drumsOn
+  sections: Section[];
+  arrangement: string;
+  activeSection: number;
+}
+```
+
+**Why this pairs with section-level overrides:** once `PlaybackSettings` is a named type, each section can carry an optional `Partial<PlaybackSettings>` that merges with the song-level base at playback time — enabling per-section key changes, tempo changes, style changes, etc. The merge is clean and typed: `{ ...state.playback, ...section.playback }`.
+
+**The setState problem:** nesting makes the current `app.setState({ key: 'C' })` pattern awkward. The natural fix is replacing the generic setter with typed setters per bucket:
+
+```ts
+app.setPlayback(partial: Partial<PlaybackSettings>): void  // merges into state.playback
+app.setMix(partial: Partial<MixSettings>): void
+// structural mutations stay as named methods (addSection, removeSection, etc.)
+```
+
+The generic `setState` either goes away or narrows to structural fields only. This continues the direction already established — `setCycle` exists precisely because the host shouldn't manually assemble state patches.
+
+**Do this alongside the TS migration** — nesting, typed setters, and real enforcement are one coherent refactor. Read sites (`state.key` → `state.playback.key`) are mechanical find-and-replace; the API surface change is the real work.
+
 ### Foot pedal support
 HID-keyboard path: 2-switch + tap/long-press = 4 configurable actions. App-side mode toggle for more. Host-level feature — calls `app.togglePlay()` and `app.queueJump()`. Core needs no changes.
