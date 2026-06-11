@@ -3,44 +3,46 @@
 ## File layout
 
 ```
-index.html               — host: CSS, HTML markup
-src/app.js               — host: DOM wiring, render callbacks, event handlers
-src/progression-core.js  — pure logic: music theory, state, URL, presets, factory
-src/progression-audio.js — Tone.js engine: plays what core gives it
-public/favicon.svg       — static asset, copied to dist/ as-is
+index.html                — host: CSS, HTML markup
+src/app.ts                — host: DOM wiring, render callbacks, event handlers
+src/progression-core.ts   — pure logic: music theory, state, URL, presets, factory
+src/progression-audio.ts  — Tone.js engine: plays what core gives it
+public/favicon.svg        — static asset, copied to dist/ as-is
+vite.config.js            — build config: multi-page entry points, Tone vendor chunk
+tsconfig.json             — strict TypeScript config (noEmit; Vite handles transpilation)
 ```
 
 ## Key decisions
 
-- **Headless controller pattern.** `progression-core.js` owns all state and logic. `index.html` is a skin — it translates user gestures into core commands and implements callbacks to update the DOM. Swapping to React or a CLI would be a visual-only lift.
+- **Headless controller pattern.** `progression-core.ts` owns all state and logic. `index.html` is a skin — it translates user gestures into core commands and implements callbacks to update the DOM. Swapping to React or a CLI would be a visual-only lift.
 - **Single config object, all callbacks.** `makeProgressionPlayer(config)` takes one flat object. Everything is a callback — even "dependencies" like localStorage are abstracted as `persist`/`load` behaviors. No concrete API references in core.
-- **Audio engine is a swappable dep.** `makeProgressionAudio({ Tone })` is passed into the factory as `config.audio`. Core is programmed to the audio interface, not to Tone.js directly. The engine is replaceable without touching core.
-- **`Tone` is a deliberate global.** Loaded via `<script>` tag and passed into the factory — an intentional choice that keeps the audio engine loosely coupled and avoids a bundler requirement. When a bundler is introduced (see Planned features), this becomes `import * as Tone from 'tone'` and the global pattern is dropped.
-- **ES modules throughout.** Requires a local server (`file://` won't work).
-- **JSDoc types using TS syntax** on all public API surfaces.
+- **Audio engine is a swappable dep.** `makeProgressionAudio()` returns an `AudioEngine` (interface defined in core). Core is programmed to the interface, not to Tone.js directly. The engine is replaceable without touching core.
+- **Tone.js as an npm dependency.** Imported directly in `progression-audio.ts` (`import * as Tone from 'tone'`). Bundled as a separate vendor chunk by Vite so it caches independently from app code. Previously a CDN global — the bundler made the proper import pattern straightforward.
+- **Vite for dev and build.** Replaces the bare local server. Two HTML entry points (`index.html`, `docs.html`) declared as Rollup inputs. `npm run dev` serves at `/progression/` (matching the GitHub Pages subpath). `npm run typecheck` runs `tsc --noEmit` separately since Vite uses esbuild for transpilation.
+- **TypeScript with strict mode.** `strict`, `noUncheckedIndexedAccess`, `noImplicitReturns`, and `noFallthroughCasesInSwitch` all enabled. The `AudioEngine` interface in core formally enforces the contract between the player factory and the audio engine.
 - **Host receives only resolved display data.** `onChordTick` carries `resolvedChipNames` (chord names in the current key), `resolvedKey`, position/section indices, `bars`, and `sectionTokens` (raw tokens, only on section change) — no raw semitone shifts or music theory math reaches the host.
 - **Two callback tiers.** `onChordTick` fires once per chord; `onBarTick` fires for each bar after the first within a multi-bar chord; `onBeatTick` fires every quarter-note beat. All three are audio-timing-sensitive (fast, no DOM work). `onStateChange` fires on any state mutation and is unrestricted.
 
 ## Audio interface
 
-`makeProgressionAudio()` returns:
+`makeProgressionAudio()` returns an `AudioEngine` (TypeScript interface exported from `progression-core.ts`):
 
-```js
+```ts
 {
-  isPlaying(),
-  start({ chordSequence, tempo, style, bassVariant, voicing, advance,
-          startPosIndex, startChipIndex, startLapIndex, key, cycle, customCycleKeys, mix,
-          onChordTick, onBeatTick, onBarTick }),
-  stop(),
-  rebuild({ chordSequence, style, bassVariant, voicing, key, cycle, customCycleKeys }),
-  setTempo(bpm),
-  setVolume(channel, value),   // channel: 'chords' | 'bass' | 'drums' | 'master', value: 0–100
-  setMute(channel, muted),
-  setAdvance(mode),
-  queueJump(posIndex),
-  cancelJump(),
-  queueKeyJump(lapIndex),
-  cancelKeyJump(),
+  isPlaying(): boolean,
+  start(opts: AudioStartOpts): Promise<void>,
+  stop(): void,
+  rebuild(opts: AudioRebuildOpts): void,
+  setTempo(bpm: number): void,
+  setVolume(channel: 'chords' | 'bass' | 'drums' | 'master', value: number): void,
+  setMute(channel: 'chords' | 'bass' | 'drums', muted: boolean): void,
+  setAdvance(mode: string): void,
+  queueJump(posIndex: number): void,
+  cancelJump(): void,
+  queueKeyJump(lapIndex: number): void,
+  cancelKeyJump(): void,
+  getPendingJump(): number | null,
+  getPendingKeyJump(): number | null,
 }
 ```
 
@@ -50,7 +52,7 @@ Channels are created once on first `start()` and survive stop/rebuild cycles. Te
 
 ## Cycle modes
 
-`cycle` is a string: `'none' | '4ths' | '5ths' | 'custom'`. When `cycle === 'custom'`, a parallel `customCycleKeys: string[]` state field defines the key sequence (e.g. `['A', 'E', 'D', 'G']`). This two-field shape was chosen over a discriminated union to avoid polymorphism at every call site in plain JS.
+`cycle` is a string: `'none' | '4ths' | '5ths' | 'custom'`. When `cycle === 'custom'`, a parallel `customCycleKeys: string[]` state field defines the key sequence (e.g. `['A', 'E', 'D', 'G']`). This two-field shape was chosen over a discriminated union to keep call sites simple — a discriminated union would require type narrowing at every access point.
 
 `getShiftsForCycle(cycle, customCycleKeys)` in core is the single source of truth for how many laps to play and what semitone shift each lap gets:
 - `'none'` → `[0]` (one lap, no shift)
@@ -95,43 +97,22 @@ Pause state is stored in private `_pausedAt: { posIndex, chipIndex, lapIndex } |
 
 ## File structure and split thresholds
 
-Three files is intentional. The no-bundler constraint keeps the project portable and the per-file purpose is immediately clear: logic, audio, view. The structure has absorbed multi-section, custom cycle, scrubbers, and seek without breaking down — evidence the split is right.
+Four source files with clear per-file purpose: logic, audio, view, markup. The structure has absorbed multi-section, custom cycle, scrubbers, seek, and the Vite + TypeScript migration without breaking down — evidence the split is right.
 
 **Current pressure points:**
 
-`progression-core.js` carries two distinct concerns that share a file comfortably at current size:
+`progression-core.ts` carries two distinct concerns that share a file comfortably at current size:
 - **Music theory** — constants, note math, chord building, name resolution (`resolvedChordName`, `buildChord`, `STYLES`, etc.)
 - **App architecture** — `AppState`, `DEFAULTS`, URL serialization, `makeProgressionPlayer`
 
-`index.html` contains inline JS (~800 lines alongside CSS and markup). This works but prevents linters and formatters from operating on the script, and the module is a flat mix of render functions, event handlers, and initialization.
-
 **Triggers to split:**
 
-- `progression-core.js` crossing ~1500 lines → separate music-theory utilities from state/player factory. The cut is clean; coupling between the two halves is already minimal.
-- `STYLES` patterns growing significantly (new styles added) → extract to `styles.js`. It's pure data with no logic dependencies.
-- Foot pedal, sample loading, or another host-side feature adding substantial JS → extract inline script to `app.js`. Minor structural change, large quality-of-life gain for tooling.
+- `progression-core.ts` crossing ~1500 lines → separate music-theory utilities from state/player factory. The cut is clean; coupling between the two halves is already minimal.
+- `STYLES` patterns growing significantly (new styles added) → extract to `styles.ts`. It's pure data with no logic dependencies.
 
-`progression-audio.js` is well-scoped and not under pressure.
+`progression-audio.ts` and `src/app.ts` are well-scoped and not under pressure.
 
 ## Planned features
-
-### Vite + TypeScript migration
-
-**Motivation:** JSDoc types are documentation, not enforcement. Real TypeScript would catch shape mismatches at the public API boundaries (`makeProgressionPlayer`, `makeProgressionAudio`, `ChordTickEvent`, etc.) that JSDoc silently ignores. The types are already well-written — migration is largely mechanical.
-
-**Plan:**
-- Add Vite as the dev server and build tool (replaces the current bare server)
-- Convert `.js` → `.ts`; JSDoc annotations become real type signatures
-- Drop the CDN `<script>` for Tone.js; import it properly: `import * as Tone from 'tone'`
-- Configure a vendor chunk so Tone.js is bundled separately from app code — it changes rarely and should be cached independently
-
-**What changes at each layer:**
-- `progression-core.ts` — minimal changes; types already defined, just move to TS syntax
-- `progression-audio.ts` — `{ Tone }: { Tone: typeof import('tone') }` parameter type; some `as` casts likely needed in synth setup
-- `app.ts` — straightforward; mostly removing JSDoc in favor of inline types
-- `index.html` — CDN script tag removed; Vite injects the bundle reference
-
-**Side benefit:** `progression-core` is pure logic with no runtime dependencies — Vitest unit tests become trivial once the build pipeline exists.
 
 ### AppState restructure + typed setters
 
@@ -159,7 +140,7 @@ app.setMix(partial: Partial<MixSettings>): void
 
 The generic `setState` either goes away or narrows to structural fields only. This continues the direction already established — `setCycle` exists precisely because the host shouldn't manually assemble state patches.
 
-**Do this alongside the TS migration** — nesting, typed setters, and real enforcement are one coherent refactor. Read sites (`state.key` → `state.playback.key`) are mechanical find-and-replace; the API surface change is the real work.
+**TS migration is complete** — the types exist and are enforced. This restructure is the natural next refactor. Read sites (`state.key` → `state.playback.key`) are mechanical find-and-replace; the API surface change is the real work.
 
 ### Foot pedal support
 HID-keyboard path: 2-switch + tap/long-press = 4 configurable actions. App-side mode toggle for more. Host-level feature — calls `app.togglePlay()` and `app.queueJump()`. Core needs no changes.
