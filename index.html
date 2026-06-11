@@ -830,7 +830,6 @@
     // Host-side pending jump trackers (for scrubber queued animation)
     let _pendingJump    = null;
     let _pendingKeyJump = null;
-    let _isPaused       = false;
     // Last known scrubber position — used to restore .current after DOM rebuild
     let _currentScrubPosIndex = null;
     let _currentScrubKey      = null;
@@ -1044,16 +1043,15 @@
     const PAUSE_ICON = '<svg width="17" height="20" viewBox="0 0 17 20" fill="currentColor" aria-hidden="true"><rect x="0" y="0" width="6" height="20" rx="1.5"/><rect x="11" y="0" width="6" height="20" rx="1.5"/></svg>';
 
     /** @param {boolean} playing @param {string} [reason] */
-    function onPlaybackChange(playing, reason) {
-      _isPaused = reason === 'pause';
-      stopBtn.hidden = !_isPaused;
+    function onPlaybackChange(playing) {
+      stopBtn.hidden = !app.isPaused();
       playBtn.innerHTML = playing ? PAUSE_ICON : '▶';
       playBtn.classList.toggle('playing', playing);
       playBtn.setAttribute('aria-label', playing ? 'Pause' : 'Play');
       if (playing) {
         statusEl.textContent = '';
         if (keepAwakeEl.checked) acquireWakeLock();
-      } else if (_isPaused) {
+      } else if (app.isPaused()) {
         releaseWakeLock();
         clearBeats();
         clearBars();
