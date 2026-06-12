@@ -4,7 +4,9 @@ Make sure all proposed plans and changes adhere to the guidelines in ARCHITECTUR
 
 ## Before Code Commits
 
-Run both `npm run check` AND `npm run test:quiet` before commits and report/fix any errors
+1. Run both `npm run check` AND `npm run test:quiet` before commits and report/fix any errors.
+2. Ensure no updates to README or ARCHITECTURE are necessary as part of the change.
+3. Ask the user if we should run the end to end tests.
 
 ## Manual Testing
 
