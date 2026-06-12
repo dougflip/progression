@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "tone": "14.8.49"
+    "tone": "^15.1.22"
   },
   "devDependencies": {
     "concurrently": "^10.0.3",
