@@ -34,9 +34,7 @@ describe("getShiftsForCycle", () => {
 
   it("returns semitone offsets relative to first key for 'custom'", () => {
     // A=9, E=4 → 4-9=-5, D=2 → 2-9=-7, G=7 → 7-9=-2
-    expect(getShiftsForCycle("custom", ["A", "E", "D", "G"])).toEqual([
-      0, -5, -7, -2,
-    ]);
+    expect(getShiftsForCycle("custom", ["A", "E", "D", "G"])).toEqual([0, -5, -7, -2]);
   });
 
   it("falls back to [0] for 'custom' with empty key list", () => {

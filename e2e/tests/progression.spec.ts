@@ -30,12 +30,8 @@ test.describe("with welcome modal dismissed", () => {
     await expect(page).toHaveScreenshot("cycle-4ths.png", SCREENSHOT_OPTS);
   });
 
-  test("multi-section arrangement - song scrubber is visible", async ({
-    page,
-  }) => {
-    await page.goto(
-      `${BASE}?key=C&section=I%20vi%20ii%20V&section=IV%20V%20I&arrangement=1%202`,
-    );
+  test("multi-section arrangement - song scrubber is visible", async ({ page }) => {
+    await page.goto(`${BASE}?key=C&section=I%20vi%20ii%20V&section=IV%20V%20I&arrangement=1%202`);
     await expect(page).toHaveScreenshot("multi-section.png", SCREENSHOT_OPTS);
   });
 });
