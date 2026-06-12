@@ -9,6 +9,9 @@
     "format:check": "oxfmt --check",
     "lint": "oxlint",
     "preview": "vite build && vite preview",
+    "test": "vitest run",
+    "test:quiet": "vitest run --reporter=dot",
+    "test:watch": "vitest watch",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -19,6 +22,7 @@
     "oxfmt": "^0.54.0",
     "oxlint": "^1.69.0",
     "typescript": "latest",
-    "vite": "^8.0.16"
+    "vite": "^8.0.16",
+    "vitest": "^4.1.8"
   }
 }
