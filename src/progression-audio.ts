@@ -237,6 +237,7 @@ export function makeProgressionAudio(): AudioEngine {
           _pendingKeyJump = null;
           _currentPosIndex = 0;
           _manualLap = 0;
+          _currentLap = lap - 1;
           Tone.Transport.position = `${Math.round(lap * songBars)}:0:0`;
           return;
         }
