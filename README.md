@@ -1,23 +1,31 @@
 # Chord Progression Player
 
-A small single-page web app for practicing.
+Progression is a backing-track tool for musicians.
+Enter a chord progression, set your key and tempo,
+and loop it while you practice scales, solos, or chord shapes.
 
-1. Define a progression, see [features](./features.md)
-2. Click play to loop playback of that progression (chords, bass, drums)
-3. Practice triads, scales, voice leading, etc
+App: https://dougflip.github.io/progression
+Docs: https://dougflip.github.io/progression/docs.html
 
-## Run
+## Local Development
 
-No build step, but does require a server
+```sh
+# switch to proper node
+nvm use
 
+# install deps
+npm i
+
+# run the dev server
+npm run dev
+
+# run static analysis checks against the code
+npm run check
+
+# format the code
+npm run format
 ```
-npx serve
-```
-
-## Features
-
-See [features](./features.md) for mor details.
 
 ## Stack
 
-HTML + CSS + JS + [Tone.js](https://tonejs.github.io/) loaded from a CDN.
+HTML + CSS + JS + [Tone.js](https://tonejs.github.io/)
