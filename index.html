@@ -1,552 +1,1234 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Progression</title>
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-  <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');</script>
-  <style>
-    @view-transition { navigation: auto; }
-    ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.2s; }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Progression</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <script>
+      document.documentElement.setAttribute("data-theme", localStorage.getItem("theme") || "dark");
+    </script>
+    <style>
+      @view-transition {
+        navigation: auto;
+      }
+      ::view-transition-old(root),
+      ::view-transition-new(root) {
+        animation-duration: 0.2s;
+      }
 
-    :root {
-      --bg: #121212; --surface: #1e1e1e; --surface-alt: #2a2a2a;
-      --surface-alt-active: #353535; --border: #333333; --border-faint: #262626;
-      --border-input: #3a3a3a; --text: #f0f0f0; --text-2: #b8b8b8;
-      --text-3: #888888; --text-4: #666666; --accent: #f0f0f0;
-      --accent-text: #121212; --accent-hover: #cccccc; --playing: #ef4444;
-      --shadow-top: 0 -4px 12px rgba(0,0,0,0.4); --backdrop: rgba(0,0,0,0.6);
-      --rename-border: #666666;
-    }
-    [data-theme="light"] {
-      --bg: #fafafa; --surface: #ffffff; --surface-alt: #f1f1f1;
-      --surface-alt-active: #e1e1e1; --border: #dddddd; --border-faint: #eeeeee;
-      --border-input: #cccccc; --text: #222222; --text-2: #555555;
-      --text-3: #888888; --text-4: #aaaaaa; --accent: #222222;
-      --accent-text: #ffffff; --accent-hover: #444444; --playing: #b91c1c;
-      --shadow-top: 0 -2px 12px rgba(0,0,0,0.05); --backdrop: rgba(0,0,0,0.4);
-      --rename-border: #888888;
-    }
-    * { box-sizing: border-box; }
-    html { background: var(--bg); }
-    body {
-      font-family: system-ui, sans-serif;
-      color: var(--text);
-      margin: 0;
-      padding-bottom: calc(96px + env(safe-area-inset-bottom));
-      background: var(--bg);
-    }
-    main { max-width: 600px; margin: 0 auto; padding: 1.25rem 1rem; }
+      :root {
+        --bg: #121212;
+        --surface: #1e1e1e;
+        --surface-alt: #2a2a2a;
+        --surface-alt-active: #353535;
+        --border: #333333;
+        --border-faint: #262626;
+        --border-input: #3a3a3a;
+        --text: #f0f0f0;
+        --text-2: #b8b8b8;
+        --text-3: #888888;
+        --text-4: #666666;
+        --accent: #f0f0f0;
+        --accent-text: #121212;
+        --accent-hover: #cccccc;
+        --playing: #ef4444;
+        --shadow-top: 0 -4px 12px rgba(0, 0, 0, 0.4);
+        --backdrop: rgba(0, 0, 0, 0.6);
+        --rename-border: #666666;
+      }
+      [data-theme="light"] {
+        --bg: #fafafa;
+        --surface: #ffffff;
+        --surface-alt: #f1f1f1;
+        --surface-alt-active: #e1e1e1;
+        --border: #dddddd;
+        --border-faint: #eeeeee;
+        --border-input: #cccccc;
+        --text: #222222;
+        --text-2: #555555;
+        --text-3: #888888;
+        --text-4: #aaaaaa;
+        --accent: #222222;
+        --accent-text: #ffffff;
+        --accent-hover: #444444;
+        --playing: #b91c1c;
+        --shadow-top: 0 -2px 12px rgba(0, 0, 0, 0.05);
+        --backdrop: rgba(0, 0, 0, 0.4);
+        --rename-border: #888888;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        background: var(--bg);
+      }
+      body {
+        font-family: system-ui, sans-serif;
+        color: var(--text);
+        margin: 0;
+        padding-bottom: calc(96px + env(safe-area-inset-bottom));
+        background: var(--bg);
+      }
+      main {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 1.25rem 1rem;
+      }
 
-    /* ── Key display ── */
-    #key-display {
-      display: flex; justify-content: center; align-items: center;
-      gap: 0.65rem; margin: 0.25rem 0 1rem;
-    }
-    .key-pill {
-      font-size: 2.5rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1;
-      padding: 0.2rem 1.1rem; border-radius: 0.6rem; border: none;
-      background: var(--surface-alt); color: var(--text); cursor: pointer; font-family: inherit;
-      user-select: none; transition: background 0.1s;
-    }
-    .key-pill:hover, .key-pill:active { background: var(--surface-alt-active); }
-    .key-label { font-size: 2.5rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1; color: var(--text-2); }
-    #key-picker { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.4rem; max-width: 18rem; margin: -0.5rem auto 1rem; }
-    #key-picker[hidden] { display: none; }
-    #scrubber-bar[hidden] { display: none; }
-    .key-chip {
-      padding: 0.5rem 0.25rem; background: var(--surface-alt); border: 1px solid var(--border);
-      color: var(--text); border-radius: 0.5rem; font-size: 0.95rem; font-weight: 600;
-      cursor: pointer; font-family: inherit;
-    }
-    .key-chip:active { background: var(--surface-alt-active); }
-    .key-chip.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
-    .key-chip:disabled { opacity: 0.35; cursor: default; }
+      /* ── Key display ── */
+      #key-display {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 0.65rem;
+        margin: 0.25rem 0 1rem;
+      }
+      .key-pill {
+        font-size: 2.5rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        line-height: 1;
+        padding: 0.2rem 1.1rem;
+        border-radius: 0.6rem;
+        border: none;
+        background: var(--surface-alt);
+        color: var(--text);
+        cursor: pointer;
+        font-family: inherit;
+        user-select: none;
+        transition: background 0.1s;
+      }
+      .key-pill:hover,
+      .key-pill:active {
+        background: var(--surface-alt-active);
+      }
+      .key-label {
+        font-size: 2.5rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        line-height: 1;
+        color: var(--text-2);
+      }
+      #key-picker {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.4rem;
+        max-width: 18rem;
+        margin: -0.5rem auto 1rem;
+      }
+      #key-picker[hidden] {
+        display: none;
+      }
+      #scrubber-bar[hidden] {
+        display: none;
+      }
+      .key-chip {
+        padding: 0.5rem 0.25rem;
+        background: var(--surface-alt);
+        border: 1px solid var(--border);
+        color: var(--text);
+        border-radius: 0.5rem;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      .key-chip:active {
+        background: var(--surface-alt-active);
+      }
+      .key-chip.active {
+        background: var(--accent);
+        color: var(--accent-text);
+        border-color: var(--accent);
+      }
+      .key-chip:disabled {
+        opacity: 0.35;
+        cursor: default;
+      }
 
-    /* ── Chord strip ── */
-    #chord-strip {
-      display: flex; flex-wrap: wrap; justify-content: center;
-      gap: 0.5rem; margin-bottom: 1.25rem; min-height: 4.5rem;
-    }
-    .chip {
-      flex: 1 1 4.5rem; min-width: 4.5rem; max-width: 8rem; min-height: 3.8rem;
-      padding: 0.6rem 0.5rem; border-radius: 0.5rem; background: var(--surface);
-      border: 1px solid var(--border); text-align: center; display: flex;
-      flex-direction: column; justify-content: center; position: relative;
-      transition: background 0.1s, color 0.1s, border-color 0.1s;
-    }
-    .chip .numeral { font-size: 0.75rem; color: var(--text-3); line-height: 1; }
-    .chip .name    { font-size: 1.25rem; font-weight: 600; line-height: 1.3; margin-top: 0.15rem; }
-    .chip.active   { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
-    .chip.active .numeral { color: var(--text-3); }
-    .bar-progress {
-      position: absolute; left: 0.4rem; right: 0.4rem; bottom: 0.3rem;
-      display: flex; justify-content: center; gap: 0.25rem; pointer-events: none;
-    }
-    .chip:not(.active) .bar-progress { display: none; }
-    .bar-dot {
-      flex: 0 1 0.6rem; min-width: 0; height: 0.2rem; border-radius: 0.1rem;
-      background: var(--accent-text); opacity: 0.3; transition: opacity 0.08s;
-    }
-    .bar-dot.active { opacity: 1; }
+      /* ── Chord strip ── */
+      #chord-strip {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.5rem;
+        margin-bottom: 1.25rem;
+        min-height: 4.5rem;
+      }
+      .chip {
+        flex: 1 1 4.5rem;
+        min-width: 4.5rem;
+        max-width: 8rem;
+        min-height: 3.8rem;
+        padding: 0.6rem 0.5rem;
+        border-radius: 0.5rem;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        position: relative;
+        transition:
+          background 0.1s,
+          color 0.1s,
+          border-color 0.1s;
+      }
+      .chip .numeral {
+        font-size: 0.75rem;
+        color: var(--text-3);
+        line-height: 1;
+      }
+      .chip .name {
+        font-size: 1.25rem;
+        font-weight: 600;
+        line-height: 1.3;
+        margin-top: 0.15rem;
+      }
+      .chip.active {
+        background: var(--accent);
+        color: var(--accent-text);
+        border-color: var(--accent);
+      }
+      .chip.active .numeral {
+        color: var(--text-3);
+      }
+      .bar-progress {
+        position: absolute;
+        left: 0.4rem;
+        right: 0.4rem;
+        bottom: 0.3rem;
+        display: flex;
+        justify-content: center;
+        gap: 0.25rem;
+        pointer-events: none;
+      }
+      .chip:not(.active) .bar-progress {
+        display: none;
+      }
+      .bar-dot {
+        flex: 0 1 0.6rem;
+        min-width: 0;
+        height: 0.2rem;
+        border-radius: 0.1rem;
+        background: var(--accent-text);
+        opacity: 0.3;
+        transition: opacity 0.08s;
+      }
+      .bar-dot.active {
+        opacity: 1;
+      }
 
-    /* ── Beat indicator ── */
-    #beat-indicator {
-      display: flex; justify-content: center; align-items: center;
-      gap: 0.7rem; min-height: 0.75rem;
-    }
-    .beat-dot {
-      width: 0.5rem; height: 0.5rem; border-radius: 50%;
-      background: var(--surface-alt); transition: background 0.08s, transform 0.08s;
-    }
-    .beat-dot.active { background: var(--accent); transform: scale(1.5); }
+      /* ── Beat indicator ── */
+      #beat-indicator {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 0.7rem;
+        min-height: 0.75rem;
+      }
+      .beat-dot {
+        width: 0.5rem;
+        height: 0.5rem;
+        border-radius: 50%;
+        background: var(--surface-alt);
+        transition:
+          background 0.08s,
+          transform 0.08s;
+      }
+      .beat-dot.active {
+        background: var(--accent);
+        transform: scale(1.5);
+      }
 
-    /* ── Readout ── */
-    #readout {
-      display: flex; justify-content: center; align-items: center;
-      flex-wrap: wrap; gap: 0.4rem 0.6rem; margin-top: 1rem;
-      color: var(--text-2); font-size: 0.9rem;
-    }
-    #readout strong { color: var(--text); font-weight: 600; }
-    .readout-row-break { flex-basis: 100%; height: 0; }
-    .readout-btn {
-      background: var(--surface-alt); color: var(--text); padding: 0.2rem 0.65rem;
-      border-radius: 999px; border: none; font-size: 0.85rem; font-family: inherit;
-      font-weight: 500; cursor: pointer; transition: background 0.1s;
-    }
-    .readout-btn:hover, .readout-btn:active { background: var(--surface-alt-active); }
-    .tempo-group { position: relative; display: inline-flex; align-items: center; }
-    #tempo-picker {
-      position: absolute; top: calc(100% + 0.55rem); left: 50%; transform: translateX(-50%);
-      display: flex; flex-direction: column; gap: 0.5rem; background: var(--surface-alt);
-      border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.55rem 0.7rem;
-      min-width: 15rem; box-shadow: 0 4px 12px rgba(0,0,0,0.12); z-index: 5;
-    }
-    [data-theme="dark"] #tempo-picker { box-shadow: 0 4px 14px rgba(0,0,0,0.5); }
-    #tempo-picker::before {
-      content: ''; position: absolute; top: -0.35rem; left: 50%;
-      transform: translateX(-50%) rotate(45deg); width: 0.6rem; height: 0.6rem;
-      background: var(--surface-alt); border-left: 1px solid var(--border);
-      border-top: 1px solid var(--border);
-    }
-    #tempo-picker[hidden] { display: none; }
-    .tempo-controls { display: flex; align-items: center; gap: 0.6rem; }
-    .tempo-controls input[type=range] { flex: 1; min-width: 0; }
-    .tempo-step {
-      flex: 0 0 auto; width: 1.85rem; height: 1.85rem; padding: 0; border-radius: 50%;
-      border: none; background: var(--surface); color: var(--text); font-size: 1rem;
-      font-family: inherit; font-weight: 500; line-height: 1; cursor: pointer;
-      display: inline-flex; align-items: center; justify-content: center;
-    }
-    .tempo-step:hover, .tempo-step:active { background: var(--surface-alt-active); }
-    .tap-btn {
-      width: 100%; padding: 0.6rem; border-radius: 999px;
-      border: 1px solid var(--border); background: var(--surface); color: var(--text);
-      font-size: 0.9rem; font-family: inherit; font-weight: 500; cursor: pointer;
-      transition: background 0.1s, color 0.1s;
-    }
-    .tap-btn:hover, .tap-btn:active { background: var(--surface-alt-active); }
-    @keyframes tap-flash {
-      0%   { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
-      100% { background: var(--surface); color: var(--text); border-color: var(--border); }
-    }
-    .tap-btn.tapped { animation: tap-flash 0.35s ease-out forwards; }
+      /* ── Readout ── */
+      #readout {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.4rem 0.6rem;
+        margin-top: 1rem;
+        color: var(--text-2);
+        font-size: 0.9rem;
+      }
+      #readout strong {
+        color: var(--text);
+        font-weight: 600;
+      }
+      .readout-row-break {
+        flex-basis: 100%;
+        height: 0;
+      }
+      .readout-btn {
+        background: var(--surface-alt);
+        color: var(--text);
+        padding: 0.2rem 0.65rem;
+        border-radius: 999px;
+        border: none;
+        font-size: 0.85rem;
+        font-family: inherit;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.1s;
+      }
+      .readout-btn:hover,
+      .readout-btn:active {
+        background: var(--surface-alt-active);
+      }
+      .tempo-group {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+      }
+      #tempo-picker {
+        position: absolute;
+        top: calc(100% + 0.55rem);
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        background: var(--surface-alt);
+        border: 1px solid var(--border);
+        border-radius: 0.5rem;
+        padding: 0.55rem 0.7rem;
+        min-width: 15rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        z-index: 5;
+      }
+      [data-theme="dark"] #tempo-picker {
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+      }
+      #tempo-picker::before {
+        content: "";
+        position: absolute;
+        top: -0.35rem;
+        left: 50%;
+        transform: translateX(-50%) rotate(45deg);
+        width: 0.6rem;
+        height: 0.6rem;
+        background: var(--surface-alt);
+        border-left: 1px solid var(--border);
+        border-top: 1px solid var(--border);
+      }
+      #tempo-picker[hidden] {
+        display: none;
+      }
+      .tempo-controls {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+      }
+      .tempo-controls input[type="range"] {
+        flex: 1;
+        min-width: 0;
+      }
+      .tempo-step {
+        flex: 0 0 auto;
+        width: 1.85rem;
+        height: 1.85rem;
+        padding: 0;
+        border-radius: 50%;
+        border: none;
+        background: var(--surface);
+        color: var(--text);
+        font-size: 1rem;
+        font-family: inherit;
+        font-weight: 500;
+        line-height: 1;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .tempo-step:hover,
+      .tempo-step:active {
+        background: var(--surface-alt-active);
+      }
+      .tap-btn {
+        width: 100%;
+        padding: 0.6rem;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text);
+        font-size: 0.9rem;
+        font-family: inherit;
+        font-weight: 500;
+        cursor: pointer;
+        transition:
+          background 0.1s,
+          color 0.1s;
+      }
+      .tap-btn:hover,
+      .tap-btn:active {
+        background: var(--surface-alt-active);
+      }
+      @keyframes tap-flash {
+        0% {
+          background: var(--accent);
+          color: var(--accent-text);
+          border-color: var(--accent);
+        }
+        100% {
+          background: var(--surface);
+          color: var(--text);
+          border-color: var(--border);
+        }
+      }
+      .tap-btn.tapped {
+        animation: tap-flash 0.35s ease-out forwards;
+      }
 
-    #status { margin-top: 0.75rem; text-align: center; font-family: monospace; color: var(--text-3); font-size: 0.85rem; min-height: 1.2em; }
+      #status {
+        margin-top: 0.75rem;
+        text-align: center;
+        font-family: monospace;
+        color: var(--text-3);
+        font-size: 0.85rem;
+        min-height: 1.2em;
+      }
 
-    /* ── Action bar ── */
-    #action-bar {
-      position: fixed; bottom: 0; left: 0; right: 0;
-      display: flex; flex-direction: column; background: var(--surface);
-      border-top: 1px solid var(--border); box-shadow: var(--shadow-top); z-index: 10;
-    }
-    .action-buttons {
-      display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
-      width: 100%; max-width: 600px; margin: 0 auto;
-      padding: 0.75rem 1rem;
-      padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
-    }
-    #open-setup { justify-self: start; }
-    #open-mix   { justify-self: end; }
-    .bar-btn {
-      flex: 1; max-width: 140px; background: none; border: none; padding: 0.5rem;
-      font-size: 0.85rem; color: var(--text-2); cursor: pointer;
-      display: flex; flex-direction: column; align-items: center; gap: 0.15rem;
-    }
-    .bar-btn:active { color: var(--text); }
-    .bar-icon { font-size: 1.4rem; line-height: 1; }
-    .play-group { display: flex; align-items: center; gap: 0.6rem; }
-    #stop-btn { flex: 0 0 auto; }
-    #play {
-      flex: 0 0 auto; width: 64px; height: 64px; border-radius: 50%;
-      background: var(--accent); color: var(--accent-text); border: none;
-      font-size: 1.5rem; cursor: pointer; display: flex;
-      align-items: center; justify-content: center;
-    }
-    #play.playing { background: var(--playing); color: #fff; }
+      /* ── Action bar ── */
+      #action-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        flex-direction: column;
+        background: var(--surface);
+        border-top: 1px solid var(--border);
+        box-shadow: var(--shadow-top);
+        z-index: 10;
+      }
+      .action-buttons {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
+        width: 100%;
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 0.75rem 1rem;
+        padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+      }
+      #open-setup {
+        justify-self: start;
+      }
+      #open-mix {
+        justify-self: end;
+      }
+      .bar-btn {
+        flex: 1;
+        max-width: 140px;
+        background: none;
+        border: none;
+        padding: 0.5rem;
+        font-size: 0.85rem;
+        color: var(--text-2);
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.15rem;
+      }
+      .bar-btn:active {
+        color: var(--text);
+      }
+      .bar-icon {
+        font-size: 1.4rem;
+        line-height: 1;
+      }
+      .play-group {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+      }
+      #stop-btn {
+        flex: 0 0 auto;
+      }
+      #play {
+        flex: 0 0 auto;
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        background: var(--accent);
+        color: var(--accent-text);
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      #play.playing {
+        background: var(--playing);
+        color: #fff;
+      }
 
-    /* ── Scrubber ── */
-    #scrubber-bar, #key-scrubber-bar { border-bottom: 1px solid var(--border); }
-    .scrubber-inner {
-      display: flex; align-items: center; gap: 0.5rem;
-      padding: 0.75rem 1rem 0.65rem; max-width: 600px; margin: 0 auto;
-    }
-    .scrubber-label { font-size: 0.85rem; color: var(--text-3); white-space: nowrap; width: 3rem; flex-shrink: 0; }
-    #scrubber-track, #key-scrubber-track { flex: 1; display: flex; gap: 0.4rem; overflow-x: auto; align-items: center; scrollbar-width: none; -ms-overflow-style: none; }
-    #scrubber-track::-webkit-scrollbar, #key-scrubber-track::-webkit-scrollbar { display: none; }
-    .scrubber-seg {
-      flex: 0 0 auto; width: 2.85rem; padding: 0.7rem 0.25rem; background: none;
-      border: 1px solid var(--border); border-radius: 0.45rem; color: var(--text-2);
-      font-size: 1rem; font-weight: 600; text-align: center; cursor: pointer;
-      transition: background 0.1s;
-    }
-    .scrubber-seg.current { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
-    .scrubber-seg.queued { border-color: var(--accent); animation: scrub-pulse 0.7s ease-in-out infinite; }
-    @keyframes scrub-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+      /* ── Scrubber ── */
+      #scrubber-bar,
+      #key-scrubber-bar {
+        border-bottom: 1px solid var(--border);
+      }
+      .scrubber-inner {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1rem 0.65rem;
+        max-width: 600px;
+        margin: 0 auto;
+      }
+      .scrubber-label {
+        font-size: 0.85rem;
+        color: var(--text-3);
+        white-space: nowrap;
+        width: 3rem;
+        flex-shrink: 0;
+      }
+      #scrubber-track,
+      #key-scrubber-track {
+        flex: 1;
+        display: flex;
+        gap: 0.4rem;
+        overflow-x: auto;
+        align-items: center;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+      #scrubber-track::-webkit-scrollbar,
+      #key-scrubber-track::-webkit-scrollbar {
+        display: none;
+      }
+      .scrubber-seg {
+        flex: 0 0 auto;
+        width: 2.85rem;
+        padding: 0.7rem 0.25rem;
+        background: none;
+        border: 1px solid var(--border);
+        border-radius: 0.45rem;
+        color: var(--text-2);
+        font-size: 1rem;
+        font-weight: 600;
+        text-align: center;
+        cursor: pointer;
+        transition: background 0.1s;
+      }
+      .scrubber-seg.current {
+        background: var(--accent);
+        color: var(--accent-text);
+        border-color: var(--accent);
+      }
+      .scrubber-seg.queued {
+        border-color: var(--accent);
+        animation: scrub-pulse 0.7s ease-in-out infinite;
+      }
+      @keyframes scrub-pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.4;
+        }
+      }
 
-    /* ── Dialogs / sheets ── */
-    dialog {
-      border: none; border-radius: 1rem 1rem 0 0; padding: 0; margin: 0;
-      background: var(--surface); color: var(--text);
-      min-height: 50vh; min-height: 50dvh; max-height: 85vh; max-height: 85dvh; overflow: hidden;
-    }
-    dialog[open] {
-      position: fixed; inset: auto 0 0 0; margin: 0 auto; width: 100%;
-      max-width: 600px; display: flex; flex-direction: column;
-    }
-    dialog::backdrop { background: var(--backdrop); }
-    .sheet-header {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 0.75rem 1rem; flex-shrink: 0;
-      border-bottom: 1px solid var(--border-faint); background: var(--surface);
-    }
-    .sheet-header h2 { margin: 0; font-size: 1.1rem; }
-    .sheet-body { padding: 0.5rem 1rem calc(1.25rem + env(safe-area-inset-bottom)); overflow-y: auto; flex: 1; min-height: 0; }
-    .close-btn { background: none; border: none; font-size: 1.6rem; line-height: 1; cursor: pointer; color: var(--text-2); padding: 0.25rem 0.5rem; }
+      /* ── Dialogs / sheets ── */
+      dialog {
+        border: none;
+        border-radius: 1rem 1rem 0 0;
+        padding: 0;
+        margin: 0;
+        background: var(--surface);
+        color: var(--text);
+        min-height: 50vh;
+        min-height: 50dvh;
+        max-height: 85vh;
+        max-height: 85dvh;
+        overflow: hidden;
+      }
+      dialog[open] {
+        position: fixed;
+        inset: auto 0 0 0;
+        margin: 0 auto;
+        width: 100%;
+        max-width: 600px;
+        display: flex;
+        flex-direction: column;
+      }
+      dialog::backdrop {
+        background: var(--backdrop);
+      }
+      .sheet-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        flex-shrink: 0;
+        border-bottom: 1px solid var(--border-faint);
+        background: var(--surface);
+      }
+      .sheet-header h2 {
+        margin: 0;
+        font-size: 1.1rem;
+      }
+      .sheet-body {
+        padding: 0.5rem 1rem calc(1.25rem + env(safe-area-inset-bottom));
+        overflow-y: auto;
+        flex: 1;
+        min-height: 0;
+      }
+      .close-btn {
+        background: none;
+        border: none;
+        font-size: 1.6rem;
+        line-height: 1;
+        cursor: pointer;
+        color: var(--text-2);
+        padding: 0.25rem 0.5rem;
+      }
 
-    /* ── Setup sheet sections ── */
-    .setup-group { padding-top: 1.75rem; margin-top: 1.75rem; border-top: 1px solid var(--border-faint); }
-    .setup-group:first-child { padding-top: 0; margin-top: 0; border-top: none; }
-    .setup-group-title { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-3); margin: 0 0 0.4rem; }
-    .field-label { display: block; margin: 1rem 0 0.4rem; font-weight: 600; font-size: 0.9rem; }
-    .hint { font-size: 0.8rem; color: var(--text-3); margin-top: 0.25rem; }
-    .hint code { background: var(--surface-alt); padding: 0 0.25rem; border-radius: 0.25rem; }
+      /* ── Setup sheet sections ── */
+      .setup-group {
+        padding-top: 1.75rem;
+        margin-top: 1.75rem;
+        border-top: 1px solid var(--border-faint);
+      }
+      .setup-group:first-child {
+        padding-top: 0;
+        margin-top: 0;
+        border-top: none;
+      }
+      .setup-group-title {
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--text-3);
+        margin: 0 0 0.4rem;
+      }
+      .field-label {
+        display: block;
+        margin: 1rem 0 0.4rem;
+        font-weight: 600;
+        font-size: 0.9rem;
+      }
+      .hint {
+        font-size: 0.8rem;
+        color: var(--text-3);
+        margin-top: 0.25rem;
+      }
+      .hint code {
+        background: var(--surface-alt);
+        padding: 0 0.25rem;
+        border-radius: 0.25rem;
+      }
 
-    /* ── Form controls ── */
-    input[type=text], select {
-      font-size: 1rem; padding: 0.6rem; width: 100%;
-      border-radius: 0.5rem; border: 1px solid var(--border-input);
-      background: var(--surface); color: var(--text); font-family: inherit;
-    }
-    input[type=range] { width: 100%; }
-    .toggle { display: flex; align-items: center; gap: 0.5rem; font-weight: 600; margin-top: 1.25rem; }
-    .toggle input { width: auto; transform: scale(1.2); }
+      /* ── Form controls ── */
+      input[type="text"],
+      select {
+        font-size: 1rem;
+        padding: 0.6rem;
+        width: 100%;
+        border-radius: 0.5rem;
+        border: 1px solid var(--border-input);
+        background: var(--surface);
+        color: var(--text);
+        font-family: inherit;
+      }
+      input[type="range"] {
+        width: 100%;
+      }
+      .toggle {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 600;
+        margin-top: 1.25rem;
+      }
+      .toggle input {
+        width: auto;
+        transform: scale(1.2);
+      }
 
-    /* ── Option button groups (replaces bars-btn, cycle-btn, style-btn, etc.) ── */
-    .option-group { display: flex; gap: 0.4rem; }
-    .option-btn {
-      flex: 1; padding: 0.6rem; background: var(--surface-alt); border: 1px solid var(--border);
-      color: var(--text); border-radius: 0.5rem; font-size: 0.95rem; font-weight: 600;
-      cursor: pointer; font-family: inherit;
-    }
-    .option-btn.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+      /* ── Option button groups (replaces bars-btn, cycle-btn, style-btn, etc.) ── */
+      .option-group {
+        display: flex;
+        gap: 0.4rem;
+      }
+      .option-btn {
+        flex: 1;
+        padding: 0.6rem;
+        background: var(--surface-alt);
+        border: 1px solid var(--border);
+        color: var(--text);
+        border-radius: 0.5rem;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      .option-btn.active {
+        background: var(--accent);
+        color: var(--accent-text);
+        border-color: var(--accent);
+      }
 
-    /* ── Preset buttons ── */
-    .presets { display: flex; flex-wrap: wrap; gap: 0.4rem; }
-    .preset-btn {
-      padding: 0.45rem 0.8rem; background: var(--surface-alt); border: 1px solid var(--border);
-      color: var(--text); border-radius: 999px; font-size: 0.85rem;
-      cursor: pointer; font-family: inherit;
-    }
-    .preset-btn:active { background: var(--surface-alt-active); }
-    .save-current-btn { width: 100%; border-style: dashed; color: var(--text-2); background: transparent; margin-top: 0.2rem; }
+      /* ── Preset buttons ── */
+      .presets {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+      }
+      .preset-btn {
+        padding: 0.45rem 0.8rem;
+        background: var(--surface-alt);
+        border: 1px solid var(--border);
+        color: var(--text);
+        border-radius: 999px;
+        font-size: 0.85rem;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      .preset-btn:active {
+        background: var(--surface-alt-active);
+      }
+      .save-current-btn {
+        width: 100%;
+        border-style: dashed;
+        color: var(--text-2);
+        background: transparent;
+        margin-top: 0.2rem;
+      }
 
-    /* ── User preset rows ── */
-    .user-presets { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.4rem; }
-    .user-preset-row { display: flex; gap: 0.4rem; }
-    .user-preset-name { flex: 1; text-align: left; }
-    .icon-btn {
-      padding: 0.4rem 0.7rem; background: var(--surface-alt); border: 1px solid var(--border);
-      border-radius: 999px; font-size: 0.95rem; cursor: pointer; font-family: inherit;
-      color: var(--text-2); min-width: 2.4rem;
-    }
-    .icon-btn:active { background: var(--surface-alt-active); color: var(--text); }
-    .icon-btn:disabled { opacity: 0.3; cursor: default; }
-    .rename-input {
-      flex: 1; padding: 0.4rem 0.85rem; font-size: 0.9rem;
-      border-radius: 999px; border: 1px solid var(--rename-border);
-      background: var(--surface); color: var(--text); font-family: inherit;
-    }
-    .empty-presets { font-size: 0.8rem; color: var(--text-3); padding: 0.25rem 0; }
+      /* ── User preset rows ── */
+      .user-presets {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        margin-bottom: 0.4rem;
+      }
+      .user-preset-row {
+        display: flex;
+        gap: 0.4rem;
+      }
+      .user-preset-name {
+        flex: 1;
+        text-align: left;
+      }
+      .icon-btn {
+        padding: 0.4rem 0.7rem;
+        background: var(--surface-alt);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        font-size: 0.95rem;
+        cursor: pointer;
+        font-family: inherit;
+        color: var(--text-2);
+        min-width: 2.4rem;
+      }
+      .icon-btn:active {
+        background: var(--surface-alt-active);
+        color: var(--text);
+      }
+      .icon-btn:disabled {
+        opacity: 0.3;
+        cursor: default;
+      }
+      .rename-input {
+        flex: 1;
+        padding: 0.4rem 0.85rem;
+        font-size: 0.9rem;
+        border-radius: 999px;
+        border: 1px solid var(--rename-border);
+        background: var(--surface);
+        color: var(--text);
+        font-family: inherit;
+      }
+      .empty-presets {
+        font-size: 0.8rem;
+        color: var(--text-3);
+        padding: 0.25rem 0;
+      }
 
-    /* ── Custom cycle editor ── */
-    #custom-key-picker { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.4rem; margin-top: 0.75rem; }
-    .custom-key-name { flex: 1; padding: 0.45rem 0.6rem; font-size: 0.95rem; font-weight: 600; }
+      /* ── Custom cycle editor ── */
+      #custom-key-picker {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.4rem;
+        margin-top: 0.75rem;
+      }
+      .custom-key-name {
+        flex: 1;
+        padding: 0.45rem 0.6rem;
+        font-size: 0.95rem;
+        font-weight: 600;
+      }
 
-    /* ── Section rows ── */
-    .section-rows { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.25rem; }
-    .section-row { display: flex; align-items: center; gap: 0.4rem; }
-    .section-num {
-      flex: 0 0 auto; width: 1.5rem; height: 1.5rem; border-radius: 50%;
-      background: var(--surface-alt); border: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 0.72rem; font-weight: 700; color: var(--text-3);
-    }
-    .section-num.active-section { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
-    .section-prog-input { flex: 1; min-width: 0; padding: 0.45rem 0.6rem; font-size: 0.9rem; }
-    .add-section-btn { width: 100%; border-style: dashed; color: var(--text-2); background: transparent; margin-top: 0.2rem; }
-    .add-section-btn:disabled { opacity: 0.4; cursor: default; }
+      /* ── Section rows ── */
+      .section-rows {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        margin-bottom: 0.25rem;
+      }
+      .section-row {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+      }
+      .section-num {
+        flex: 0 0 auto;
+        width: 1.5rem;
+        height: 1.5rem;
+        border-radius: 50%;
+        background: var(--surface-alt);
+        border: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: var(--text-3);
+      }
+      .section-num.active-section {
+        background: var(--accent);
+        color: var(--accent-text);
+        border-color: var(--accent);
+      }
+      .section-prog-input {
+        flex: 1;
+        min-width: 0;
+        padding: 0.45rem 0.6rem;
+        font-size: 0.9rem;
+      }
+      .add-section-btn {
+        width: 100%;
+        border-style: dashed;
+        color: var(--text-2);
+        background: transparent;
+        margin-top: 0.2rem;
+      }
+      .add-section-btn:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
 
-    /* ── Mix sheet ── */
-    .mix-row {
-      display: grid; grid-template-columns: minmax(6rem, 1fr) 2fr auto;
-      gap: 0.75rem; align-items: center; padding: 0.75rem 0;
-      border-bottom: 1px solid var(--border-faint);
-    }
-    .mix-row:last-child { border-bottom: none; }
-    .mix-row label, .mix-row .mix-label { display: flex; align-items: center; gap: 0.5rem; font-weight: 600; }
-    .mix-row input[type=checkbox] { transform: scale(1.2); }
-    .mix-row .val { font-variant-numeric: tabular-nums; color: var(--text-3); font-size: 0.85rem; min-width: 2.5rem; text-align: right; }
+      /* ── Mix sheet ── */
+      .mix-row {
+        display: grid;
+        grid-template-columns: minmax(6rem, 1fr) 2fr auto;
+        gap: 0.75rem;
+        align-items: center;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid var(--border-faint);
+      }
+      .mix-row:last-child {
+        border-bottom: none;
+      }
+      .mix-row label,
+      .mix-row .mix-label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 600;
+      }
+      .mix-row input[type="checkbox"] {
+        transform: scale(1.2);
+      }
+      .mix-row .val {
+        font-variant-numeric: tabular-nums;
+        color: var(--text-3);
+        font-size: 0.85rem;
+        min-width: 2.5rem;
+        text-align: right;
+      }
 
-    /* ── Share button ── */
-    .share-btn {
-      display: block; width: 100%; margin-top: 1.5rem; padding: 0.75rem;
-      background: var(--accent); color: var(--accent-text); border: none;
-      border-radius: 0.5rem; font-size: 0.95rem; font-weight: 600;
-      cursor: pointer; font-family: inherit;
-    }
-    .share-btn:active { background: var(--accent-hover); }
-    /* ── Top bar (docs + github) ── */
-    #top-bar {
-      display: flex; justify-content: flex-end; align-items: center;
-      gap: 0.4rem; margin-bottom: 0.25rem;
-    }
-    .top-icon-link {
-      display: inline-flex; align-items: center; justify-content: center;
-      width: 1.75rem; height: 1.75rem; border-radius: 50%;
-      background: var(--surface-alt); color: var(--text-3);
-      text-decoration: none; font-size: 0.8rem; font-weight: 700;
-      border: 1px solid var(--border); transition: color 0.1s;
-    }
-    .top-icon-link:hover { color: var(--text); }
-    .top-icon-link svg { display: block; }
+      /* ── Share button ── */
+      .share-btn {
+        display: block;
+        width: 100%;
+        margin-top: 1.5rem;
+        padding: 0.75rem;
+        background: var(--accent);
+        color: var(--accent-text);
+        border: none;
+        border-radius: 0.5rem;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      .share-btn:active {
+        background: var(--accent-hover);
+      }
+      /* ── Top bar (docs + github) ── */
+      #top-bar {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 0.4rem;
+        margin-bottom: 0.25rem;
+      }
+      .top-icon-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.75rem;
+        height: 1.75rem;
+        border-radius: 50%;
+        background: var(--surface-alt);
+        color: var(--text-3);
+        text-decoration: none;
+        font-size: 0.8rem;
+        font-weight: 700;
+        border: 1px solid var(--border);
+        transition: color 0.1s;
+      }
+      .top-icon-link:hover {
+        color: var(--text);
+      }
+      .top-icon-link svg {
+        display: block;
+      }
 
-    /* ── Welcome modal ── */
-    #welcome-modal {
-      border-radius: 1rem; padding: 1.5rem;
-      min-height: auto; max-height: none;
-      max-width: 360px; width: calc(100% - 2rem);
-    }
-    #welcome-modal[open] {
-      position: fixed; inset: 0; margin: auto;
-      display: block;
-    }
-    .welcome-title { font-size: 1.1rem; font-weight: 700; margin: 0 0 0.6rem; }
-    .welcome-desc  { color: var(--text-2); font-size: 0.9rem; line-height: 1.5; margin: 0 0 1rem; }
-    .welcome-btns  { display: flex; flex-direction: column; gap: 0.5rem; }
-    .welcome-primary {
-      display: block; background: var(--accent); color: var(--accent-text);
-      text-decoration: none; border-radius: 999px; padding: 0.65rem 1.25rem;
-      font-size: 0.9rem; font-family: inherit; font-weight: 600; text-align: center;
-    }
-    .welcome-secondary {
-      background: none; color: var(--text-2);
-      border: 1px solid var(--border); border-radius: 999px; padding: 0.6rem 1.25rem;
-      font-size: 0.9rem; font-family: inherit; font-weight: 500;
-      cursor: pointer; text-align: center;
-    }
-    .welcome-secondary:hover { background: var(--surface-alt); }
-    .welcome-hint { margin: 0.85rem 0 0; font-size: 0.8rem; color: var(--text-3); text-align: center; }
-  </style>
-</head>
-<body>
-  <main>
-    <div id="top-bar">
-      <a href="docs.html" class="top-icon-link" title="Documentation" aria-label="Documentation">
-        <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M0 1.75A.75.75 0 0 1 .75 1h4.253c1.227 0 2.317.59 3 1.501A3.743 3.743 0 0 1 11.006 1h4.245a.75.75 0 0 1 .75.75v10.5a.75.75 0 0 1-.75.75h-4.507a2.25 2.25 0 0 0-1.591.659l-.622.621a.75.75 0 0 1-1.06 0l-.622-.621A2.25 2.25 0 0 0 5.258 13H.75a.75.75 0 0 1-.75-.75Zm7.251 10.324.004-5.073-.002-2.253A2.25 2.25 0 0 0 5.003 2.5H1.5v9h3.757a3.75 3.75 0 0 1 1.994.574ZM8.755 4.75l-.004 7.322a3.752 3.752 0 0 1 1.992-.572H14.5v-9h-3.495a2.25 2.25 0 0 0-2.25 2.25Z"/></svg>
-      </a>
-      <a href="https://github.com/dougflip/progression" class="top-icon-link" target="_blank" rel="noopener" title="GitHub" aria-label="GitHub">
-        <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-      </a>
-    </div>
-    <div id="key-display">
-      <span class="key-label">Key of</span>
-      <button id="key-note-btn" class="key-pill" type="button">C</button>
-    </div>
-    <div id="key-picker" hidden></div>
-    <div id="chord-strip"></div>
-    <div id="beat-indicator">
-      <span class="beat-dot"></span><span class="beat-dot"></span>
-      <span class="beat-dot"></span><span class="beat-dot"></span>
-    </div>
-    <div id="readout">
-      <button type="button" class="readout-btn" id="readout-style">Funk</button>
-      <button type="button" class="readout-btn" id="readout-bass">Busy</button>
-      <button type="button" class="readout-btn" id="readout-voicing">Lead/loop</button>
-      <div class="readout-row-break"></div>
-      <button type="button" class="readout-btn" id="readout-bars">2 bars</button>
-      <span class="tempo-group">
-        <button type="button" class="readout-btn" id="tempo-toggle"><strong id="readout-tempo">85</strong> BPM</button>
-        <div id="tempo-picker" hidden>
-          <div class="tempo-controls">
-            <button type="button" class="tempo-step" id="tempo-down">−</button>
-            <input id="tempo-quick" type="range" min="40" max="220" step="1" />
-            <button type="button" class="tempo-step" id="tempo-up">+</button>
+      /* ── Welcome modal ── */
+      #welcome-modal {
+        border-radius: 1rem;
+        padding: 1.5rem;
+        min-height: auto;
+        max-height: none;
+        max-width: 360px;
+        width: calc(100% - 2rem);
+      }
+      #welcome-modal[open] {
+        position: fixed;
+        inset: 0;
+        margin: auto;
+        display: block;
+      }
+      .welcome-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin: 0 0 0.6rem;
+      }
+      .welcome-desc {
+        color: var(--text-2);
+        font-size: 0.9rem;
+        line-height: 1.5;
+        margin: 0 0 1rem;
+      }
+      .welcome-btns {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      .welcome-primary {
+        display: block;
+        background: var(--accent);
+        color: var(--accent-text);
+        text-decoration: none;
+        border-radius: 999px;
+        padding: 0.65rem 1.25rem;
+        font-size: 0.9rem;
+        font-family: inherit;
+        font-weight: 600;
+        text-align: center;
+      }
+      .welcome-secondary {
+        background: none;
+        color: var(--text-2);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 0.6rem 1.25rem;
+        font-size: 0.9rem;
+        font-family: inherit;
+        font-weight: 500;
+        cursor: pointer;
+        text-align: center;
+      }
+      .welcome-secondary:hover {
+        background: var(--surface-alt);
+      }
+      .welcome-hint {
+        margin: 0.85rem 0 0;
+        font-size: 0.8rem;
+        color: var(--text-3);
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div id="top-bar">
+        <a href="docs.html" class="top-icon-link" title="Documentation" aria-label="Documentation">
+          <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true">
+            <path
+              d="M0 1.75A.75.75 0 0 1 .75 1h4.253c1.227 0 2.317.59 3 1.501A3.743 3.743 0 0 1 11.006 1h4.245a.75.75 0 0 1 .75.75v10.5a.75.75 0 0 1-.75.75h-4.507a2.25 2.25 0 0 0-1.591.659l-.622.621a.75.75 0 0 1-1.06 0l-.622-.621A2.25 2.25 0 0 0 5.258 13H.75a.75.75 0 0 1-.75-.75Zm7.251 10.324.004-5.073-.002-2.253A2.25 2.25 0 0 0 5.003 2.5H1.5v9h3.757a3.75 3.75 0 0 1 1.994.574ZM8.755 4.75l-.004 7.322a3.752 3.752 0 0 1 1.992-.572H14.5v-9h-3.495a2.25 2.25 0 0 0-2.25 2.25Z"
+            />
+          </svg>
+        </a>
+        <a
+          href="https://github.com/dougflip/progression"
+          class="top-icon-link"
+          target="_blank"
+          rel="noopener"
+          title="GitHub"
+          aria-label="GitHub"
+        >
+          <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true">
+            <path
+              d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"
+            />
+          </svg>
+        </a>
+      </div>
+      <div id="key-display">
+        <span class="key-label">Key of</span>
+        <button id="key-note-btn" class="key-pill" type="button">C</button>
+      </div>
+      <div id="key-picker" hidden></div>
+      <div id="chord-strip"></div>
+      <div id="beat-indicator">
+        <span class="beat-dot"></span><span class="beat-dot"></span> <span class="beat-dot"></span
+        ><span class="beat-dot"></span>
+      </div>
+      <div id="readout">
+        <button type="button" class="readout-btn" id="readout-style">Funk</button>
+        <button type="button" class="readout-btn" id="readout-bass">Busy</button>
+        <button type="button" class="readout-btn" id="readout-voicing">Lead/loop</button>
+        <div class="readout-row-break"></div>
+        <button type="button" class="readout-btn" id="readout-bars">2 bars</button>
+        <span class="tempo-group">
+          <button type="button" class="readout-btn" id="tempo-toggle">
+            <strong id="readout-tempo">85</strong> BPM
+          </button>
+          <div id="tempo-picker" hidden>
+            <div class="tempo-controls">
+              <button type="button" class="tempo-step" id="tempo-down">−</button>
+              <input id="tempo-quick" type="range" min="40" max="220" step="1" />
+              <button type="button" class="tempo-step" id="tempo-up">+</button>
+            </div>
+            <button type="button" class="tap-btn" id="tap-tempo-pop">Tap</button>
           </div>
-          <button type="button" class="tap-btn" id="tap-tempo-pop">Tap</button>
-        </div>
-      </span>
-      <button type="button" class="readout-btn" id="readout-cycle">Loop</button>
-      <button type="button" class="readout-btn" id="readout-advance" hidden>Auto</button>
-    </div>
-    <div id="status"></div>
-  </main>
-
-  <nav id="action-bar">
-    <div id="key-scrubber-bar" hidden>
-      <div class="scrubber-inner">
-        <span class="scrubber-label">KEY</span>
-        <div id="key-scrubber-track"></div>
+        </span>
+        <button type="button" class="readout-btn" id="readout-cycle">Loop</button>
+        <button type="button" class="readout-btn" id="readout-advance" hidden>Auto</button>
       </div>
-    </div>
-    <div id="scrubber-bar" hidden>
-      <div class="scrubber-inner">
-        <span class="scrubber-label">SONG</span>
-        <div id="scrubber-track"></div>
-      </div>
-    </div>
-    <div class="action-buttons">
-      <button class="bar-btn" id="open-setup" type="button"><span class="bar-icon">⚙</span><span>Setup</span></button>
-      <div class="play-group">
-        <button class="bar-btn" id="stop-btn" type="button" hidden><span class="bar-icon">■</span><span>Stop</span></button>
-        <button id="play" type="button" aria-label="Play">▶</button>
-      </div>
-      <button class="bar-btn" id="open-mix" type="button"><span class="bar-icon">🎚</span><span>Mix</span></button>
-    </div>
-  </nav>
+      <div id="status"></div>
+    </main>
 
-  <dialog id="setup-sheet">
-    <div class="sheet-header">
-      <h2>Setup</h2>
-      <button class="close-btn" type="button" data-close="setup-sheet">×</button>
-    </div>
-    <div class="sheet-body">
-      <section class="setup-group">
-        <h3 class="setup-group-title">Playback</h3>
-        <label class="field-label" for="key-select">Key</label>
-        <select id="key-select">
-          <option>C</option><option>Db</option><option>D</option><option>Eb</option>
-          <option>E</option><option>F</option><option>F#</option><option>G</option>
-          <option>Ab</option><option>A</option><option>Bb</option><option>B</option>
-        </select>
-        <label class="field-label" for="tempo-slider">Tempo <span id="tempo-display" style="font-weight:400;color:var(--text-2);font-size:0.85rem">85 BPM</span></label>
-        <input id="tempo-slider" type="range" min="40" max="220" step="1" value="85" />
-        <button type="button" class="tap-btn" id="tap-tempo-setup" style="margin-top:0.4rem">Tap tempo</button>
-        <label class="field-label">Bars per chord</label>
-        <div class="option-group" id="bars-group">
-          <button type="button" class="option-btn" data-bars="1">1</button>
-          <button type="button" class="option-btn active" data-bars="2">2</button>
-          <button type="button" class="option-btn" data-bars="4">4</button>
+    <nav id="action-bar">
+      <div id="key-scrubber-bar" hidden>
+        <div class="scrubber-inner">
+          <span class="scrubber-label">KEY</span>
+          <div id="key-scrubber-track"></div>
         </div>
-        <label class="field-label">Loop mode</label>
-        <div class="option-group" id="cycle-group">
-          <button type="button" class="option-btn active" data-cycle="none">Loop</button>
-          <button type="button" class="option-btn" data-cycle="4ths">Cycle 4ths</button>
-          <button type="button" class="option-btn" data-cycle="5ths">Cycle 5ths</button>
-          <button type="button" class="option-btn" data-cycle="custom">Custom</button>
-        </div>
-        <div id="custom-keys-editor" hidden>
-          <div id="custom-key-rows" class="section-rows" style="margin-top:0.5rem"></div>
-          <div id="custom-key-picker"></div>
-        </div>
-        <label class="field-label">Style</label>
-        <div class="option-group" id="style-group">
-          <button type="button" class="option-btn" data-style="pop">Pop</button>
-          <button type="button" class="option-btn active" data-style="funk">Funk</button>
-          <button type="button" class="option-btn" data-style="ballad">Ballad</button>
-          <button type="button" class="option-btn" data-style="rock">Rock</button>
-        </div>
-        <label class="field-label">Bass</label>
-        <div class="option-group" id="bass-group">
-          <button type="button" class="option-btn" data-bass="simple">Simple</button>
-          <button type="button" class="option-btn active" data-bass="busy">Busy</button>
-        </div>
-        <label class="field-label">Voicing</label>
-        <div class="option-group" id="voicing-group">
-          <button type="button" class="option-btn" data-voicing="root">Root</button>
-          <button type="button" class="option-btn" data-voicing="voice-lead">Voice-lead</button>
-          <button type="button" class="option-btn active" data-voicing="voice-lead-loop">Voice-lead/loop</button>
-        </div>
-      </section>
-
-      <section class="setup-group">
-        <h3 class="setup-group-title">Progression</h3>
-        <label class="field-label">Sections <span id="section-count-label"></span></label>
-        <div id="section-rows" class="section-rows"></div>
-        <button id="add-section" type="button" class="preset-btn add-section-btn">+ Add section</button>
-        <label class="field-label" for="arrangement">Arrangement</label>
-        <input id="arrangement" type="text" placeholder="empty = all sections in order" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
-        <div class="hint">Section numbers (e.g. <code>1 2 1 3</code>). <code>2:4</code> = section&nbsp;2 four times.</div>
-        <label class="field-label">My presets</label>
-        <div id="user-presets" class="user-presets"></div>
-        <button id="save-preset" type="button" class="preset-btn save-current-btn">+ Save current</button>
-        <label class="field-label">Presets</label>
-        <div class="presets" id="presets"></div>
-      </section>
-
-      <section class="setup-group">
-        <h3 class="setup-group-title">App</h3>
-        <label class="field-label">Theme</label>
-        <div class="option-group" id="theme-group">
-          <button type="button" class="option-btn" data-theme-opt="light">Light</button>
-          <button type="button" class="option-btn" data-theme-opt="dark">Dark</button>
-        </div>
-        <label class="toggle"><input id="keep-awake" type="checkbox" /> Keep screen on while playing</label>
-        <button id="copy-share" class="share-btn" type="button">Copy share link</button>
-      </section>
-    </div>
-  </dialog>
-
-  <dialog id="mix-sheet">
-    <div class="sheet-header">
-      <h2>Mix</h2>
-      <button class="close-btn" type="button" data-close="mix-sheet">×</button>
-    </div>
-    <div class="sheet-body">
-      <div class="mix-row">
-        <label><input id="chords-on" type="checkbox" checked /> Chords</label>
-        <input id="chord-vol" type="range" min="0" max="100" step="1" value="50" />
-        <span class="val" id="chord-vol-val">50</span>
       </div>
-      <div class="mix-row">
-        <label><input id="bass-on" type="checkbox" checked /> Bass</label>
-        <input id="bass-vol" type="range" min="0" max="100" step="1" value="100" />
-        <span class="val" id="bass-vol-val">100</span>
+      <div id="scrubber-bar" hidden>
+        <div class="scrubber-inner">
+          <span class="scrubber-label">SONG</span>
+          <div id="scrubber-track"></div>
+        </div>
       </div>
-      <div class="mix-row">
-        <label><input id="drums-on" type="checkbox" checked /> Drums</label>
-        <input id="drum-vol" type="range" min="0" max="100" step="1" value="100" />
-        <span class="val" id="drum-vol-val">100</span>
+      <div class="action-buttons">
+        <button class="bar-btn" id="open-setup" type="button">
+          <span class="bar-icon">⚙</span><span>Setup</span>
+        </button>
+        <div class="play-group">
+          <button class="bar-btn" id="stop-btn" type="button" hidden>
+            <span class="bar-icon">■</span><span>Stop</span>
+          </button>
+          <button id="play" type="button" aria-label="Play">▶</button>
+        </div>
+        <button class="bar-btn" id="open-mix" type="button">
+          <span class="bar-icon">🎚</span><span>Mix</span>
+        </button>
       </div>
-      <div class="mix-row">
-        <span class="mix-label">Master</span>
-        <input id="master-vol" type="range" min="0" max="100" step="1" value="100" />
-        <span class="val" id="master-vol-val">100</span>
-      </div>
-    </div>
-  </dialog>
+    </nav>
 
-  <dialog id="welcome-modal">
-    <h2 class="welcome-title">Progression</h2>
-    <p class="welcome-desc">A backing-track tool for practicing scales, solos, and chord shapes. Enter a progression, set your key and tempo, and loop it while you play.</p>
-    <div class="welcome-btns">
-      <a href="docs.html" class="welcome-primary" id="welcome-docs-link">Read the Docs</a>
-      <button type="button" class="welcome-secondary" id="welcome-dismiss">Start Playing</button>
-    </div>
-    <p class="welcome-hint">Docs always available via the&nbsp;<span style="display:inline-flex;align-items:center;justify-content:center;width:1.3rem;height:1.3rem;border-radius:50%;background:var(--surface-alt);border:1px solid var(--border);vertical-align:-3px;margin:0 1px;"><svg viewBox="0 0 16 16" width="11" height="11" fill="currentColor" aria-label="docs"><path d="M0 1.75A.75.75 0 0 1 .75 1h4.253c1.227 0 2.317.59 3 1.501A3.743 3.743 0 0 1 11.006 1h4.245a.75.75 0 0 1 .75.75v10.5a.75.75 0 0 1-.75.75h-4.507a2.25 2.25 0 0 0-1.591.659l-.622.621a.75.75 0 0 1-1.06 0l-.622-.621A2.25 2.25 0 0 0 5.258 13H.75a.75.75 0 0 1-.75-.75Zm7.251 10.324.004-5.073-.002-2.253A2.25 2.25 0 0 0 5.003 2.5H1.5v9h3.757a3.75 3.75 0 0 1 1.994.574ZM8.755 4.75l-.004 7.322a3.752 3.752 0 0 1 1.992-.572H14.5v-9h-3.495a2.25 2.25 0 0 0-2.25 2.25Z"/></svg></span>&nbsp;button above.</p>
-  </dialog>
+    <dialog id="setup-sheet">
+      <div class="sheet-header">
+        <h2>Setup</h2>
+        <button class="close-btn" type="button" data-close="setup-sheet">×</button>
+      </div>
+      <div class="sheet-body">
+        <section class="setup-group">
+          <h3 class="setup-group-title">Playback</h3>
+          <label class="field-label" for="key-select">Key</label>
+          <select id="key-select">
+            <option>C</option>
+            <option>Db</option>
+            <option>D</option>
+            <option>Eb</option>
+            <option>E</option>
+            <option>F</option>
+            <option>F#</option>
+            <option>G</option>
+            <option>Ab</option>
+            <option>A</option>
+            <option>Bb</option>
+            <option>B</option>
+          </select>
+          <label class="field-label" for="tempo-slider"
+            >Tempo
+            <span
+              id="tempo-display"
+              style="font-weight: 400; color: var(--text-2); font-size: 0.85rem"
+              >85 BPM</span
+            ></label
+          >
+          <input id="tempo-slider" type="range" min="40" max="220" step="1" value="85" />
+          <button type="button" class="tap-btn" id="tap-tempo-setup" style="margin-top: 0.4rem">
+            Tap tempo
+          </button>
+          <label class="field-label">Bars per chord</label>
+          <div class="option-group" id="bars-group">
+            <button type="button" class="option-btn" data-bars="1">1</button>
+            <button type="button" class="option-btn active" data-bars="2">2</button>
+            <button type="button" class="option-btn" data-bars="4">4</button>
+          </div>
+          <label class="field-label">Loop mode</label>
+          <div class="option-group" id="cycle-group">
+            <button type="button" class="option-btn active" data-cycle="none">Loop</button>
+            <button type="button" class="option-btn" data-cycle="4ths">Cycle 4ths</button>
+            <button type="button" class="option-btn" data-cycle="5ths">Cycle 5ths</button>
+            <button type="button" class="option-btn" data-cycle="custom">Custom</button>
+          </div>
+          <div id="custom-keys-editor" hidden>
+            <div id="custom-key-rows" class="section-rows" style="margin-top: 0.5rem"></div>
+            <div id="custom-key-picker"></div>
+          </div>
+          <label class="field-label">Style</label>
+          <div class="option-group" id="style-group">
+            <button type="button" class="option-btn" data-style="pop">Pop</button>
+            <button type="button" class="option-btn active" data-style="funk">Funk</button>
+            <button type="button" class="option-btn" data-style="ballad">Ballad</button>
+            <button type="button" class="option-btn" data-style="rock">Rock</button>
+          </div>
+          <label class="field-label">Bass</label>
+          <div class="option-group" id="bass-group">
+            <button type="button" class="option-btn" data-bass="simple">Simple</button>
+            <button type="button" class="option-btn active" data-bass="busy">Busy</button>
+          </div>
+          <label class="field-label">Voicing</label>
+          <div class="option-group" id="voicing-group">
+            <button type="button" class="option-btn" data-voicing="root">Root</button>
+            <button type="button" class="option-btn" data-voicing="voice-lead">Voice-lead</button>
+            <button type="button" class="option-btn active" data-voicing="voice-lead-loop">
+              Voice-lead/loop
+            </button>
+          </div>
+        </section>
 
-  <script type="module" src="/src/app.ts"></script>
-</body>
+        <section class="setup-group">
+          <h3 class="setup-group-title">Progression</h3>
+          <label class="field-label">Sections <span id="section-count-label"></span></label>
+          <div id="section-rows" class="section-rows"></div>
+          <button id="add-section" type="button" class="preset-btn add-section-btn">
+            + Add section
+          </button>
+          <label class="field-label" for="arrangement">Arrangement</label>
+          <input
+            id="arrangement"
+            type="text"
+            placeholder="empty = all sections in order"
+            autocomplete="off"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck="false"
+          />
+          <div class="hint">
+            Section numbers (e.g. <code>1 2 1 3</code>). <code>2:4</code> = section&nbsp;2 four
+            times.
+          </div>
+          <label class="field-label">My presets</label>
+          <div id="user-presets" class="user-presets"></div>
+          <button id="save-preset" type="button" class="preset-btn save-current-btn">
+            + Save current
+          </button>
+          <label class="field-label">Presets</label>
+          <div class="presets" id="presets"></div>
+        </section>
+
+        <section class="setup-group">
+          <h3 class="setup-group-title">App</h3>
+          <label class="field-label">Theme</label>
+          <div class="option-group" id="theme-group">
+            <button type="button" class="option-btn" data-theme-opt="light">Light</button>
+            <button type="button" class="option-btn" data-theme-opt="dark">Dark</button>
+          </div>
+          <label class="toggle"
+            ><input id="keep-awake" type="checkbox" /> Keep screen on while playing</label
+          >
+          <button id="copy-share" class="share-btn" type="button">Copy share link</button>
+        </section>
+      </div>
+    </dialog>
+
+    <dialog id="mix-sheet">
+      <div class="sheet-header">
+        <h2>Mix</h2>
+        <button class="close-btn" type="button" data-close="mix-sheet">×</button>
+      </div>
+      <div class="sheet-body">
+        <div class="mix-row">
+          <label><input id="chords-on" type="checkbox" checked /> Chords</label>
+          <input id="chord-vol" type="range" min="0" max="100" step="1" value="50" />
+          <span class="val" id="chord-vol-val">50</span>
+        </div>
+        <div class="mix-row">
+          <label><input id="bass-on" type="checkbox" checked /> Bass</label>
+          <input id="bass-vol" type="range" min="0" max="100" step="1" value="100" />
+          <span class="val" id="bass-vol-val">100</span>
+        </div>
+        <div class="mix-row">
+          <label><input id="drums-on" type="checkbox" checked /> Drums</label>
+          <input id="drum-vol" type="range" min="0" max="100" step="1" value="100" />
+          <span class="val" id="drum-vol-val">100</span>
+        </div>
+        <div class="mix-row">
+          <span class="mix-label">Master</span>
+          <input id="master-vol" type="range" min="0" max="100" step="1" value="100" />
+          <span class="val" id="master-vol-val">100</span>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="welcome-modal">
+      <h2 class="welcome-title">Progression</h2>
+      <p class="welcome-desc">
+        A backing-track tool for practicing scales, solos, and chord shapes. Enter a progression,
+        set your key and tempo, and loop it while you play.
+      </p>
+      <div class="welcome-btns">
+        <a href="docs.html" class="welcome-primary" id="welcome-docs-link">Read the Docs</a>
+        <button type="button" class="welcome-secondary" id="welcome-dismiss">Start Playing</button>
+      </div>
+      <p class="welcome-hint">
+        Docs always available via the&nbsp;<span
+          style="
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.3rem;
+            height: 1.3rem;
+            border-radius: 50%;
+            background: var(--surface-alt);
+            border: 1px solid var(--border);
+            vertical-align: -3px;
+            margin: 0 1px;
+          "
+          ><svg viewBox="0 0 16 16" width="11" height="11" fill="currentColor" aria-label="docs">
+            <path
+              d="M0 1.75A.75.75 0 0 1 .75 1h4.253c1.227 0 2.317.59 3 1.501A3.743 3.743 0 0 1 11.006 1h4.245a.75.75 0 0 1 .75.75v10.5a.75.75 0 0 1-.75.75h-4.507a2.25 2.25 0 0 0-1.591.659l-.622.621a.75.75 0 0 1-1.06 0l-.622-.621A2.25 2.25 0 0 0 5.258 13H.75a.75.75 0 0 1-.75-.75Zm7.251 10.324.004-5.073-.002-2.253A2.25 2.25 0 0 0 5.003 2.5H1.5v9h3.757a3.75 3.75 0 0 1 1.994.574ZM8.755 4.75l-.004 7.322a3.752 3.752 0 0 1 1.992-.572H14.5v-9h-3.495a2.25 2.25 0 0 0-2.25 2.25Z"
+            /></svg></span
+        >&nbsp;button above.
+      </p>
+    </dialog>
+
+    <script type="module" src="/src/app.ts"></script>
+  </body>
 </html>

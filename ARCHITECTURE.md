@@ -55,6 +55,7 @@ Channels are created once on first `start()` and survive stop/rebuild cycles. Te
 `cycle` is a string: `'none' | '4ths' | '5ths' | 'custom'`. When `cycle === 'custom'`, a parallel `customCycleKeys: string[]` state field defines the key sequence (e.g. `['A', 'E', 'D', 'G']`). This two-field shape was chosen over a discriminated union to keep call sites simple — a discriminated union would require type narrowing at every access point.
 
 `getShiftsForCycle(cycle, customCycleKeys)` in core is the single source of truth for how many laps to play and what semitone shift each lap gets:
+
 - `'none'` → `[0]` (one lap, no shift)
 - `'4ths'` → 12 shifts of +5 semitones each
 - `'5ths'` → 12 shifts of +7 semitones each
@@ -102,6 +103,7 @@ Four source files with clear per-file purpose: logic, audio, view, markup. The s
 **Current pressure points:**
 
 `progression-core.ts` carries two distinct concerns that share a file comfortably at current size:
+
 - **Music theory** — constants, note math, chord building, name resolution (`resolvedChordName`, `buildChord`, `STYLES`, etc.)
 - **App architecture** — `AppState`, `DEFAULTS`, URL serialization, `makeProgressionPlayer`
 
@@ -120,8 +122,8 @@ Four source files with clear per-file purpose: logic, audio, view, markup. The s
 
 ```ts
 interface AppState {
-  playback: PlaybackSettings;  // key, tempo, bars, style, bass, voicing, cycle, customCycleKeys, advance
-  mix: MixSettings;            // chordVol, bassVol, drumVol, masterVol, chordsOn, bassOn, drumsOn
+  playback: PlaybackSettings; // key, tempo, bars, style, bass, voicing, cycle, customCycleKeys, advance
+  mix: MixSettings; // chordVol, bassVol, drumVol, masterVol, chordsOn, bassOn, drumsOn
   sections: Section[];
   arrangement: string;
   activeSection: number;
@@ -143,4 +145,5 @@ The generic `setState` either goes away or narrows to structural fields only. Th
 **TS migration is complete** — the types exist and are enforced. This restructure is the natural next refactor. Read sites (`state.key` → `state.playback.key`) are mechanical find-and-replace; the API surface change is the real work.
 
 ### Foot pedal support
+
 HID-keyboard path: 2-switch + tap/long-press = 4 configurable actions. App-side mode toggle for more. Host-level feature — calls `app.togglePlay()` and `app.queueJump()`. Core needs no changes.

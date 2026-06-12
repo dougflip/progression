@@ -1,17 +1,17 @@
-import { defineConfig } from 'vite';
-import { resolve } from 'path';
+import { defineConfig } from "vite";
+import { resolve } from "path";
 
 export default defineConfig({
-  base: '/progression/',
+  base: "/progression/",
   build: {
     rollupOptions: {
       input: {
-        main: resolve(__dirname, 'index.html'),
-        docs: resolve(__dirname, 'docs.html'),
+        main: resolve(__dirname, "index.html"),
+        docs: resolve(__dirname, "docs.html"),
       },
       output: {
-        manualChunks: {
-          tone: ['tone'],
+        manualChunks: (id) => {
+          if (id.includes("node_modules/tone")) return "tone";
         },
       },
     },

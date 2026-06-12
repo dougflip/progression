@@ -64,7 +64,7 @@ at all — it just needs a way to accept the produced JSON.
 Beyond the schema, the prompt needs musical context so the agent makes good
 choices when the user is vague:
 
-- What each style *sounds like* (funk = syncopated, tighter pocket; ballad = sparse, half-time)
+- What each style _sounds like_ (funk = syncopated, tighter pocket; ballad = sparse, half-time)
 - What voicing modes mean in practice (root = clearest for ear training; voice-lead/loop = most musical)
 - What cycle modes are for (practicing a progression through all 12 keys)
 - How sections + arrangement work together

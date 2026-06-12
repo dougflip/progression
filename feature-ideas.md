@@ -15,6 +15,7 @@ It would be nice to specify major vs minor and then roman numerals are resolved 
 Add `mode: 'major' | 'minor'` to state. Mode controls which scale Roman numeral degrees map to — case still determines chord quality (uppercase = major triad, lowercase = minor), so `I` in minor mode = major triad on the minor root, `i` in minor mode = minor tonic. Users can override any chord quality explicitly regardless of mode.
 
 Impacted areas:
+
 1. Add `MINOR_SCALE = [0, 2, 3, 5, 7, 8, 10]` alongside `MAJOR_SCALE`
 2. `buildChord()` — swap hardcoded `MAJOR_SCALE[degree]` for the mode-selected scale; mode flows in as a parameter
 3. `resolvedChordName()` — same, uses `MAJOR_SCALE` for chip display name resolution
@@ -80,7 +81,7 @@ MIDI controller preferred?
 #### Claude's thoughts
 
 The "advance-on-press" cycle mode is the real prize: nail ii-V-I in C, foot press to move to G. But before wiring MIDI, pilot the UX with a keyboard shortcut or on-screen "Next key" button.
- If the feature is good, then invest in Web MIDI integration. Web MIDI works in Chrome/Edge but not Safari; iOS is rough. I'd target one specific switch (iRig Blueboard, AirTurn) rather
+If the feature is good, then invest in Web MIDI integration. Web MIDI works in Chrome/Edge but not Safari; iOS is rough. I'd target one specific switch (iRig Blueboard, AirTurn) rather
 than aim for universal.
 
 ## Higher Quality Sounds
