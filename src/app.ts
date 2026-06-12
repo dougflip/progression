@@ -20,6 +20,7 @@ import {
   getResolvedChipNames,
   isAbsoluteChord,
   type AppState,
+  type MixSettings,
   type UserPreset,
   type ChordTickEvent,
 } from "./progression-core.js";
@@ -100,14 +101,14 @@ function renderChips(state: AppState): void {
   const tokens = tokenize(progStr);
   buildChipStructure(tokens);
   updateChipNames(getResolvedChipNames(state, _currentLapIndex));
-  keyNoteBtnEl.textContent = _currentScrubKey ?? state.key;
-  keySelectEl.value = state.key;
+  keyNoteBtnEl.textContent = _currentScrubKey ?? state.playback.key;
+  keySelectEl.value = state.playback.key;
   keyPickerEl
     .querySelectorAll<HTMLElement>(".key-chip")
     .forEach((b) =>
       b.classList.toggle(
         "active",
-        (b as HTMLElement & { dataset: DOMStringMap }).dataset["key"] === state.key,
+        (b as HTMLElement & { dataset: DOMStringMap }).dataset["key"] === state.playback.key,
       ),
     );
 }
@@ -267,38 +268,48 @@ function onChordTick({
 }
 
 function renderReadout(state: AppState): void {
-  readoutTempoEl.textContent = String(state.tempo);
-  tempoDisplayEl.textContent = `${state.tempo} BPM`;
-  readoutStyleEl.textContent = STYLE_LABELS[state.style] ?? state.style;
-  readoutBassEl.textContent = BASS_LABELS[state.bass] ?? state.bass;
-  readoutVoicingEl.textContent = VOICING_PILL_LABELS[state.voicing] ?? state.voicing;
-  readoutBarsEl.textContent = `${state.bars} ${state.bars === 1 ? "bar" : "bars"}`;
-  readoutCycleEl.textContent = CYCLE_LABELS[state.cycle] ?? state.cycle;
-  readoutAdvanceEl.textContent = state.advance === "manual" ? "Manual" : "Auto";
+  readoutTempoEl.textContent = String(state.playback.tempo);
+  tempoDisplayEl.textContent = `${state.playback.tempo} BPM`;
+  readoutStyleEl.textContent = STYLE_LABELS[state.playback.style] ?? state.playback.style;
+  readoutBassEl.textContent = BASS_LABELS[state.playback.bass] ?? state.playback.bass;
+  readoutVoicingEl.textContent =
+    VOICING_PILL_LABELS[state.playback.voicing] ?? state.playback.voicing;
+  readoutBarsEl.textContent = `${state.playback.bars} ${state.playback.bars === 1 ? "bar" : "bars"}`;
+  readoutCycleEl.textContent = CYCLE_LABELS[state.playback.cycle] ?? state.playback.cycle;
+  readoutAdvanceEl.textContent = state.playback.advance === "manual" ? "Manual" : "Auto";
 
-  const isCustom = state.cycle === "custom";
+  const isCustom = state.playback.cycle === "custom";
   customKeysEditorEl.hidden = !isCustom;
   if (isCustom) renderCustomCycleEditor(state);
 
-  if (document.activeElement !== tempoSliderEl) tempoSliderEl.value = String(state.tempo);
+  if (document.activeElement !== tempoSliderEl) tempoSliderEl.value = String(state.playback.tempo);
 
   document
     .querySelectorAll<HTMLElement>("[data-bars]")
     .forEach((btn) =>
-      btn.classList.toggle("active", parseInt(btn.dataset["bars"] ?? "", 10) === state.bars),
+      btn.classList.toggle(
+        "active",
+        parseInt(btn.dataset["bars"] ?? "", 10) === state.playback.bars,
+      ),
     );
   document
     .querySelectorAll<HTMLElement>("[data-cycle]")
-    .forEach((btn) => btn.classList.toggle("active", btn.dataset["cycle"] === state.cycle));
+    .forEach((btn) =>
+      btn.classList.toggle("active", btn.dataset["cycle"] === state.playback.cycle),
+    );
   document
     .querySelectorAll<HTMLElement>("[data-style]")
-    .forEach((btn) => btn.classList.toggle("active", btn.dataset["style"] === state.style));
+    .forEach((btn) =>
+      btn.classList.toggle("active", btn.dataset["style"] === state.playback.style),
+    );
   document
     .querySelectorAll<HTMLElement>("[data-bass]")
-    .forEach((btn) => btn.classList.toggle("active", btn.dataset["bass"] === state.bass));
+    .forEach((btn) => btn.classList.toggle("active", btn.dataset["bass"] === state.playback.bass));
   document
     .querySelectorAll<HTMLElement>("[data-voicing]")
-    .forEach((btn) => btn.classList.toggle("active", btn.dataset["voicing"] === state.voicing));
+    .forEach((btn) =>
+      btn.classList.toggle("active", btn.dataset["voicing"] === state.playback.voicing),
+    );
 }
 
 function renderSectionRows(state: AppState): void {
@@ -363,13 +374,13 @@ function renderScrubber(state: AppState): void {
 }
 
 function renderKeyScrubber(state: AppState): void {
-  if (state.cycle === "none") {
+  if (state.playback.cycle === "none") {
     keyScrubberBar.hidden = true;
     syncBodyPadding();
     return;
   }
-  const shifts = getShiftsForCycle(state.cycle, state.customCycleKeys);
-  const keys = shifts.map((s) => resolvedKeyName(state.key, s, state.cycle));
+  const shifts = getShiftsForCycle(state.playback.cycle, state.playback.customCycleKeys);
+  const keys = shifts.map((s) => resolvedKeyName(state.playback.key, s, state.playback.cycle));
   if (keys.length < 2) {
     keyScrubberBar.hidden = true;
     syncBodyPadding();
@@ -393,9 +404,13 @@ function renderKeyScrubber(state: AppState): void {
 function handleKeySegmentTap(lapIndex: number): void {
   if (!audio.isPlaying()) {
     const state = app.getState();
-    const shifts = getShiftsForCycle(state.cycle, state.customCycleKeys);
+    const shifts = getShiftsForCycle(state.playback.cycle, state.playback.customCycleKeys);
     _currentLapIndex = lapIndex;
-    _currentScrubKey = resolvedKeyName(state.key, shifts[lapIndex] ?? 0, state.cycle);
+    _currentScrubKey = resolvedKeyName(
+      state.playback.key,
+      shifts[lapIndex] ?? 0,
+      state.playback.cycle,
+    );
     app.seekToLap(lapIndex);
     return;
   }
@@ -432,17 +447,17 @@ function handleScrubberTap(posIndex: number): void {
 
 function renderMix(state: AppState): void {
   const ae = document.activeElement;
-  if (ae !== chordVolEl) chordVolEl.value = String(state.chordVol);
-  if (ae !== bassVolEl) bassVolEl.value = String(state.bassVol);
-  if (ae !== drumVolEl) drumVolEl.value = String(state.drumVol);
-  if (ae !== masterVolEl) masterVolEl.value = String(state.masterVol);
-  ($("chord-vol-val") as HTMLElement).textContent = String(state.chordVol);
-  ($("bass-vol-val") as HTMLElement).textContent = String(state.bassVol);
-  ($("drum-vol-val") as HTMLElement).textContent = String(state.drumVol);
-  ($("master-vol-val") as HTMLElement).textContent = String(state.masterVol);
-  chordsOnEl.checked = state.chordsOn;
-  bassOnEl.checked = state.bassOn;
-  drumsOnEl.checked = state.drumsOn;
+  if (ae !== chordVolEl) chordVolEl.value = String(state.mix.chordVol);
+  if (ae !== bassVolEl) bassVolEl.value = String(state.mix.bassVol);
+  if (ae !== drumVolEl) drumVolEl.value = String(state.mix.drumVol);
+  if (ae !== masterVolEl) masterVolEl.value = String(state.mix.masterVol);
+  ($("chord-vol-val") as HTMLElement).textContent = String(state.mix.chordVol);
+  ($("bass-vol-val") as HTMLElement).textContent = String(state.mix.bassVol);
+  ($("drum-vol-val") as HTMLElement).textContent = String(state.mix.drumVol);
+  ($("master-vol-val") as HTMLElement).textContent = String(state.mix.masterVol);
+  chordsOnEl.checked = state.mix.chordsOn;
+  bassOnEl.checked = state.mix.bassOn;
+  drumsOnEl.checked = state.mix.drumsOn;
 }
 
 function makeSectionRow(index: number, state: AppState): HTMLDivElement {
@@ -687,7 +702,7 @@ function syncUrl(state: AppState): void {
   });
   btn.dataset["key"] = k;
   btn.addEventListener("click", () => {
-    app.setState({ key: k });
+    app.setPlayback({ key: k });
     keyPickerEl.hidden = true;
   });
   keyPickerEl.appendChild(btn);
@@ -709,18 +724,18 @@ const tempoQuickEl = $("tempo-quick") as HTMLInputElement;
 
 ($("tempo-toggle") as HTMLButtonElement).addEventListener("click", () => {
   if (tempoPickerEl.hidden) {
-    tempoQuickEl.value = String(app.getState().tempo);
+    tempoQuickEl.value = String(app.getState().playback.tempo);
     tempoPickerEl.hidden = false;
   } else tempoPickerEl.hidden = true;
 });
 tempoQuickEl.addEventListener("input", () =>
-  app.setState({ tempo: Math.max(40, Math.min(220, parseInt(tempoQuickEl.value, 10))) }),
+  app.setPlayback({ tempo: Math.max(40, Math.min(220, parseInt(tempoQuickEl.value, 10))) }),
 );
 ($("tempo-down") as HTMLButtonElement).addEventListener("click", () =>
-  app.setState({ tempo: Math.max(40, app.getState().tempo - 1) }),
+  app.setPlayback({ tempo: Math.max(40, app.getState().playback.tempo - 1) }),
 );
 ($("tempo-up") as HTMLButtonElement).addEventListener("click", () =>
-  app.setState({ tempo: Math.min(220, app.getState().tempo + 1) }),
+  app.setPlayback({ tempo: Math.min(220, app.getState().playback.tempo + 1) }),
 );
 document.addEventListener("click", (e: MouseEvent) => {
   if (tempoPickerEl.hidden) return;
@@ -733,7 +748,7 @@ document.addEventListener("click", (e: MouseEvent) => {
 });
 
 tempoSliderEl.addEventListener("input", () =>
-  app.setState({ tempo: parseInt(tempoSliderEl.value, 10) }),
+  app.setPlayback({ tempo: parseInt(tempoSliderEl.value, 10) }),
 );
 
 // ── Tap tempo ─────────────────────────────────────────────────────────────
@@ -751,7 +766,7 @@ function handleTap(btn: HTMLElement): void {
     let total = 0;
     for (let i = 1; i < _taps.length; i++) total += (_taps[i] ?? 0) - (_taps[i - 1] ?? 0);
     const bpm = Math.round(60000 / (total / (_taps.length - 1)));
-    app.setState({ tempo: Math.max(40, Math.min(220, bpm)) });
+    app.setPlayback({ tempo: Math.max(40, Math.min(220, bpm)) });
   }
 
   btn.classList.remove("tapped");
@@ -774,13 +789,13 @@ function handleTap(btn: HTMLElement): void {
 
 // ── Setup sheet option groups ─────────────────────────────────────────────
 
-keySelectEl.addEventListener("change", () => app.setState({ key: keySelectEl.value }));
+keySelectEl.addEventListener("change", () => app.setPlayback({ key: keySelectEl.value }));
 
 document
   .querySelectorAll<HTMLElement>("[data-bars]")
   .forEach((btn) =>
     btn.addEventListener("click", () =>
-      app.setState({ bars: parseInt(btn.dataset["bars"] ?? "", 10) }),
+      app.setPlayback({ bars: parseInt(btn.dataset["bars"] ?? "", 10) }),
     ),
   );
 document
@@ -789,17 +804,17 @@ document
 document
   .querySelectorAll<HTMLElement>("[data-style]")
   .forEach((btn) =>
-    btn.addEventListener("click", () => app.setState({ style: btn.dataset["style"] ?? "" })),
+    btn.addEventListener("click", () => app.setPlayback({ style: btn.dataset["style"] ?? "" })),
   );
 document
   .querySelectorAll<HTMLElement>("[data-bass]")
   .forEach((btn) =>
-    btn.addEventListener("click", () => app.setState({ bass: btn.dataset["bass"] ?? "" })),
+    btn.addEventListener("click", () => app.setPlayback({ bass: btn.dataset["bass"] ?? "" })),
   );
 document
   .querySelectorAll<HTMLElement>("[data-voicing]")
   .forEach((btn) =>
-    btn.addEventListener("click", () => app.setState({ voicing: btn.dataset["voicing"] ?? "" })),
+    btn.addEventListener("click", () => app.setPlayback({ voicing: btn.dataset["voicing"] ?? "" })),
   );
 document
   .querySelectorAll<HTMLElement>("[data-theme-opt]")
@@ -809,26 +824,28 @@ document
 
 const cycleOpt = <T>(opts: readonly T[], cur: T): T => opts[(opts.indexOf(cur) + 1) % opts.length]!;
 readoutStyleEl.addEventListener("click", () =>
-  app.setState({ style: cycleOpt(STYLE_OPTIONS, app.getState().style) }),
+  app.setPlayback({ style: cycleOpt(STYLE_OPTIONS, app.getState().playback.style) }),
 );
 readoutBassEl.addEventListener("click", () =>
-  app.setState({ bass: cycleOpt(BASS_OPTIONS, app.getState().bass) }),
+  app.setPlayback({ bass: cycleOpt(BASS_OPTIONS, app.getState().playback.bass) }),
 );
 readoutVoicingEl.addEventListener("click", () =>
-  app.setState({ voicing: cycleOpt(VOICING_OPTIONS, app.getState().voicing) }),
+  app.setPlayback({ voicing: cycleOpt(VOICING_OPTIONS, app.getState().playback.voicing) }),
 );
 readoutBarsEl.addEventListener("click", () =>
-  app.setState({ bars: cycleOpt(BARS_OPTIONS, app.getState().bars) }),
+  app.setPlayback({ bars: cycleOpt(BARS_OPTIONS, app.getState().playback.bars) }),
 );
 readoutCycleEl.addEventListener("click", () =>
-  app.setCycle(cycleOpt(CYCLE_OPTIONS, app.getState().cycle as (typeof CYCLE_OPTIONS)[number])),
+  app.setCycle(
+    cycleOpt(CYCLE_OPTIONS, app.getState().playback.cycle as (typeof CYCLE_OPTIONS)[number]),
+  ),
 );
 readoutAdvanceEl.addEventListener("click", () =>
-  app.setState({ advance: app.getState().advance === "auto" ? "manual" : "auto" }),
+  app.setPlayback({ advance: app.getState().playback.advance === "auto" ? "manual" : "auto" }),
 );
 
 function renderCustomCycleEditor(state: AppState): void {
-  const keys = state.customCycleKeys;
+  const keys = state.playback.customCycleKeys;
   customKeyRowsEl.innerHTML = "";
   if (!keys.length) {
     customKeyRowsEl.appendChild(
@@ -859,7 +876,7 @@ function renderCustomCycleEditor(state: AppState): void {
     upBtn.addEventListener("click", () => {
       const k = [...keys];
       [k[i], k[i - 1]] = [k[i - 1]!, k[i]!];
-      app.setState({ customCycleKeys: k });
+      app.setPlayback({ customCycleKeys: k });
     });
     const downBtn = Object.assign(document.createElement("button"), {
       type: "button",
@@ -870,7 +887,7 @@ function renderCustomCycleEditor(state: AppState): void {
     downBtn.addEventListener("click", () => {
       const k = [...keys];
       [k[i], k[i + 1]] = [k[i + 1]!, k[i]!];
-      app.setState({ customCycleKeys: k });
+      app.setPlayback({ customCycleKeys: k });
     });
     const delBtn = Object.assign(document.createElement("button"), {
       type: "button",
@@ -878,7 +895,7 @@ function renderCustomCycleEditor(state: AppState): void {
       textContent: "×",
     });
     delBtn.addEventListener("click", () =>
-      app.setState({ customCycleKeys: keys.filter((_, j) => j !== i) }),
+      app.setPlayback({ customCycleKeys: keys.filter((_, j) => j !== i) }),
     );
     row.append(num, nameEl, upBtn, downBtn, delBtn);
     customKeyRowsEl.appendChild(row);
@@ -896,9 +913,9 @@ function renderCustomCycleEditor(state: AppState): void {
     textContent: k,
   });
   btn.addEventListener("click", () => {
-    const keys = app.getState().customCycleKeys;
+    const keys = app.getState().playback.customCycleKeys;
     if (keys.length >= 12) return;
-    app.setState({ customCycleKeys: [...keys, k] });
+    app.setPlayback({ customCycleKeys: [...keys, k] });
   });
   customKeyPickerEl.appendChild(btn);
 });
@@ -911,7 +928,7 @@ addSectionEl.addEventListener("click", () => {
   if (rows.length) rows[rows.length - 1]!.focus();
 });
 
-arrangementEl.addEventListener("input", () => app.setState({ arrangement: arrangementEl.value }));
+arrangementEl.addEventListener("input", () => app.setArrangement(arrangementEl.value));
 
 // ── Presets ───────────────────────────────────────────────────────────────
 
@@ -921,7 +938,13 @@ PRESETS.forEach((p) => {
     className: "preset-btn",
     textContent: p.label,
   });
-  btn.addEventListener("click", () => app.loadPreset({ ...app.getState(), ...p.state }));
+  btn.addEventListener("click", () => {
+    const current = app.getState();
+    app.loadPreset({
+      ...p.state,
+      playback: { ...current.playback, ...p.state.playback },
+    });
+  });
   $("presets").appendChild(btn);
 });
 
@@ -933,11 +956,11 @@ PRESETS.forEach((p) => {
 
 // ── Mix ───────────────────────────────────────────────────────────────────
 
-type VolKey = "chordVol" | "bassVol" | "drumVol" | "masterVol";
+type VolKey = keyof Pick<MixSettings, "chordVol" | "bassVol" | "drumVol" | "masterVol">;
 const wireVol = (el: HTMLInputElement, valId: string, key: VolKey): void => {
   el.addEventListener("input", () => {
     ($(`${valId}`) as HTMLElement).textContent = el.value;
-    app.setState({ [key]: parseInt(el.value, 10) });
+    app.setMix({ [key]: parseInt(el.value, 10) });
   });
 };
 wireVol(chordVolEl, "chord-vol-val", "chordVol");
@@ -945,9 +968,9 @@ wireVol(bassVolEl, "bass-vol-val", "bassVol");
 wireVol(drumVolEl, "drum-vol-val", "drumVol");
 wireVol(masterVolEl, "master-vol-val", "masterVol");
 
-chordsOnEl.addEventListener("change", () => app.setState({ chordsOn: chordsOnEl.checked }));
-bassOnEl.addEventListener("change", () => app.setState({ bassOn: bassOnEl.checked }));
-drumsOnEl.addEventListener("change", () => app.setState({ drumsOn: drumsOnEl.checked }));
+chordsOnEl.addEventListener("change", () => app.setMix({ chordsOn: chordsOnEl.checked }));
+bassOnEl.addEventListener("change", () => app.setMix({ bassOn: bassOnEl.checked }));
+drumsOnEl.addEventListener("change", () => app.setMix({ drumsOn: drumsOnEl.checked }));
 
 // ── Playback ──────────────────────────────────────────────────────────────
 

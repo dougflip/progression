@@ -82,7 +82,7 @@ The host tracks `_currentScrubPosIndex`, `_currentScrubKey`, and `_currentLapInd
 
 ## Known rough edges
 
-- **Full re-render on every state change.** `render()` calls all sub-renders on every `setState` including rapid slider drags. Fine for current app size; revisit if sluggishness appears.
+- **Full re-render on every state change.** `render()` calls all sub-renders on every `setPlayback`/`setMix`/structural mutation including rapid slider drags. Fine for current app size; revisit if sluggishness appears.
 
 ## Player factory public API
 
@@ -94,7 +94,9 @@ The host tracks `_currentScrubPosIndex`, `_currentScrubKey`, and `_currentLapInd
 - `seekToPos(posIndex)` — sets the resume position to a specific arrangement slot; also updates `activeSection` for chip display. Works from stopped or paused state.
 - `seekToLap(lapIndex)` — sets the resume lap without affecting the song position. Works from stopped (defaults posIndex to 0) or paused (preserves posIndex/chipIndex).
 
-Pause state is stored in private `_pausedAt: { posIndex, chipIndex, lapIndex } | null`. It is cleared by `stop()`, `loadPreset()`, and any `_set()` call touching `sections`, `arrangement`, `cycle`, or `customCycleKeys` (structural changes that would make the saved position stale). Key, tempo, style, bass, voicing, and bars changes preserve `_pausedAt`.
+State mutation API: `setPlayback(partial)` merges into `state.playback`; `setMix(partial)` merges into `state.mix`; structural changes use named methods (`addSection`, `removeSection`, `moveSection`, `updateSection`, `setArrangement`, `setCycle`). The generic `setState` is gone.
+
+Pause state is stored in private `_pausedAt: { posIndex, chipIndex, lapIndex } | null`. It is cleared by `stop()`, `loadPreset()`, and any mutation touching `sections`, `arrangement`, `cycle`, or `customCycleKeys` (structural changes that would make the saved position stale). Key, tempo, style, bass, voicing, and bars changes preserve `_pausedAt`.
 
 ## File structure and split thresholds
 
@@ -116,33 +118,9 @@ Four source files with clear per-file purpose: logic, audio, view, markup. The s
 
 ## Planned features
 
-### AppState restructure + typed setters
+### Section-level playback overrides
 
-**Motivation:** `AppState` is currently flat — playback settings, mix settings, and structural state all live at the same level. This is a historical accident of incremental growth, not a deliberate design. Three named buckets would be more honest:
-
-```ts
-interface AppState {
-  playback: PlaybackSettings; // key, tempo, bars, style, bass, voicing, cycle, customCycleKeys, advance
-  mix: MixSettings; // chordVol, bassVol, drumVol, masterVol, chordsOn, bassOn, drumsOn
-  sections: Section[];
-  arrangement: string;
-  activeSection: number;
-}
-```
-
-**Why this pairs with section-level overrides:** once `PlaybackSettings` is a named type, each section can carry an optional `Partial<PlaybackSettings>` that merges with the song-level base at playback time — enabling per-section key changes, tempo changes, style changes, etc. The merge is clean and typed: `{ ...state.playback, ...section.playback }`.
-
-**The setState problem:** nesting makes the current `app.setState({ key: 'C' })` pattern awkward. The natural fix is replacing the generic setter with typed setters per bucket:
-
-```ts
-app.setPlayback(partial: Partial<PlaybackSettings>): void  // merges into state.playback
-app.setMix(partial: Partial<MixSettings>): void
-// structural mutations stay as named methods (addSection, removeSection, etc.)
-```
-
-The generic `setState` either goes away or narrows to structural fields only. This continues the direction already established — `setCycle` exists precisely because the host shouldn't manually assemble state patches.
-
-**TS migration is complete** — the types exist and are enforced. This restructure is the natural next refactor. Read sites (`state.key` → `state.playback.key`) are mechanical find-and-replace; the API surface change is the real work.
+`PlaybackSettings` is now a named type and each section can carry an optional `Partial<PlaybackSettings>` that merges with the song-level base at playback time — enabling per-section key changes, tempo changes, style changes, etc. The merge is: `{ ...state.playback, ...section.playback }`. This is the natural next step now that `AppState` is restructured.
 
 ### Foot pedal support
 

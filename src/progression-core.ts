@@ -64,7 +64,7 @@ export interface StyleDef {
   };
 }
 
-export interface MixState {
+export interface MixSettings {
   chordVol: number;
   bassVol: number;
   drumVol: number;
@@ -99,7 +99,7 @@ export interface AudioStartOpts {
   key: string;
   cycle: string;
   customCycleKeys: string[];
-  mix: MixState;
+  mix: MixSettings;
   onChordTick: (ev: ChordTickEvent) => void;
   onBeatTick: (beat: number) => void;
   onBarTick: (bar: number) => void;
@@ -132,7 +132,7 @@ export interface AudioEngine {
   getPendingKeyJump(): number | null;
 }
 
-export interface AppState {
+export interface PlaybackSettings {
   key: string;
   tempo: number;
   bars: number;
@@ -141,18 +141,24 @@ export interface AppState {
   style: string;
   bass: string;
   voicing: string;
+  advance: string;
+}
+
+export interface AppState {
+  playback: PlaybackSettings;
+  mix: MixSettings;
   sections: Section[];
   arrangement: string;
   activeSection: number;
-  advance: string;
-  chordVol: number;
-  bassVol: number;
-  drumVol: number;
-  masterVol: number;
-  chordsOn: boolean;
-  bassOn: boolean;
-  drumsOn: boolean;
 }
+
+export type AppStatePartial = {
+  playback?: Partial<PlaybackSettings>;
+  mix?: Partial<MixSettings>;
+  sections?: Section[];
+  arrangement?: string;
+  activeSection?: number;
+};
 
 export interface UserPreset {
   id: string;
@@ -423,19 +429,21 @@ export const STYLES: Record<string, StyleDef> = {
 
 // ─── Built-in Presets ────────────────────────────────────────────────────────
 
-export const PRESETS: Array<{ label: string; state: Partial<AppState> }> = [
+export const PRESETS: Array<{ label: string; state: AppStatePartial }> = [
   {
     label: "I vi ii V",
-    state: { sections: [{ progression: "I vi ii V" }], arrangement: "", cycle: "none" },
+    state: {
+      sections: [{ progression: "I vi ii V" }],
+      arrangement: "",
+      playback: { cycle: "none" },
+    },
   },
   {
     label: "12-bar blues",
     state: {
       sections: [{ progression: "I7:4 IV7:2 I7:2 V7:1 IV7:1 I7:1 V7:1" }],
       arrangement: "",
-      cycle: "none",
-      tempo: 120,
-      style: "rock",
+      playback: { cycle: "none", tempo: 120, style: "rock" },
     },
   },
   {
@@ -447,18 +455,16 @@ export const PRESETS: Array<{ label: string; state: Partial<AppState> }> = [
         { progression: "ii V I I" },
       ],
       arrangement: "1 2 1 2 3 2",
-      cycle: "none",
-      tempo: 120,
-      style: "pop",
+      playback: { cycle: "none", tempo: 120, style: "pop" },
     },
   },
   {
     label: "Cycle 4ths",
-    state: { sections: [{ progression: "I" }], arrangement: "", cycle: "4ths" },
+    state: { sections: [{ progression: "I" }], arrangement: "", playback: { cycle: "4ths" } },
   },
   {
     label: "Cycle 5ths",
-    state: { sections: [{ progression: "I" }], arrangement: "", cycle: "5ths" },
+    state: { sections: [{ progression: "I" }], arrangement: "", playback: { cycle: "5ths" } },
   },
 ];
 
@@ -574,10 +580,11 @@ export function isAbsoluteChord(numeral: string): boolean {
 export function getResolvedChipNames(state: AppState, lapIndex: number): string[] {
   const progStr = state.sections[state.activeSection - 1]?.progression ?? "";
   const tokens = tokenize(progStr);
-  const shift = getShiftsForCycle(state.cycle, state.customCycleKeys)[lapIndex] ?? 0;
+  const shift =
+    getShiftsForCycle(state.playback.cycle, state.playback.customCycleKeys)[lapIndex] ?? 0;
   return tokens.map((t) => {
-    const { numeral } = parseToken(t, state.bars);
-    return resolvedChordName(numeral, shift, state.key, state.cycle);
+    const { numeral } = parseToken(t, state.playback.bars);
+    return resolvedChordName(numeral, shift, state.playback.key, state.playback.cycle);
   });
 }
 
@@ -800,25 +807,29 @@ export const VALID_KEYS = [
 ] as const;
 
 export const DEFAULTS: AppState = {
-  key: "C",
-  tempo: 85,
-  bars: 2,
-  cycle: "none",
-  customCycleKeys: [],
-  style: "funk",
-  bass: "busy",
-  voicing: "voice-lead-loop",
+  playback: {
+    key: "C",
+    tempo: 85,
+    bars: 2,
+    cycle: "none",
+    customCycleKeys: [],
+    style: "funk",
+    bass: "busy",
+    voicing: "voice-lead-loop",
+    advance: "auto",
+  },
+  mix: {
+    chordVol: 50,
+    bassVol: 100,
+    drumVol: 100,
+    masterVol: 100,
+    chordsOn: true,
+    bassOn: true,
+    drumsOn: true,
+  },
   sections: [{ progression: "I vi ii V" }],
   arrangement: "",
   activeSection: 1,
-  advance: "auto",
-  chordVol: 50,
-  bassVol: 100,
-  drumVol: 100,
-  masterVol: 100,
-  chordsOn: true,
-  bassOn: true,
-  drumsOn: true,
 };
 
 // ─── URL serialization ───────────────────────────────────────────────────────
@@ -837,13 +848,13 @@ export function parseUrl(searchString: string): AppState {
   };
   const str = (k: string, def: string): string => p.get(k) ?? def;
 
-  const key = str("key", DEFAULTS.key);
-  const bars = num("bars", DEFAULTS.bars);
-  const cycle = str("cycle", DEFAULTS.cycle);
-  const style = str("style", DEFAULTS.style);
-  const bass = str("bass", DEFAULTS.bass);
-  const voicing = str("voicing", DEFAULTS.voicing);
-  const advance = str("advance", DEFAULTS.advance);
+  const key = str("key", DEFAULTS.playback.key);
+  const bars = num("bars", DEFAULTS.playback.bars);
+  const cycle = str("cycle", DEFAULTS.playback.cycle);
+  const style = str("style", DEFAULTS.playback.style);
+  const bass = str("bass", DEFAULTS.playback.bass);
+  const voicing = str("voicing", DEFAULTS.playback.voicing);
+  const advance = str("advance", DEFAULTS.playback.advance);
   const rawCustomKeys = str("customKeys", "");
   const customCycleKeys = rawCustomKeys
     ? rawCustomKeys
@@ -858,50 +869,57 @@ export function parseUrl(searchString: string): AppState {
   const rawActive = num("activeSection", DEFAULTS.activeSection);
 
   return {
-    key: (VALID_KEYS as readonly string[]).includes(key) ? key : DEFAULTS.key,
-    tempo: Math.max(40, Math.min(220, num("tempo", DEFAULTS.tempo))),
-    bars: (BARS_OPTIONS as readonly number[]).includes(bars) ? bars : DEFAULTS.bars,
-    cycle: (CYCLE_OPTIONS as readonly string[]).includes(cycle) ? cycle : DEFAULTS.cycle,
-    customCycleKeys,
-    style: (STYLE_OPTIONS as readonly string[]).includes(style) ? style : DEFAULTS.style,
-    bass: (BASS_OPTIONS as readonly string[]).includes(bass) ? bass : DEFAULTS.bass,
-    voicing: (VOICING_OPTIONS as readonly string[]).includes(voicing) ? voicing : DEFAULTS.voicing,
+    playback: {
+      key: (VALID_KEYS as readonly string[]).includes(key) ? key : DEFAULTS.playback.key,
+      tempo: Math.max(40, Math.min(220, num("tempo", DEFAULTS.playback.tempo))),
+      bars: (BARS_OPTIONS as readonly number[]).includes(bars) ? bars : DEFAULTS.playback.bars,
+      cycle: (CYCLE_OPTIONS as readonly string[]).includes(cycle) ? cycle : DEFAULTS.playback.cycle,
+      customCycleKeys,
+      style: (STYLE_OPTIONS as readonly string[]).includes(style) ? style : DEFAULTS.playback.style,
+      bass: (BASS_OPTIONS as readonly string[]).includes(bass) ? bass : DEFAULTS.playback.bass,
+      voicing: (VOICING_OPTIONS as readonly string[]).includes(voicing)
+        ? voicing
+        : DEFAULTS.playback.voicing,
+      advance: ["auto", "manual"].includes(advance) ? advance : DEFAULTS.playback.advance,
+    },
+    mix: {
+      chordVol: num("chordVol", DEFAULTS.mix.chordVol),
+      bassVol: num("bassVol", DEFAULTS.mix.bassVol),
+      drumVol: num("drumVol", DEFAULTS.mix.drumVol),
+      masterVol: num("masterVol", DEFAULTS.mix.masterVol),
+      chordsOn: bool("chordsOn", DEFAULTS.mix.chordsOn),
+      bassOn: bool("bassOn", DEFAULTS.mix.bassOn),
+      drumsOn: bool("drumsOn", DEFAULTS.mix.drumsOn),
+    },
     sections,
     arrangement: str("arrangement", DEFAULTS.arrangement),
     activeSection:
       Number.isInteger(rawActive) && rawActive >= 1 && rawActive <= sections.length ? rawActive : 1,
-    advance: ["auto", "manual"].includes(advance) ? advance : DEFAULTS.advance,
-    chordVol: num("chordVol", DEFAULTS.chordVol),
-    bassVol: num("bassVol", DEFAULTS.bassVol),
-    drumVol: num("drumVol", DEFAULTS.drumVol),
-    masterVol: num("masterVol", DEFAULTS.masterVol),
-    chordsOn: bool("chordsOn", DEFAULTS.chordsOn),
-    bassOn: bool("bassOn", DEFAULTS.bassOn),
-    drumsOn: bool("drumsOn", DEFAULTS.drumsOn),
   };
 }
 
 export function serializeUrl(state: AppState): string {
   const p = new URLSearchParams();
-  p.set("key", state.key);
-  p.set("tempo", String(state.tempo));
-  p.set("bars", String(state.bars));
-  p.set("cycle", state.cycle);
-  if (state.customCycleKeys.length) p.set("customKeys", state.customCycleKeys.join(","));
-  p.set("style", state.style);
-  p.set("bass", state.bass);
-  p.set("voicing", state.voicing);
+  p.set("key", state.playback.key);
+  p.set("tempo", String(state.playback.tempo));
+  p.set("bars", String(state.playback.bars));
+  p.set("cycle", state.playback.cycle);
+  if (state.playback.customCycleKeys.length)
+    p.set("customKeys", state.playback.customCycleKeys.join(","));
+  p.set("style", state.playback.style);
+  p.set("bass", state.playback.bass);
+  p.set("voicing", state.playback.voicing);
   state.sections.forEach((sec) => p.append("section", sec.progression));
   p.set("arrangement", state.arrangement);
   p.set("activeSection", String(state.activeSection));
-  p.set("advance", state.advance);
-  p.set("chordVol", String(state.chordVol));
-  p.set("bassVol", String(state.bassVol));
-  p.set("drumVol", String(state.drumVol));
-  p.set("masterVol", String(state.masterVol));
-  p.set("chordsOn", state.chordsOn ? "1" : "0");
-  p.set("bassOn", state.bassOn ? "1" : "0");
-  p.set("drumsOn", state.drumsOn ? "1" : "0");
+  p.set("advance", state.playback.advance);
+  p.set("chordVol", String(state.mix.chordVol));
+  p.set("bassVol", String(state.mix.bassVol));
+  p.set("drumVol", String(state.mix.drumVol));
+  p.set("masterVol", String(state.mix.masterVol));
+  p.set("chordsOn", state.mix.chordsOn ? "1" : "0");
+  p.set("bassOn", state.mix.bassOn ? "1" : "0");
+  p.set("drumsOn", state.mix.drumsOn ? "1" : "0");
   return p.toString();
 }
 
@@ -912,46 +930,68 @@ const PRESETS_STORAGE_KEY = "progression-presets-v2";
 type PausedAt = { posIndex: number; chipIndex: number; lapIndex: number };
 
 export function makeProgressionPlayer(config: PlayerConfig) {
-  let _state: AppState = { ...DEFAULTS };
+  let _state: AppState = {
+    playback: { ...DEFAULTS.playback },
+    mix: { ...DEFAULTS.mix },
+    sections: [...DEFAULTS.sections],
+    arrangement: DEFAULTS.arrangement,
+    activeSection: DEFAULTS.activeSection,
+  };
   let _lastChordPos: PausedAt = { posIndex: 0, chipIndex: 0, lapIndex: 0 };
   let _pausedAt: PausedAt | null = null;
 
-  const REBUILD_KEYS = new Set([
-    "key",
-    "bars",
-    "style",
-    "bass",
-    "voicing",
-    "cycle",
-    "customCycleKeys",
-    "sections",
-    "arrangement",
-  ]);
-  const PAUSE_INVALIDATING_KEYS = new Set(["sections", "arrangement", "cycle", "customCycleKeys"]);
-
   function _notify(): void {
-    config.onStateChange({ ..._state });
+    config.onStateChange({
+      ..._state,
+      playback: { ..._state.playback },
+      mix: { ..._state.mix },
+    });
   }
 
-  function _set(partial: Partial<AppState>): void {
-    _state = { ..._state, ...partial };
-    if (_pausedAt !== null && Object.keys(partial).some((k) => PAUSE_INVALIDATING_KEYS.has(k))) {
+  function _setPlayback(partial: Partial<PlaybackSettings>): void {
+    _state = { ..._state, playback: { ..._state.playback, ...partial } };
+    if (_pausedAt !== null && ("cycle" in partial || "customCycleKeys" in partial)) {
       _pausedAt = null;
     }
     _notify();
     if (!config.audio?.isPlaying()) return;
+    if ("tempo" in partial) config.audio.setTempo(_state.playback.tempo);
+    if ("advance" in partial) config.audio.setAdvance(_state.playback.advance);
+    if (
+      "key" in partial ||
+      "bars" in partial ||
+      "style" in partial ||
+      "bass" in partial ||
+      "voicing" in partial ||
+      "cycle" in partial ||
+      "customCycleKeys" in partial
+    )
+      _scheduleRebuild();
+  }
 
-    if ("tempo" in partial) config.audio.setTempo(_state.tempo);
-    if ("chordVol" in partial) config.audio.setVolume("chords", _state.chordVol);
-    if ("bassVol" in partial) config.audio.setVolume("bass", _state.bassVol);
-    if ("drumVol" in partial) config.audio.setVolume("drums", _state.drumVol);
-    if ("masterVol" in partial) config.audio.setVolume("master", _state.masterVol);
-    if ("chordsOn" in partial) config.audio.setMute("chords", !_state.chordsOn);
-    if ("bassOn" in partial) config.audio.setMute("bass", !_state.bassOn);
-    if ("drumsOn" in partial) config.audio.setMute("drums", !_state.drumsOn);
-    if ("advance" in partial) config.audio.setAdvance(_state.advance);
+  function _setMix(partial: Partial<MixSettings>): void {
+    _state = { ..._state, mix: { ..._state.mix, ...partial } };
+    _notify();
+    if (!config.audio?.isPlaying()) return;
+    if ("chordVol" in partial) config.audio.setVolume("chords", _state.mix.chordVol);
+    if ("bassVol" in partial) config.audio.setVolume("bass", _state.mix.bassVol);
+    if ("drumVol" in partial) config.audio.setVolume("drums", _state.mix.drumVol);
+    if ("masterVol" in partial) config.audio.setVolume("master", _state.mix.masterVol);
+    if ("chordsOn" in partial) config.audio.setMute("chords", !_state.mix.chordsOn);
+    if ("bassOn" in partial) config.audio.setMute("bass", !_state.mix.bassOn);
+    if ("drumsOn" in partial) config.audio.setMute("drums", !_state.mix.drumsOn);
+  }
 
-    if (Object.keys(partial).some((k) => REBUILD_KEYS.has(k))) _scheduleRebuild();
+  function _setStructural(
+    partial: Partial<Pick<AppState, "sections" | "arrangement" | "activeSection">>,
+  ): void {
+    _state = { ..._state, ...partial };
+    if (_pausedAt !== null && ("sections" in partial || "arrangement" in partial)) {
+      _pausedAt = null;
+    }
+    _notify();
+    if (!config.audio?.isPlaying()) return;
+    if ("sections" in partial || "arrangement" in partial) _scheduleRebuild();
   }
 
   let _rebuildTimer: ReturnType<typeof setTimeout> | null = null;
@@ -962,17 +1002,17 @@ export function makeProgressionPlayer(config: PlayerConfig) {
         const chords = buildSongChords(
           _state.sections,
           _state.arrangement,
-          _state.key,
-          _state.bars,
+          _state.playback.key,
+          _state.playback.bars,
         );
         config.audio!.rebuild({
           chordSequence: chords,
-          style: STYLES[_state.style]!,
-          bassVariant: _state.bass,
-          voicing: _state.voicing,
-          key: _state.key,
-          cycle: _state.cycle,
-          customCycleKeys: _state.customCycleKeys,
+          style: STYLES[_state.playback.style]!,
+          bassVariant: _state.playback.bass,
+          voicing: _state.playback.voicing,
+          key: _state.playback.key,
+          cycle: _state.playback.cycle,
+          customCycleKeys: _state.playback.customCycleKeys,
         });
       } catch (e) {
         config.onError?.(`Rebuild error: ${(e as Error).message}`);
@@ -982,7 +1022,12 @@ export function makeProgressionPlayer(config: PlayerConfig) {
 
   async function _startPlayback(): Promise<void> {
     const order = resolvePlayOrder(_state.sections, _state.arrangement);
-    const chords = buildSongChords(_state.sections, _state.arrangement, _state.key, _state.bars);
+    const chords = buildSongChords(
+      _state.sections,
+      _state.arrangement,
+      _state.playback.key,
+      _state.playback.bars,
+    );
     let startPosIndex = 0;
     let startLapIndex = 0;
     let startChipIndex = 0;
@@ -998,26 +1043,18 @@ export function makeProgressionPlayer(config: PlayerConfig) {
 
     await config.audio!.start({
       chordSequence: chords,
-      tempo: _state.tempo,
-      style: STYLES[_state.style]!,
-      bassVariant: _state.bass,
-      voicing: _state.voicing,
-      advance: _state.advance,
+      tempo: _state.playback.tempo,
+      style: STYLES[_state.playback.style]!,
+      bassVariant: _state.playback.bass,
+      voicing: _state.playback.voicing,
+      advance: _state.playback.advance,
       startPosIndex,
       startChipIndex,
       startLapIndex,
-      key: _state.key,
-      cycle: _state.cycle,
-      customCycleKeys: _state.customCycleKeys,
-      mix: {
-        chordVol: _state.chordVol,
-        bassVol: _state.bassVol,
-        drumVol: _state.drumVol,
-        masterVol: _state.masterVol,
-        chordsOn: _state.chordsOn,
-        bassOn: _state.bassOn,
-        drumsOn: _state.drumsOn,
-      },
+      key: _state.playback.key,
+      cycle: _state.playback.cycle,
+      customCycleKeys: _state.playback.customCycleKeys,
+      mix: { ..._state.mix },
       onChordTick: (ev) => {
         _lastChordPos = { posIndex: ev.posIndex, chipIndex: ev.chipIndex, lapIndex: ev.lapIndex };
         if (ev.sectionChanged) _state.activeSection = ev.sectionIndex + 1;
@@ -1056,9 +1093,15 @@ export function makeProgressionPlayer(config: PlayerConfig) {
   }
 
   return {
-    getState: (): AppState => ({ ..._state }),
+    getState: (): AppState => ({
+      ..._state,
+      playback: { ..._state.playback },
+      mix: { ..._state.mix },
+    }),
 
-    setState: (partial: Partial<AppState>): void => _set(partial),
+    setPlayback: (partial: Partial<PlaybackSettings>): void => _setPlayback(partial),
+    setMix: (partial: Partial<MixSettings>): void => _setMix(partial),
+    setArrangement: (arrangement: string): void => _setStructural({ arrangement }),
 
     applyUrl(searchString: string): void {
       _state = parseUrl(searchString);
@@ -1071,14 +1114,14 @@ export function makeProgressionPlayer(config: PlayerConfig) {
 
     addSection(): void {
       if (_state.sections.length >= 6) return;
-      _set({ sections: [..._state.sections, { progression: "" }] });
+      _setStructural({ sections: [..._state.sections, { progression: "" }] });
     },
 
     removeSection(index: number): void {
       if (_state.sections.length <= 1) return;
       const sections = _state.sections.filter((_, i) => i !== index);
       const arrangement = remapArrangementDelete(_state.arrangement, index);
-      _set({
+      _setStructural({
         sections,
         arrangement,
         activeSection: Math.min(_state.activeSection, sections.length),
@@ -1094,31 +1137,40 @@ export function makeProgressionPlayer(config: PlayerConfig) {
       let { activeSection } = _state;
       if (activeSection === index + 1) activeSection = target + 1;
       else if (activeSection === target + 1) activeSection = index + 1;
-      _set({ sections, arrangement, activeSection });
+      _setStructural({ sections, arrangement, activeSection });
     },
 
     setCycle(cycle: string): void {
-      if (cycle === "custom" && !_state.customCycleKeys.length) {
-        _set({ cycle, customCycleKeys: [_state.key] });
+      if (cycle === "custom" && !_state.playback.customCycleKeys.length) {
+        _setPlayback({ cycle, customCycleKeys: [_state.playback.key] });
       } else {
-        _set({ cycle });
+        _setPlayback({ cycle });
       }
     },
 
     updateSection(index: number, progression: string): void {
       const sections = _state.sections.map((s, i) => (i === index ? { ...s, progression } : s));
-      _set({ sections });
+      _setStructural({ sections });
     },
 
     // ── Presets ───────────────────────────────────────────────────────────
 
-    loadPreset(presetState: Partial<AppState>): void {
+    loadPreset(presetState: AppStatePartial): void {
       _pausedAt = null;
-      _state = { ...DEFAULTS, ...presetState };
+      _state = {
+        playback: { ...DEFAULTS.playback, ...presetState.playback },
+        mix:
+          presetState.mix !== undefined
+            ? { ...DEFAULTS.mix, ...presetState.mix }
+            : { ..._state.mix },
+        sections: presetState.sections ?? DEFAULTS.sections,
+        arrangement: presetState.arrangement ?? DEFAULTS.arrangement,
+        activeSection: presetState.activeSection ?? DEFAULTS.activeSection,
+      };
       _notify();
       if (!config.audio?.isPlaying()) return;
-      config.audio.setTempo(_state.tempo);
-      config.audio.setAdvance(_state.advance);
+      config.audio.setTempo(_state.playback.tempo);
+      config.audio.setAdvance(_state.playback.advance);
       _scheduleRebuild();
     },
 
@@ -1128,7 +1180,14 @@ export function makeProgressionPlayer(config: PlayerConfig) {
       const id = Date.now().toString(36);
       config.persist(
         PRESETS_STORAGE_KEY,
-        JSON.stringify([..._getUserPresets(), { id, name, state: { ..._state } }]),
+        JSON.stringify([
+          ..._getUserPresets(),
+          {
+            id,
+            name,
+            state: { ..._state, playback: { ..._state.playback }, mix: { ..._state.mix } },
+          },
+        ]),
       );
       return id;
     },
@@ -1176,7 +1235,7 @@ export function makeProgressionPlayer(config: PlayerConfig) {
       _pausedAt = { posIndex, chipIndex: 0, lapIndex };
       const order = resolvePlayOrder(_state.sections, _state.arrangement);
       const section = order[Math.min(posIndex, order.length - 1)];
-      if (section !== undefined) _set({ activeSection: section });
+      if (section !== undefined) _setStructural({ activeSection: section });
       else _notify();
     },
 
