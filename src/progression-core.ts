@@ -54,10 +54,15 @@ export interface StyleBassPhrase {
   minor: BassStep[];
 }
 
+export interface StyleDrumPhrase {
+  simple: number[];
+  busy: number[];
+}
+
 export interface StyleDef {
-  kick: number[];
-  snare: number[];
-  hat: number[];
+  kick: StyleDrumPhrase;
+  snare: StyleDrumPhrase;
+  hat: StyleDrumPhrase;
   bass: {
     simple: StyleBassPhrase;
     busy: StyleBassPhrase;
@@ -366,9 +371,18 @@ export const VOICING_PILL_LABELS: Record<string, string> = {
 // Bass: 'R' = root, '3' = third, '5' = fifth, 0 = rest.
 export const STYLES: Record<string, StyleDef> = {
   pop: {
-    kick: [1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-    snare: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
-    hat: [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
+    kick: {
+      simple: [1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+      busy: [1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+    },
+    snare: {
+      simple: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+      busy: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+    },
+    hat: {
+      simple: [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
+      busy: [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
+    },
     bass: {
       simple: {
         major: ["R", 0, 0, 0, "R", 0, 0, 0, "5", 0, 0, 0, "R", 0, 0, 0],
@@ -381,9 +395,18 @@ export const STYLES: Record<string, StyleDef> = {
     },
   },
   funk: {
-    kick: [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0],
-    snare: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
-    hat: [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
+    kick: {
+      simple: [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0],
+      busy: [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0],
+    },
+    snare: {
+      simple: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+      busy: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+    },
+    hat: {
+      simple: [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
+      busy: [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
+    },
     bass: {
       simple: {
         major: ["R", 0, 0, 0, 0, 0, "R", 0, 0, 0, "R", 0, 0, 0, "5", 0],
@@ -396,9 +419,18 @@ export const STYLES: Record<string, StyleDef> = {
     },
   },
   ballad: {
-    kick: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    snare: [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-    hat: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
+    kick: {
+      simple: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      busy: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    },
+    snare: {
+      simple: [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+      busy: [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+    },
+    hat: {
+      simple: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
+      busy: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
+    },
     bass: {
       simple: {
         major: ["R", 0, 0, 0, 0, 0, 0, 0, "5", 0, 0, 0, 0, 0, 0, 0],
@@ -411,9 +443,18 @@ export const STYLES: Record<string, StyleDef> = {
     },
   },
   rock: {
-    kick: [1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-    snare: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
-    hat: [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
+    kick: {
+      simple: [1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+      busy: [1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+    },
+    snare: {
+      simple: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+      busy: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+    },
+    hat: {
+      simple: [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
+      busy: [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
+    },
     bass: {
       simple: {
         major: ["R", 0, 0, 0, 0, 0, "R", 0, "R", 0, 0, 0, "5", 0, 0, 0],

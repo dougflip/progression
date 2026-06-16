@@ -351,7 +351,7 @@ export function makeProgressionAudio(): AudioEngine {
       (time, hit) => {
         if (hit && _kick) _safe(() => _kick!.triggerAttackRelease("C1", "8n", time));
       },
-      style.kick,
+      style.kick.simple,
       "16n",
     ).start(0);
 
@@ -359,7 +359,7 @@ export function makeProgressionAudio(): AudioEngine {
       (time, hit) => {
         if (hit && _snare) _safe(() => _snare!.triggerAttackRelease("16n", time));
       },
-      style.snare,
+      style.snare.simple,
       "16n",
     ).start(0);
 
@@ -367,7 +367,7 @@ export function makeProgressionAudio(): AudioEngine {
       (time, hit) => {
         if (hit && _hat) _safe(() => _hat!.triggerAttackRelease("32n", time));
       },
-      style.hat,
+      style.hat.simple,
       "16n",
     ).start(0);
 
