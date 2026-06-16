@@ -268,10 +268,10 @@ const NOTE_RE = /^([A-G])([#b]?)(-?\d+)$/;
 export const CYCLE_SEMIS = { none: 0, "4ths": 5, "5ths": 7 };
 export const CYCLE_OPTIONS = ["none", "4ths", "5ths", "custom"] as const;
 export const CYCLE_LABELS: Record<string, string> = {
-  none: "Loop",
-  "4ths": "Cycle 4ths",
-  "5ths": "Cycle 5ths",
-  custom: "Custom",
+  none: "🔄 Loop",
+  "4ths": "🔄 Cycle 4ths",
+  "5ths": "🔄 Cycle 5ths",
+  custom: "🔄 Custom",
 };
 
 export function getShiftsForCycle(cycle: string, customCycleKeys: string[]): number[] {
@@ -353,10 +353,10 @@ export const QUALITY_DISPLAY: Record<ChordQuality, string> = {
 
 export const STYLE_OPTIONS = ["pop", "funk", "ballad", "rock"] as const;
 export const STYLE_LABELS: Record<string, string> = {
-  pop: "Pop",
-  funk: "Funk",
-  ballad: "Ballad",
-  rock: "Rock",
+  pop: "⭐ Pop",
+  funk: "🕺 Funk",
+  ballad: "🌙 Ballad",
+  rock: "⚡ Rock",
 };
 export const BASS_OPTIONS = ["simple", "busy"] as const;
 export const BASS_LABELS: Record<string, string> = { simple: "🎸 Simple", busy: "🎸 Busy" };
@@ -364,9 +364,9 @@ export const DRUM_OPTIONS = ["simple", "busy"] as const;
 export const DRUM_LABELS: Record<string, string> = { simple: "🥁 Simple", busy: "🥁 Busy" };
 export const VOICING_OPTIONS = ["root", "voice-lead", "voice-lead-loop"] as const;
 export const VOICING_PILL_LABELS: Record<string, string> = {
-  root: "Root",
-  "voice-lead": "Lead",
-  "voice-lead-loop": "Lead/loop",
+  root: "🎵 Root",
+  "voice-lead": "🎵 Lead",
+  "voice-lead-loop": "🎵 Lead/loop",
 };
 
 // ─── Style Patterns ──────────────────────────────────────────────────────────
