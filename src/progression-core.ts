@@ -96,6 +96,7 @@ export interface AudioStartOpts {
   tempo: number;
   style: StyleDef;
   bassVariant: string;
+  drumVariant: string;
   voicing: string;
   advance: string;
   startPosIndex: number;
@@ -114,6 +115,7 @@ export interface AudioRebuildOpts {
   chordSequence: SongChord[];
   style: StyleDef;
   bassVariant: string;
+  drumVariant: string;
   voicing: string;
   key: string;
   cycle: string;
@@ -145,6 +147,7 @@ export interface PlaybackSettings {
   customCycleKeys: string[];
   style: string;
   bass: string;
+  drums: string;
   voicing: string;
   advance: string;
 }
@@ -356,7 +359,9 @@ export const STYLE_LABELS: Record<string, string> = {
   rock: "Rock",
 };
 export const BASS_OPTIONS = ["simple", "busy"] as const;
-export const BASS_LABELS: Record<string, string> = { simple: "Simple", busy: "Busy" };
+export const BASS_LABELS: Record<string, string> = { simple: "🎸 Simple", busy: "🎸 Busy" };
+export const DRUM_OPTIONS = ["simple", "busy"] as const;
+export const DRUM_LABELS: Record<string, string> = { simple: "🥁 Simple", busy: "🥁 Busy" };
 export const VOICING_OPTIONS = ["root", "voice-lead", "voice-lead-loop"] as const;
 export const VOICING_PILL_LABELS: Record<string, string> = {
   root: "Root",
@@ -856,6 +861,7 @@ export const DEFAULTS: AppState = {
     customCycleKeys: [],
     style: "funk",
     bass: "busy",
+    drums: "simple",
     voicing: "voice-lead-loop",
     advance: "auto",
   },
@@ -894,6 +900,7 @@ export function parseUrl(searchString: string): AppState {
   const cycle = str("cycle", DEFAULTS.playback.cycle);
   const style = str("style", DEFAULTS.playback.style);
   const bass = str("bass", DEFAULTS.playback.bass);
+  const drums = str("drums", DEFAULTS.playback.drums);
   const voicing = str("voicing", DEFAULTS.playback.voicing);
   const advance = str("advance", DEFAULTS.playback.advance);
   const rawCustomKeys = str("customKeys", "");
@@ -918,6 +925,7 @@ export function parseUrl(searchString: string): AppState {
       customCycleKeys,
       style: (STYLE_OPTIONS as readonly string[]).includes(style) ? style : DEFAULTS.playback.style,
       bass: (BASS_OPTIONS as readonly string[]).includes(bass) ? bass : DEFAULTS.playback.bass,
+      drums: (DRUM_OPTIONS as readonly string[]).includes(drums) ? drums : DEFAULTS.playback.drums,
       voicing: (VOICING_OPTIONS as readonly string[]).includes(voicing)
         ? voicing
         : DEFAULTS.playback.voicing,
@@ -949,6 +957,7 @@ export function serializeUrl(state: AppState): string {
     p.set("customKeys", state.playback.customCycleKeys.join(","));
   p.set("style", state.playback.style);
   p.set("bass", state.playback.bass);
+  p.set("drums", state.playback.drums);
   p.set("voicing", state.playback.voicing);
   state.sections.forEach((sec) => p.append("section", sec.progression));
   p.set("arrangement", state.arrangement);
@@ -1003,6 +1012,7 @@ export function makeProgressionPlayer(config: PlayerConfig) {
       "bars" in partial ||
       "style" in partial ||
       "bass" in partial ||
+      "drums" in partial ||
       "voicing" in partial ||
       "cycle" in partial ||
       "customCycleKeys" in partial
@@ -1050,6 +1060,7 @@ export function makeProgressionPlayer(config: PlayerConfig) {
           chordSequence: chords,
           style: STYLES[_state.playback.style]!,
           bassVariant: _state.playback.bass,
+          drumVariant: _state.playback.drums,
           voicing: _state.playback.voicing,
           key: _state.playback.key,
           cycle: _state.playback.cycle,
@@ -1087,6 +1098,7 @@ export function makeProgressionPlayer(config: PlayerConfig) {
       tempo: _state.playback.tempo,
       style: STYLES[_state.playback.style]!,
       bassVariant: _state.playback.bass,
+      drumVariant: _state.playback.drums,
       voicing: _state.playback.voicing,
       advance: _state.playback.advance,
       startPosIndex,
