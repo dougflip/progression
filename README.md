@@ -6,7 +6,7 @@ and loop it while you practice scales, solos, or chord shapes.
 
 ![Progression App Screenshot](./e2e/tests/snapshots/chromium-desktop/multi-section.png)
 
-App: https://dougflip.github.io/progression
+App: https://dougflip.github.io/progression  
 Docs: https://dougflip.github.io/progression/docs.html
 
 ## Local Development
