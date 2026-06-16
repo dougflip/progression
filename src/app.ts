@@ -274,15 +274,20 @@ function renderReadout(state: AppState): void {
   readoutTempoEl.textContent = String(state.playback.tempo);
   tempoDisplayEl.textContent = `${state.playback.tempo} BPM`;
   readoutStyleEl.textContent = STYLE_LABELS[state.playback.style] ?? state.playback.style;
+  readoutStyleEl.setAttribute("aria-label", `Style: ${state.playback.style}`);
   readoutBassEl.textContent = BASS_LABELS[state.playback.bass] ?? state.playback.bass;
   readoutBassEl.setAttribute("aria-label", `Bass: ${state.playback.bass}`);
   readoutDrumsEl.textContent = DRUM_LABELS[state.playback.drums] ?? state.playback.drums;
   readoutDrumsEl.setAttribute("aria-label", `Drums: ${state.playback.drums}`);
   readoutVoicingEl.textContent =
     VOICING_PILL_LABELS[state.playback.voicing] ?? state.playback.voicing;
-  readoutBarsEl.textContent = `${state.playback.bars} ${state.playback.bars === 1 ? "bar" : "bars"}`;
+  readoutVoicingEl.setAttribute("aria-label", `Voicing: ${state.playback.voicing}`);
+  readoutBarsEl.textContent = `‖ ${state.playback.bars} ${state.playback.bars === 1 ? "bar" : "bars"}`;
+  readoutBarsEl.setAttribute("aria-label", `Bars: ${state.playback.bars}`);
   readoutCycleEl.textContent = CYCLE_LABELS[state.playback.cycle] ?? state.playback.cycle;
-  readoutAdvanceEl.textContent = state.playback.advance === "manual" ? "Manual" : "Auto";
+  readoutCycleEl.setAttribute("aria-label", `Loop: ${state.playback.cycle}`);
+  readoutAdvanceEl.textContent = state.playback.advance === "manual" ? "⏭️ Manual" : "⏭️ Auto";
+  readoutAdvanceEl.setAttribute("aria-label", `Advance: ${state.playback.advance}`);
 
   const isCustom = state.playback.cycle === "custom";
   customKeysEditorEl.hidden = !isCustom;
