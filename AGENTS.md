@@ -8,6 +8,11 @@ Make sure all proposed plans and changes adhere to the guidelines in ARCHITECTUR
 2. Ensure no updates to README or ARCHITECTURE are necessary as part of the change.
 3. Ask the user if we should run the end to end tests.
 
+## Before Pull Request
+
+1. Ask the user if e2e tests have been run
+2. Ensure HTML documentation is up to date. If it is not suggest updating and follow `docs-guidelines.md`.
+
 ## Manual Testing
 
 The **user** will handle all manual testing.

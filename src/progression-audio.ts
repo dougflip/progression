@@ -323,7 +323,7 @@ export function makeProgressionAudio(): AudioEngine {
     return { songBars, posOffsets, chipOffsets };
   }
 
-  function _buildDrums(style: StyleDef, drumsOn: boolean): void {
+  function _buildDrums(style: StyleDef, drumVariant: string, drumsOn: boolean): void {
     _kick = new Tone.MembraneSynth({
       pitchDecay: 0.05,
       octaves: 6,
@@ -351,7 +351,7 @@ export function makeProgressionAudio(): AudioEngine {
       (time, hit) => {
         if (hit && _kick) _safe(() => _kick!.triggerAttackRelease("C1", "8n", time));
       },
-      style.kick,
+      style.kick[drumVariant as keyof typeof style.kick] ?? style.kick.simple,
       "16n",
     ).start(0);
 
@@ -359,7 +359,7 @@ export function makeProgressionAudio(): AudioEngine {
       (time, hit) => {
         if (hit && _snare) _safe(() => _snare!.triggerAttackRelease("16n", time));
       },
-      style.snare,
+      style.snare[drumVariant as keyof typeof style.snare] ?? style.snare.simple,
       "16n",
     ).start(0);
 
@@ -367,7 +367,7 @@ export function makeProgressionAudio(): AudioEngine {
       (time, hit) => {
         if (hit && _hat) _safe(() => _hat!.triggerAttackRelease("32n", time));
       },
-      style.hat,
+      style.hat[drumVariant as keyof typeof style.hat] ?? style.hat.simple,
       "16n",
     ).start(0);
 
@@ -439,6 +439,7 @@ export function makeProgressionAudio(): AudioEngine {
       tempo,
       style,
       bassVariant,
+      drumVariant,
       voicing,
       advance,
       startPosIndex = 0,
@@ -480,7 +481,7 @@ export function makeProgressionAudio(): AudioEngine {
         customCycleKeys,
         voicing,
       );
-      _buildDrums(style, mix.drumsOn);
+      _buildDrums(style, drumVariant, mix.drumsOn);
       _buildBass(chordSequence, cycle, customCycleKeys, style, bassVariant, mix.bassOn);
 
       Tone.Transport.bpm.value = tempo;
@@ -505,6 +506,7 @@ export function makeProgressionAudio(): AudioEngine {
       chordSequence,
       style,
       bassVariant,
+      drumVariant,
       voicing,
       key,
       cycle,
@@ -520,7 +522,7 @@ export function makeProgressionAudio(): AudioEngine {
           _teardown();
           _buildSynth();
           _buildPart(chordSequence, cycle, customCycleKeys, voicing);
-          _buildDrums(style, _muteState.drumsOn);
+          _buildDrums(style, drumVariant, _muteState.drumsOn);
           _buildBass(chordSequence, cycle, customCycleKeys, style, bassVariant, _muteState.bassOn);
           if (_channels) _channels.chord.mute = !_muteState.chordsOn;
         } catch (e) {

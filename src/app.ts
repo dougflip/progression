@@ -5,6 +5,8 @@ import {
   STYLE_LABELS,
   BASS_OPTIONS,
   BASS_LABELS,
+  DRUM_OPTIONS,
+  DRUM_LABELS,
   VOICING_OPTIONS,
   VOICING_PILL_LABELS,
   CYCLE_OPTIONS,
@@ -66,6 +68,7 @@ const scrubberTrack = $("scrubber-track") as HTMLDivElement;
 const readoutTempoEl = $("readout-tempo") as HTMLElement;
 const readoutStyleEl = $("readout-style") as HTMLButtonElement;
 const readoutBassEl = $("readout-bass") as HTMLButtonElement;
+const readoutDrumsEl = $("readout-drums") as HTMLButtonElement;
 const readoutVoicingEl = $("readout-voicing") as HTMLButtonElement;
 const readoutBarsEl = $("readout-bars") as HTMLButtonElement;
 const readoutCycleEl = $("readout-cycle") as HTMLButtonElement;
@@ -271,12 +274,20 @@ function renderReadout(state: AppState): void {
   readoutTempoEl.textContent = String(state.playback.tempo);
   tempoDisplayEl.textContent = `${state.playback.tempo} BPM`;
   readoutStyleEl.textContent = STYLE_LABELS[state.playback.style] ?? state.playback.style;
+  readoutStyleEl.setAttribute("aria-label", `Style: ${state.playback.style}`);
   readoutBassEl.textContent = BASS_LABELS[state.playback.bass] ?? state.playback.bass;
+  readoutBassEl.setAttribute("aria-label", `Bass: ${state.playback.bass}`);
+  readoutDrumsEl.textContent = DRUM_LABELS[state.playback.drums] ?? state.playback.drums;
+  readoutDrumsEl.setAttribute("aria-label", `Drums: ${state.playback.drums}`);
   readoutVoicingEl.textContent =
     VOICING_PILL_LABELS[state.playback.voicing] ?? state.playback.voicing;
-  readoutBarsEl.textContent = `${state.playback.bars} ${state.playback.bars === 1 ? "bar" : "bars"}`;
+  readoutVoicingEl.setAttribute("aria-label", `Voicing: ${state.playback.voicing}`);
+  readoutBarsEl.textContent = `‖ ${state.playback.bars} ${state.playback.bars === 1 ? "bar" : "bars"}`;
+  readoutBarsEl.setAttribute("aria-label", `Bars: ${state.playback.bars}`);
   readoutCycleEl.textContent = CYCLE_LABELS[state.playback.cycle] ?? state.playback.cycle;
-  readoutAdvanceEl.textContent = state.playback.advance === "manual" ? "Manual" : "Auto";
+  readoutCycleEl.setAttribute("aria-label", `Loop: ${state.playback.cycle}`);
+  readoutAdvanceEl.textContent = state.playback.advance === "manual" ? "⏭️ Manual" : "⏭️ Auto";
+  readoutAdvanceEl.setAttribute("aria-label", `Advance: ${state.playback.advance}`);
 
   const isCustom = state.playback.cycle === "custom";
   customKeysEditorEl.hidden = !isCustom;
@@ -305,6 +316,11 @@ function renderReadout(state: AppState): void {
   document
     .querySelectorAll<HTMLElement>("[data-bass]")
     .forEach((btn) => btn.classList.toggle("active", btn.dataset["bass"] === state.playback.bass));
+  document
+    .querySelectorAll<HTMLElement>("[data-drums]")
+    .forEach((btn) =>
+      btn.classList.toggle("active", btn.dataset["drums"] === state.playback.drums),
+    );
   document
     .querySelectorAll<HTMLElement>("[data-voicing]")
     .forEach((btn) =>
@@ -812,6 +828,11 @@ document
     btn.addEventListener("click", () => app.setPlayback({ bass: btn.dataset["bass"] ?? "" })),
   );
 document
+  .querySelectorAll<HTMLElement>("[data-drums]")
+  .forEach((btn) =>
+    btn.addEventListener("click", () => app.setPlayback({ drums: btn.dataset["drums"] ?? "" })),
+  );
+document
   .querySelectorAll<HTMLElement>("[data-voicing]")
   .forEach((btn) =>
     btn.addEventListener("click", () => app.setPlayback({ voicing: btn.dataset["voicing"] ?? "" })),
@@ -828,6 +849,9 @@ readoutStyleEl.addEventListener("click", () =>
 );
 readoutBassEl.addEventListener("click", () =>
   app.setPlayback({ bass: cycleOpt(BASS_OPTIONS, app.getState().playback.bass) }),
+);
+readoutDrumsEl.addEventListener("click", () =>
+  app.setPlayback({ drums: cycleOpt(DRUM_OPTIONS, app.getState().playback.drums) }),
 );
 readoutVoicingEl.addEventListener("click", () =>
   app.setPlayback({ voicing: cycleOpt(VOICING_OPTIONS, app.getState().playback.voicing) }),

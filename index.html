@@ -998,12 +998,13 @@
       <div id="readout">
         <button type="button" class="readout-btn" id="readout-style">Funk</button>
         <button type="button" class="readout-btn" id="readout-bass">Busy</button>
+        <button type="button" class="readout-btn" id="readout-drums">Simple</button>
         <button type="button" class="readout-btn" id="readout-voicing">Lead/loop</button>
         <div class="readout-row-break"></div>
         <button type="button" class="readout-btn" id="readout-bars">2 bars</button>
         <span class="tempo-group">
           <button type="button" class="readout-btn" id="tempo-toggle">
-            <strong id="readout-tempo">85</strong> BPM
+            ⏱️ <strong id="readout-tempo">85</strong> BPM
           </button>
           <div id="tempo-picker" hidden>
             <div class="tempo-controls">
@@ -1112,6 +1113,11 @@
           <div class="option-group" id="bass-group">
             <button type="button" class="option-btn" data-bass="simple">Simple</button>
             <button type="button" class="option-btn active" data-bass="busy">Busy</button>
+          </div>
+          <label class="field-label">Drums</label>
+          <div class="option-group" id="drums-group">
+            <button type="button" class="option-btn active" data-drums="simple">Simple</button>
+            <button type="button" class="option-btn" data-drums="busy">Busy</button>
           </div>
           <label class="field-label">Voicing</label>
           <div class="option-group" id="voicing-group">
