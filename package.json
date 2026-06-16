@@ -2,7 +2,7 @@
   "name": "@dougflip/progression",
   "private": true,
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host",
     "build": "vite build",
     "check": "concurrently npm:format:check npm:lint npm:typecheck",
     "format": "oxfmt --write",
