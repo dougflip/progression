@@ -116,6 +116,11 @@ Four source files with clear per-file purpose: logic, audio, view, markup. The s
 
 `progression-audio.ts` and `src/app.ts` are well-scoped and not under pressure.
 
+## References
+
+### drumhaus
+https://github.com/mxfng/drumhaus — a polished Tone.js drum machine that uses **sample playback** (`Tone.Player` loading `.wav` files from classic drum machines like the Roland TR-808). Its `.dhkit` format is a clean JSON schema (`kind: "drumhaus.kit"`, `version: 1`) mapping each instrument to a sample path. Good reference if/when this app adds an optional sample mode to replace or augment the current synthesis approach.
+
 ## Planned features
 
 ### Section-level playback overrides
