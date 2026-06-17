@@ -64,6 +64,8 @@ export interface StyleDef {
   snare: StyleDrumPhrase;
   hat: StyleDrumPhrase;
   openHat?: Partial<StyleDrumPhrase>;
+  tom?: Partial<StyleDrumPhrase>;
+  tom2?: Partial<StyleDrumPhrase>;
   bass: {
     simple: StyleBassPhrase;
     busy: StyleBassPhrase;
@@ -471,6 +473,12 @@ export const STYLES: Record<string, StyleDef> = {
     hat: {
       simple: [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
       busy: [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
+    },
+    tom: {
+      busy: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    },
+    tom2: {
+      busy: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
     },
     bass: {
       simple: {

@@ -65,10 +65,14 @@ export function makeProgressionAudio(): AudioEngine {
   let _hat: Tone.MetalSynth | null = null;
   let _openHat: Tone.NoiseSynth | null = null;
   let _openHatFilter: Tone.Filter | null = null;
+  let _tom: Tone.MembraneSynth | null = null;
+  let _tom2: Tone.MembraneSynth | null = null;
   let _kickSeq: Tone.Sequence<number> | null = null;
   let _snareSeq: Tone.Sequence<number> | null = null;
   let _hatSeq: Tone.Sequence<number> | null = null;
   let _openHatSeq: Tone.Sequence<number> | null = null;
+  let _tomSeq: Tone.Sequence<number> | null = null;
+  let _tom2Seq: Tone.Sequence<number> | null = null;
   let _bass: Tone.MonoSynth | null = null;
   let _bassSeq: Tone.Sequence<string | null> | null = null;
   let _beatSeq: Tone.Sequence<number> | null = null;
@@ -145,14 +149,44 @@ export function makeProgressionAudio(): AudioEngine {
     safeCall(_part, "stop");
     safeCall(_part, "dispose");
     _part = null;
-    for (const s of [_kickSeq, _snareSeq, _hatSeq, _openHatSeq, _bassSeq, _beatSeq]) {
+    for (const s of [
+      _kickSeq,
+      _snareSeq,
+      _hatSeq,
+      _openHatSeq,
+      _tomSeq,
+      _tom2Seq,
+      _bassSeq,
+      _beatSeq,
+    ]) {
       safeCall(s, "stop");
       safeCall(s, "dispose");
     }
-    _kickSeq = _snareSeq = _hatSeq = _openHatSeq = _bassSeq = _beatSeq = null;
-    for (const v of [_synth, _kick, _snare, _hat, _openHat, _openHatFilter, _bass, _reverb])
+    _kickSeq = _snareSeq = _hatSeq = _openHatSeq = _tomSeq = _tom2Seq = _bassSeq = _beatSeq = null;
+    for (const v of [
+      _synth,
+      _kick,
+      _snare,
+      _hat,
+      _openHat,
+      _openHatFilter,
+      _tom,
+      _tom2,
+      _bass,
+      _reverb,
+    ])
       safeCall(v, "dispose");
-    _synth = _kick = _snare = _hat = _openHat = _openHatFilter = _bass = _reverb = null;
+    _synth =
+      _kick =
+      _snare =
+      _hat =
+      _openHat =
+      _openHatFilter =
+      _tom =
+      _tom2 =
+      _bass =
+      _reverb =
+        null;
     _safe(() => Tone.Draw.cancel(0));
     _safe(() => Tone.Transport.cancel());
   }
@@ -362,6 +396,13 @@ export function makeProgressionAudio(): AudioEngine {
     }).connect(_openHatFilter);
     _openHat.volume.value = -18;
 
+    _tom = new Tone.MembraneSynth({
+      pitchDecay: 0.025,
+      octaves: 3,
+      envelope: { attack: 0.0006, decay: 0.3, sustain: 0, release: 0.8 },
+    }).connect(_channels!.drum);
+    _tom.volume.value = -4;
+
     _kickSeq = new Tone.Sequence<number>(
       (time, hit) => {
         if (hit && _kick) _safe(() => _kick!.triggerAttackRelease("C1", "8n", time));
@@ -397,8 +438,38 @@ export function makeProgressionAudio(): AudioEngine {
       ).start(0);
     }
 
+    const tomPattern = style.tom?.[drumVariant as keyof typeof style.tom];
+    if (tomPattern) {
+      _tomSeq = new Tone.Sequence<number>(
+        (time, hit) => {
+          if (hit && _tom) _safe(() => _tom!.triggerAttackRelease("A1", "8n", time));
+        },
+        tomPattern,
+        "16n",
+      ).start(0);
+    }
+
+    _tom2 = new Tone.MembraneSynth({
+      pitchDecay: 0.025,
+      octaves: 3,
+      envelope: { attack: 0.0006, decay: 0.3, sustain: 0, release: 0.8 },
+    }).connect(_channels!.drum);
+    _tom2.volume.value = -4;
+
+    const tom2Pattern = style.tom2?.[drumVariant as keyof typeof style.tom2];
+    if (tom2Pattern) {
+      _tom2Seq = new Tone.Sequence<number>(
+        (time, hit) => {
+          if (hit && _tom2) _safe(() => _tom2!.triggerAttackRelease("D2", "8n", time));
+        },
+        tom2Pattern,
+        "16n",
+      ).start(0);
+    }
+
     const muted = !drumsOn;
-    for (const s of [_kickSeq, _snareSeq, _hatSeq, _openHatSeq]) if (s) s.mute = muted;
+    for (const s of [_kickSeq, _snareSeq, _hatSeq, _openHatSeq, _tomSeq, _tom2Seq])
+      if (s) s.mute = muted;
   }
 
   function _buildBass(
@@ -590,7 +661,8 @@ export function makeProgressionAudio(): AudioEngine {
         _channels.bass.mute = muted;
         if (!muted) _channels.bass.volume.value = _toDb(_volState.bass);
       } else if (channel === "drums") {
-        for (const s of [_kickSeq, _snareSeq, _hatSeq, _openHatSeq]) if (s) s.mute = muted;
+        for (const s of [_kickSeq, _snareSeq, _hatSeq, _openHatSeq, _tomSeq, _tom2Seq])
+          if (s) s.mute = muted;
       }
     },
 
