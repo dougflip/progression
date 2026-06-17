@@ -65,12 +65,15 @@ export function makeProgressionAudio(): AudioEngine {
   let _hat: Tone.MetalSynth | null = null;
   let _openHat: Tone.NoiseSynth | null = null;
   let _openHatFilter: Tone.Filter | null = null;
+  let _clap: Tone.NoiseSynth | null = null;
+  let _clapFilter: Tone.Filter | null = null;
   let _tom: Tone.MembraneSynth | null = null;
   let _tom2: Tone.MembraneSynth | null = null;
   let _kickSeq: Tone.Sequence<number> | null = null;
   let _snareSeq: Tone.Sequence<number> | null = null;
   let _hatSeq: Tone.Sequence<number> | null = null;
   let _openHatSeq: Tone.Sequence<number> | null = null;
+  let _clapSeq: Tone.Sequence<number> | null = null;
   let _tomSeq: Tone.Sequence<number> | null = null;
   let _tom2Seq: Tone.Sequence<number> | null = null;
   let _bass: Tone.MonoSynth | null = null;
@@ -154,6 +157,7 @@ export function makeProgressionAudio(): AudioEngine {
       _snareSeq,
       _hatSeq,
       _openHatSeq,
+      _clapSeq,
       _tomSeq,
       _tom2Seq,
       _bassSeq,
@@ -162,7 +166,16 @@ export function makeProgressionAudio(): AudioEngine {
       safeCall(s, "stop");
       safeCall(s, "dispose");
     }
-    _kickSeq = _snareSeq = _hatSeq = _openHatSeq = _tomSeq = _tom2Seq = _bassSeq = _beatSeq = null;
+    _kickSeq =
+      _snareSeq =
+      _hatSeq =
+      _openHatSeq =
+      _clapSeq =
+      _tomSeq =
+      _tom2Seq =
+      _bassSeq =
+      _beatSeq =
+        null;
     for (const v of [
       _synth,
       _kick,
@@ -170,6 +183,8 @@ export function makeProgressionAudio(): AudioEngine {
       _hat,
       _openHat,
       _openHatFilter,
+      _clap,
+      _clapFilter,
       _tom,
       _tom2,
       _bass,
@@ -182,6 +197,8 @@ export function makeProgressionAudio(): AudioEngine {
       _hat =
       _openHat =
       _openHatFilter =
+      _clap =
+      _clapFilter =
       _tom =
       _tom2 =
       _bass =
@@ -396,6 +413,17 @@ export function makeProgressionAudio(): AudioEngine {
     }).connect(_openHatFilter);
     _openHat.volume.value = -18;
 
+    _clapFilter = new Tone.Filter({
+      type: "highpass",
+      frequency: 1200,
+      Q: 0.8,
+    }).connect(_channels!.drum);
+    _clap = new Tone.NoiseSynth({
+      noise: { type: "white" },
+      envelope: { attack: 0.001, decay: 0.06, sustain: 0, release: 0.1 },
+    }).connect(_clapFilter);
+    _clap.volume.value = -12;
+
     _tom = new Tone.MembraneSynth({
       pitchDecay: 0.025,
       octaves: 3,
@@ -438,6 +466,17 @@ export function makeProgressionAudio(): AudioEngine {
       ).start(0);
     }
 
+    const clapPattern = style.clap?.[drumVariant as keyof typeof style.clap];
+    if (clapPattern) {
+      _clapSeq = new Tone.Sequence<number>(
+        (time, hit) => {
+          if (hit && _clap) _safe(() => _clap!.triggerAttackRelease("16n", time));
+        },
+        clapPattern,
+        "16n",
+      ).start(0);
+    }
+
     const tomPattern = style.tom?.[drumVariant as keyof typeof style.tom];
     if (tomPattern) {
       _tomSeq = new Tone.Sequence<number>(
@@ -468,7 +507,7 @@ export function makeProgressionAudio(): AudioEngine {
     }
 
     const muted = !drumsOn;
-    for (const s of [_kickSeq, _snareSeq, _hatSeq, _openHatSeq, _tomSeq, _tom2Seq])
+    for (const s of [_kickSeq, _snareSeq, _hatSeq, _openHatSeq, _clapSeq, _tomSeq, _tom2Seq])
       if (s) s.mute = muted;
   }
 
@@ -661,7 +700,7 @@ export function makeProgressionAudio(): AudioEngine {
         _channels.bass.mute = muted;
         if (!muted) _channels.bass.volume.value = _toDb(_volState.bass);
       } else if (channel === "drums") {
-        for (const s of [_kickSeq, _snareSeq, _hatSeq, _openHatSeq, _tomSeq, _tom2Seq])
+        for (const s of [_kickSeq, _snareSeq, _hatSeq, _openHatSeq, _clapSeq, _tomSeq, _tom2Seq])
           if (s) s.mute = muted;
       }
     },
