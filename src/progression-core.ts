@@ -63,6 +63,7 @@ export interface StyleDef {
   kick: StyleDrumPhrase;
   snare: StyleDrumPhrase;
   hat: StyleDrumPhrase;
+  openHat?: Partial<StyleDrumPhrase>;
   bass: {
     simple: StyleBassPhrase;
     busy: StyleBassPhrase;
@@ -388,6 +389,9 @@ export const STYLES: Record<string, StyleDef> = {
       simple: [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
       busy: [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
     },
+    openHat: {
+      busy: [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1],
+    },
     bass: {
       simple: {
         major: ["R", 0, 0, 0, "R", 0, 0, 0, "5", 0, 0, 0, "R", 0, 0, 0],
@@ -412,6 +416,10 @@ export const STYLES: Record<string, StyleDef> = {
       simple: [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
       busy: [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
     },
+    openHat: {
+      simple: [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1],
+      busy: [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1],
+    },
     bass: {
       simple: {
         major: ["R", 0, 0, 0, 0, 0, "R", 0, 0, 0, "R", 0, 0, 0, "5", 0],
@@ -435,6 +443,10 @@ export const STYLES: Record<string, StyleDef> = {
     hat: {
       simple: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
       busy: [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
+    },
+    openHat: {
+      simple: [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1],
+      busy: [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0],
     },
     bass: {
       simple: {

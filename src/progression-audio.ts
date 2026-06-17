@@ -63,9 +63,12 @@ export function makeProgressionAudio(): AudioEngine {
   let _kick: Tone.MembraneSynth | null = null;
   let _snare: Tone.NoiseSynth | null = null;
   let _hat: Tone.MetalSynth | null = null;
+  let _openHat: Tone.NoiseSynth | null = null;
+  let _openHatFilter: Tone.Filter | null = null;
   let _kickSeq: Tone.Sequence<number> | null = null;
   let _snareSeq: Tone.Sequence<number> | null = null;
   let _hatSeq: Tone.Sequence<number> | null = null;
+  let _openHatSeq: Tone.Sequence<number> | null = null;
   let _bass: Tone.MonoSynth | null = null;
   let _bassSeq: Tone.Sequence<string | null> | null = null;
   let _beatSeq: Tone.Sequence<number> | null = null;
@@ -142,13 +145,14 @@ export function makeProgressionAudio(): AudioEngine {
     safeCall(_part, "stop");
     safeCall(_part, "dispose");
     _part = null;
-    for (const s of [_kickSeq, _snareSeq, _hatSeq, _bassSeq, _beatSeq]) {
+    for (const s of [_kickSeq, _snareSeq, _hatSeq, _openHatSeq, _bassSeq, _beatSeq]) {
       safeCall(s, "stop");
       safeCall(s, "dispose");
     }
-    _kickSeq = _snareSeq = _hatSeq = _bassSeq = _beatSeq = null;
-    for (const v of [_synth, _kick, _snare, _hat, _bass, _reverb]) safeCall(v, "dispose");
-    _synth = _kick = _snare = _hat = _bass = _reverb = null;
+    _kickSeq = _snareSeq = _hatSeq = _openHatSeq = _bassSeq = _beatSeq = null;
+    for (const v of [_synth, _kick, _snare, _hat, _openHat, _openHatFilter, _bass, _reverb])
+      safeCall(v, "dispose");
+    _synth = _kick = _snare = _hat = _openHat = _openHatFilter = _bass = _reverb = null;
     _safe(() => Tone.Draw.cancel(0));
     _safe(() => Tone.Transport.cancel());
   }
@@ -347,6 +351,17 @@ export function makeProgressionAudio(): AudioEngine {
     _hat.frequency.value = 250;
     _hat.volume.value = -28;
 
+    _openHatFilter = new Tone.Filter({
+      type: "highpass",
+      frequency: 7000,
+      Q: 0.5,
+    }).connect(_channels!.drum);
+    _openHat = new Tone.NoiseSynth({
+      noise: { type: "white" },
+      envelope: { attack: 0.001, decay: 0.4, sustain: 0, release: 0.5 },
+    }).connect(_openHatFilter);
+    _openHat.volume.value = -18;
+
     _kickSeq = new Tone.Sequence<number>(
       (time, hit) => {
         if (hit && _kick) _safe(() => _kick!.triggerAttackRelease("C1", "8n", time));
@@ -371,8 +386,19 @@ export function makeProgressionAudio(): AudioEngine {
       "16n",
     ).start(0);
 
+    const openHatPattern = style.openHat?.[drumVariant as keyof typeof style.openHat];
+    if (openHatPattern) {
+      _openHatSeq = new Tone.Sequence<number>(
+        (time, hit) => {
+          if (hit && _openHat) _safe(() => _openHat!.triggerAttackRelease("8n", time));
+        },
+        openHatPattern,
+        "16n",
+      ).start(0);
+    }
+
     const muted = !drumsOn;
-    for (const s of [_kickSeq, _snareSeq, _hatSeq]) if (s) s.mute = muted;
+    for (const s of [_kickSeq, _snareSeq, _hatSeq, _openHatSeq]) if (s) s.mute = muted;
   }
 
   function _buildBass(
@@ -564,7 +590,7 @@ export function makeProgressionAudio(): AudioEngine {
         _channels.bass.mute = muted;
         if (!muted) _channels.bass.volume.value = _toDb(_volState.bass);
       } else if (channel === "drums") {
-        for (const s of [_kickSeq, _snareSeq, _hatSeq]) if (s) s.mute = muted;
+        for (const s of [_kickSeq, _snareSeq, _hatSeq, _openHatSeq]) if (s) s.mute = muted;
       }
     },
 
