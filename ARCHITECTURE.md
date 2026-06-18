@@ -116,6 +116,12 @@ Four source files with clear per-file purpose: logic, audio, view, markup. The s
 
 `progression-audio.ts` and `src/app.ts` are well-scoped and not under pressure.
 
+## References
+
+### drumhaus
+
+https://github.com/mxfng/drumhaus — a polished Tone.js drum machine that uses **sample playback** (`Tone.Player` loading `.wav` files from classic drum machines like the Roland TR-808). Its `.dhkit` format is a clean JSON schema (`kind: "drumhaus.kit"`, `version: 1`) mapping each instrument to a sample path. Good reference if/when this app adds an optional sample mode to replace or augment the current synthesis approach.
+
 ## Planned features
 
 ### Section-level playback overrides
@@ -125,3 +131,20 @@ Four source files with clear per-file purpose: logic, audio, view, markup. The s
 ### Foot pedal support
 
 HID-keyboard path: 2-switch + tap/long-press = 4 configurable actions. App-side mode toggle for more. Host-level feature — calls `app.togglePlay()` and `app.queueJump()`. Core needs no changes.
+
+### Practice Idea addition
+
+A progression which allows you to practice mixlydian mode
+
+## Issues and Fixes
+
+### Changing options during playback
+
+Currently changing an option is "live" but usually drops some portion of audio until the next "phrase".
+Wondering if we "schedule" changes for the next chord change if this problem would go away?
+The tradeoff would be changes are not instant.
+
+### Mute bug
+
+I need concrete steps, but I've had mute (and volume) NOT work for me on occassion.
+It would take several attempts or sometimes refreshing the app.
