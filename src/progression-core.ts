@@ -74,9 +74,9 @@ export interface StyleBassPhrase {
 }
 
 export interface StyleVariant {
-  kick: DrumPattern;
-  snare: DrumPattern;
-  hat: DrumPattern;
+  kick?: DrumPattern;
+  snare?: DrumPattern;
+  hat?: DrumPattern;
   openHat?: DrumPattern;
   crash?: DrumPattern;
   ride?: DrumPattern;
