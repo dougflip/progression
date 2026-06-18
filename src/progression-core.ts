@@ -65,6 +65,7 @@ export interface StyleDef {
   hat: StyleDrumPhrase;
   openHat?: Partial<StyleDrumPhrase>;
   crash?: Partial<StyleDrumPhrase>;
+  ride?: Partial<StyleDrumPhrase>;
   clap?: Partial<StyleDrumPhrase>;
   tom?: Partial<StyleDrumPhrase>;
   tom2?: Partial<StyleDrumPhrase>;
@@ -451,6 +452,9 @@ export const STYLES: Record<string, StyleDef> = {
     openHat: {
       simple: [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1],
       busy: [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0],
+    },
+    ride: {
+      simple: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
     },
     bass: {
       simple: {

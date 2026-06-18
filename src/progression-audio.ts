@@ -67,6 +67,8 @@ export function makeProgressionAudio(): AudioEngine {
   let _openHatFilter: Tone.Filter | null = null;
   let _crash: Tone.NoiseSynth | null = null;
   let _crashFilter: Tone.Filter | null = null;
+  let _ride: Tone.NoiseSynth | null = null;
+  let _rideFilter: Tone.Filter | null = null;
   let _clap: Tone.NoiseSynth | null = null;
   let _clapFilter: Tone.Filter | null = null;
   let _tom: Tone.MembraneSynth | null = null;
@@ -76,6 +78,7 @@ export function makeProgressionAudio(): AudioEngine {
   let _hatSeq: Tone.Sequence<number> | null = null;
   let _openHatSeq: Tone.Sequence<number> | null = null;
   let _crashSeq: Tone.Sequence<number> | null = null;
+  let _rideSeq: Tone.Sequence<number> | null = null;
   let _clapSeq: Tone.Sequence<number> | null = null;
   let _tomSeq: Tone.Sequence<number> | null = null;
   let _tom2Seq: Tone.Sequence<number> | null = null;
@@ -161,6 +164,7 @@ export function makeProgressionAudio(): AudioEngine {
       _hatSeq,
       _openHatSeq,
       _crashSeq,
+      _rideSeq,
       _clapSeq,
       _tomSeq,
       _tom2Seq,
@@ -175,6 +179,7 @@ export function makeProgressionAudio(): AudioEngine {
       _hatSeq =
       _openHatSeq =
       _crashSeq =
+      _rideSeq =
       _clapSeq =
       _tomSeq =
       _tom2Seq =
@@ -190,6 +195,8 @@ export function makeProgressionAudio(): AudioEngine {
       _openHatFilter,
       _crash,
       _crashFilter,
+      _ride,
+      _rideFilter,
       _clap,
       _clapFilter,
       _tom,
@@ -206,6 +213,8 @@ export function makeProgressionAudio(): AudioEngine {
       _openHatFilter =
       _crash =
       _crashFilter =
+      _ride =
+      _rideFilter =
       _clap =
       _clapFilter =
       _tom =
@@ -433,6 +442,17 @@ export function makeProgressionAudio(): AudioEngine {
     }).connect(_crashFilter);
     _crash.volume.value = -14;
 
+    _rideFilter = new Tone.Filter({
+      type: "highpass",
+      frequency: 6000,
+      Q: 0.5,
+    }).connect(_channels!.drum);
+    _ride = new Tone.NoiseSynth({
+      noise: { type: "white" },
+      envelope: { attack: 0.001, decay: 0.15, sustain: 0, release: 0.2 },
+    }).connect(_rideFilter);
+    _ride.volume.value = -22;
+
     _clapFilter = new Tone.Filter({
       type: "highpass",
       frequency: 1200,
@@ -497,6 +517,17 @@ export function makeProgressionAudio(): AudioEngine {
       ).start(0);
     }
 
+    const ridePattern = style.ride?.[drumVariant as keyof typeof style.ride];
+    if (ridePattern) {
+      _rideSeq = new Tone.Sequence<number>(
+        (time, hit) => {
+          if (hit && _ride) _safe(() => _ride!.triggerAttackRelease("32n", time));
+        },
+        ridePattern,
+        "16n",
+      ).start(0);
+    }
+
     const clapPattern = style.clap?.[drumVariant as keyof typeof style.clap];
     if (clapPattern) {
       _clapSeq = new Tone.Sequence<number>(
@@ -544,6 +575,7 @@ export function makeProgressionAudio(): AudioEngine {
       _hatSeq,
       _openHatSeq,
       _crashSeq,
+      _rideSeq,
       _clapSeq,
       _tomSeq,
       _tom2Seq,
@@ -746,6 +778,7 @@ export function makeProgressionAudio(): AudioEngine {
           _hatSeq,
           _openHatSeq,
           _crashSeq,
+          _rideSeq,
           _clapSeq,
           _tomSeq,
           _tom2Seq,
