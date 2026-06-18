@@ -67,7 +67,7 @@ export function makeProgressionAudio(): AudioEngine {
     hat: new Tone.Player("samples/hihat-closed.ogg"),
     openHat: new Tone.Player("samples/hihat-open.ogg"),
     crash: new Tone.Player("samples/crash-l.ogg"),
-    ride: new Tone.Player("samples/ride.ogg"),
+    ride: new Tone.Player("samples/ride.ogg").set({ volume: -8 }),
     tom: new Tone.Player("samples/tom1.ogg"),
     tom2: new Tone.Player("samples/tom2.ogg"),
   };
