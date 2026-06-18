@@ -58,6 +58,20 @@ function safeCall(obj: unknown, method: "stop" | "dispose"): void {
 export function makeProgressionAudio(): AudioEngine {
   // ── Audio nodes ────────────────────────────────────────────────────────────
   let _channels: Channels | null = null; // created once, survives rebuild
+
+  // Sample players — created immediately so loading begins before first play.
+  // Connected to drum channel in _initChannels. Never torn down.
+  const _sp = {
+    kick: new Tone.Player("samples/kick.ogg"),
+    snare: new Tone.Player("samples/snare1.ogg"),
+    hat: new Tone.Player("samples/hihat-closed.ogg"),
+    openHat: new Tone.Player("samples/hihat-open.ogg"),
+    crash: new Tone.Player("samples/crash-l.ogg"),
+    ride: new Tone.Player("samples/ride.ogg"),
+    tom: new Tone.Player("samples/tom1.ogg"),
+    tom2: new Tone.Player("samples/tom2.ogg"),
+  };
+
   let _synth: Tone.PolySynth | null = null;
   let _reverb: Tone.Reverb | null = null;
   let _part: Tone.Part<PartEvent> | null = null;
@@ -152,6 +166,7 @@ export function makeProgressionAudio(): AudioEngine {
     master.volume.value = _toDb(masterVol);
     chord.mute = !chordsOn;
     bass.mute = !bassOn;
+    for (const player of Object.values(_sp)) player.connect(drum);
     _channels = { chord, bass, drum, master };
   }
 
@@ -397,6 +412,17 @@ export function makeProgressionAudio(): AudioEngine {
     return { songBars, posOffsets, chipOffsets };
   }
 
+  function _triggerDrum(time: number, player: Tone.Player, fallback: () => void): void {
+    if (player.loaded) {
+      _safe(() => {
+        player.stop(time);
+        player.start(time);
+      });
+    } else {
+      _safe(fallback);
+    }
+  }
+
   function _buildDrums(style: StyleDef, drumVariant: string, drumsOn: boolean): void {
     _kick = new Tone.MembraneSynth({
       pitchDecay: 0.05,
@@ -483,7 +509,7 @@ export function makeProgressionAudio(): AudioEngine {
 
     _kickSeq = new Tone.Sequence<number>(
       (time, hit) => {
-        if (hit && _kick) _safe(() => _kick!.triggerAttackRelease("C1", "8n", time));
+        if (hit) _triggerDrum(time, _sp.kick, () => _kick!.triggerAttackRelease("C1", "8n", time));
       },
       v.kick,
       "16n",
@@ -491,7 +517,7 @@ export function makeProgressionAudio(): AudioEngine {
 
     _snareSeq = new Tone.Sequence<number>(
       (time, hit) => {
-        if (hit && _snare) _safe(() => _snare!.triggerAttackRelease("16n", time));
+        if (hit) _triggerDrum(time, _sp.snare, () => _snare!.triggerAttackRelease("16n", time));
       },
       v.snare,
       "16n",
@@ -499,7 +525,7 @@ export function makeProgressionAudio(): AudioEngine {
 
     _hatSeq = new Tone.Sequence<number>(
       (time, hit) => {
-        if (hit && _hat) _safe(() => _hat!.triggerAttackRelease("32n", time));
+        if (hit) _triggerDrum(time, _sp.hat, () => _hat!.triggerAttackRelease("32n", time));
       },
       v.hat,
       "16n",
@@ -508,7 +534,8 @@ export function makeProgressionAudio(): AudioEngine {
     if (v.openHat) {
       _openHatSeq = new Tone.Sequence<number>(
         (time, hit) => {
-          if (hit && _openHat) _safe(() => _openHat!.triggerAttackRelease("8n", time));
+          if (hit)
+            _triggerDrum(time, _sp.openHat, () => _openHat!.triggerAttackRelease("8n", time));
         },
         v.openHat,
         "16n",
@@ -518,7 +545,7 @@ export function makeProgressionAudio(): AudioEngine {
     if (v.crash) {
       _crashSeq = new Tone.Sequence<number>(
         (time, hit) => {
-          if (hit && _crash) _safe(() => _crash!.triggerAttackRelease("4n", time));
+          if (hit) _triggerDrum(time, _sp.crash, () => _crash!.triggerAttackRelease("4n", time));
         },
         v.crash,
         "16n",
@@ -528,7 +555,7 @@ export function makeProgressionAudio(): AudioEngine {
     if (v.ride) {
       _rideSeq = new Tone.Sequence<number>(
         (time, hit) => {
-          if (hit && _ride) _safe(() => _ride!.triggerAttackRelease("32n", time));
+          if (hit) _triggerDrum(time, _sp.ride, () => _ride!.triggerAttackRelease("32n", time));
         },
         v.ride,
         "16n",
@@ -548,7 +575,7 @@ export function makeProgressionAudio(): AudioEngine {
     if (v.tom) {
       _tomSeq = new Tone.Sequence<number>(
         (time, hit) => {
-          if (hit && _tom) _safe(() => _tom!.triggerAttackRelease("A1", "8n", time));
+          if (hit) _triggerDrum(time, _sp.tom, () => _tom!.triggerAttackRelease("A1", "8n", time));
         },
         v.tom,
         "16n",
@@ -558,7 +585,8 @@ export function makeProgressionAudio(): AudioEngine {
     if (v.tom2) {
       _tom2Seq = new Tone.Sequence<number>(
         (time, hit) => {
-          if (hit && _tom2) _safe(() => _tom2!.triggerAttackRelease("D2", "8n", time));
+          if (hit)
+            _triggerDrum(time, _sp.tom2, () => _tom2!.triggerAttackRelease("D2", "8n", time));
         },
         v.tom2,
         "16n",
