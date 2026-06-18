@@ -14,6 +14,7 @@ import {
   getShiftsForCycle,
   type SongChord,
   type StyleDef,
+  type DrumOption,
   type ChordTickEvent,
   type AudioStartOpts,
   type AudioRebuildOpts,
@@ -471,85 +472,6 @@ export function makeProgressionAudio(): AudioEngine {
     }).connect(_channels!.drum);
     _tom.volume.value = -4;
 
-    _kickSeq = new Tone.Sequence<number>(
-      (time, hit) => {
-        if (hit && _kick) _safe(() => _kick!.triggerAttackRelease("C1", "8n", time));
-      },
-      style.kick[drumVariant as keyof typeof style.kick] ?? style.kick.simple,
-      "16n",
-    ).start(0);
-
-    _snareSeq = new Tone.Sequence<number>(
-      (time, hit) => {
-        if (hit && _snare) _safe(() => _snare!.triggerAttackRelease("16n", time));
-      },
-      style.snare[drumVariant as keyof typeof style.snare] ?? style.snare.simple,
-      "16n",
-    ).start(0);
-
-    _hatSeq = new Tone.Sequence<number>(
-      (time, hit) => {
-        if (hit && _hat) _safe(() => _hat!.triggerAttackRelease("32n", time));
-      },
-      style.hat[drumVariant as keyof typeof style.hat] ?? style.hat.simple,
-      "16n",
-    ).start(0);
-
-    const openHatPattern = style.openHat?.[drumVariant as keyof typeof style.openHat];
-    if (openHatPattern) {
-      _openHatSeq = new Tone.Sequence<number>(
-        (time, hit) => {
-          if (hit && _openHat) _safe(() => _openHat!.triggerAttackRelease("8n", time));
-        },
-        openHatPattern,
-        "16n",
-      ).start(0);
-    }
-
-    const crashPattern = style.crash?.[drumVariant as keyof typeof style.crash];
-    if (crashPattern) {
-      _crashSeq = new Tone.Sequence<number>(
-        (time, hit) => {
-          if (hit && _crash) _safe(() => _crash!.triggerAttackRelease("4n", time));
-        },
-        crashPattern,
-        "16n",
-      ).start(0);
-    }
-
-    const ridePattern = style.ride?.[drumVariant as keyof typeof style.ride];
-    if (ridePattern) {
-      _rideSeq = new Tone.Sequence<number>(
-        (time, hit) => {
-          if (hit && _ride) _safe(() => _ride!.triggerAttackRelease("32n", time));
-        },
-        ridePattern,
-        "16n",
-      ).start(0);
-    }
-
-    const clapPattern = style.clap?.[drumVariant as keyof typeof style.clap];
-    if (clapPattern) {
-      _clapSeq = new Tone.Sequence<number>(
-        (time, hit) => {
-          if (hit && _clap) _safe(() => _clap!.triggerAttackRelease("16n", time));
-        },
-        clapPattern,
-        "16n",
-      ).start(0);
-    }
-
-    const tomPattern = style.tom?.[drumVariant as keyof typeof style.tom];
-    if (tomPattern) {
-      _tomSeq = new Tone.Sequence<number>(
-        (time, hit) => {
-          if (hit && _tom) _safe(() => _tom!.triggerAttackRelease("A1", "8n", time));
-        },
-        tomPattern,
-        "16n",
-      ).start(0);
-    }
-
     _tom2 = new Tone.MembraneSynth({
       pitchDecay: 0.025,
       octaves: 3,
@@ -557,13 +479,88 @@ export function makeProgressionAudio(): AudioEngine {
     }).connect(_channels!.drum);
     _tom2.volume.value = -4;
 
-    const tom2Pattern = style.tom2?.[drumVariant as keyof typeof style.tom2];
-    if (tom2Pattern) {
+    const v = style[drumVariant as DrumOption] ?? style.simple;
+
+    _kickSeq = new Tone.Sequence<number>(
+      (time, hit) => {
+        if (hit && _kick) _safe(() => _kick!.triggerAttackRelease("C1", "8n", time));
+      },
+      v.kick,
+      "16n",
+    ).start(0);
+
+    _snareSeq = new Tone.Sequence<number>(
+      (time, hit) => {
+        if (hit && _snare) _safe(() => _snare!.triggerAttackRelease("16n", time));
+      },
+      v.snare,
+      "16n",
+    ).start(0);
+
+    _hatSeq = new Tone.Sequence<number>(
+      (time, hit) => {
+        if (hit && _hat) _safe(() => _hat!.triggerAttackRelease("32n", time));
+      },
+      v.hat,
+      "16n",
+    ).start(0);
+
+    if (v.openHat) {
+      _openHatSeq = new Tone.Sequence<number>(
+        (time, hit) => {
+          if (hit && _openHat) _safe(() => _openHat!.triggerAttackRelease("8n", time));
+        },
+        v.openHat,
+        "16n",
+      ).start(0);
+    }
+
+    if (v.crash) {
+      _crashSeq = new Tone.Sequence<number>(
+        (time, hit) => {
+          if (hit && _crash) _safe(() => _crash!.triggerAttackRelease("4n", time));
+        },
+        v.crash,
+        "16n",
+      ).start(0);
+    }
+
+    if (v.ride) {
+      _rideSeq = new Tone.Sequence<number>(
+        (time, hit) => {
+          if (hit && _ride) _safe(() => _ride!.triggerAttackRelease("32n", time));
+        },
+        v.ride,
+        "16n",
+      ).start(0);
+    }
+
+    if (v.clap) {
+      _clapSeq = new Tone.Sequence<number>(
+        (time, hit) => {
+          if (hit && _clap) _safe(() => _clap!.triggerAttackRelease("16n", time));
+        },
+        v.clap,
+        "16n",
+      ).start(0);
+    }
+
+    if (v.tom) {
+      _tomSeq = new Tone.Sequence<number>(
+        (time, hit) => {
+          if (hit && _tom) _safe(() => _tom!.triggerAttackRelease("A1", "8n", time));
+        },
+        v.tom,
+        "16n",
+      ).start(0);
+    }
+
+    if (v.tom2) {
       _tom2Seq = new Tone.Sequence<number>(
         (time, hit) => {
           if (hit && _tom2) _safe(() => _tom2!.triggerAttackRelease("D2", "8n", time));
         },
-        tom2Pattern,
+        v.tom2,
         "16n",
       ).start(0);
     }
@@ -606,7 +603,7 @@ export function makeProgressionAudio(): AudioEngine {
     }).connect(_channels!.bass);
     _bass.volume.value = -6;
 
-    const patterns = style.bass[bassVariant as keyof typeof style.bass] ?? style.bass.simple;
+    const patterns = (style[bassVariant as DrumOption] ?? style.simple).bass;
     const shifts = getShiftsForCycle(cycle, customCycleKeys);
     const steps: (string | null)[] = [];
 

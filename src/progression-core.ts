@@ -73,25 +73,22 @@ export interface StyleBassPhrase {
   minor: BassPattern;
 }
 
-export interface StyleDrumPhrase {
-  simple: DrumPattern;
-  busy: DrumPattern;
+export interface StyleVariant {
+  kick: DrumPattern;
+  snare: DrumPattern;
+  hat: DrumPattern;
+  openHat?: DrumPattern;
+  crash?: DrumPattern;
+  ride?: DrumPattern;
+  clap?: DrumPattern;
+  tom?: DrumPattern;
+  tom2?: DrumPattern;
+  bass: StyleBassPhrase;
 }
 
 export interface StyleDef {
-  kick: StyleDrumPhrase;
-  snare: StyleDrumPhrase;
-  hat: StyleDrumPhrase;
-  openHat?: Partial<StyleDrumPhrase>;
-  crash?: Partial<StyleDrumPhrase>;
-  ride?: Partial<StyleDrumPhrase>;
-  clap?: Partial<StyleDrumPhrase>;
-  tom?: Partial<StyleDrumPhrase>;
-  tom2?: Partial<StyleDrumPhrase>;
-  bass: {
-    simple: StyleBassPhrase;
-    busy: StyleBassPhrase;
-  };
+  simple: StyleVariant;
+  busy: StyleVariant;
 }
 
 export interface MixSettings {
