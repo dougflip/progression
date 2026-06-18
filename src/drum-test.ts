@@ -1,6 +1,64 @@
 import * as Tone from "tone";
 
-// ── Instrument definitions ────────────────────────────────────────────────
+const master = new Tone.Channel().toDestination();
+master.volume.value = Tone.gainToDb(0.9);
+
+// ── Sample Kit ────────────────────────────────────────────────────────────
+
+const SAMPLE_NAMES = [
+  ["Kick", "kick"],
+  ["Snare 1", "snare1"],
+  ["Snare 2", "snare2"],
+  ["Hat (closed)", "hihat-closed"],
+  ["Hat (open)", "hihat-open"],
+  ["Crash L", "crash-l"],
+  ["Crash R", "crash-r"],
+  ["Ride", "ride"],
+  ["Ride Bell", "ride-bell"],
+  ["China", "china"],
+  ["Tom 1", "tom1"],
+  ["Tom 2", "tom2"],
+  ["Tom 3", "tom3"],
+  ["Tom 4", "tom4"],
+] as const;
+
+function initSampleKit(containerId: string) {
+  const container = document.getElementById(containerId)!;
+  const loadingEl = container.querySelector(".sample-loading")!;
+  const sampleGrid = container.querySelector(".sample-grid")!;
+
+  const players = SAMPLE_NAMES.map(([, name]) =>
+    new Tone.Player(`samples/${name}.ogg`).connect(master),
+  );
+
+  const samplePads = SAMPLE_NAMES.map(([label], i) => {
+    const btn = document.createElement("button");
+    btn.className = "sample-pad";
+    btn.textContent = label;
+    btn.disabled = true;
+
+    btn.addEventListener("click", async () => {
+      await Tone.start();
+      btn.classList.add("flash");
+      setTimeout(() => btn.classList.remove("flash"), 120);
+      const p = players[i]!;
+      p.stop();
+      p.start();
+    });
+
+    sampleGrid.appendChild(btn);
+    return btn;
+  });
+
+  Tone.loaded().then(() => {
+    loadingEl.remove();
+    samplePads.forEach((btn) => (btn.disabled = false));
+  });
+}
+
+initSampleKit("sample-kit");
+
+// ── Synth instrument definitions ──────────────────────────────────────────
 
 interface Param {
   label: string;
@@ -17,9 +75,6 @@ interface Instrument {
   params: Param[];
   build(params: Record<string, number>): { trigger(): void; dispose(): void };
 }
-
-const master = new Tone.Channel().toDestination();
-master.volume.value = Tone.gainToDb(0.9);
 
 function param(
   label: string,
