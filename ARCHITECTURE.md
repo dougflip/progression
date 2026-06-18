@@ -120,7 +120,11 @@ Four source files with clear per-file purpose: logic, audio, view, markup. The s
 
 ### drumhaus
 
-https://github.com/mxfng/drumhaus — a polished Tone.js drum machine that uses **sample playback** (`Tone.Player` loading `.wav` files from classic drum machines like the Roland TR-808). Its `.dhkit` format is a clean JSON schema (`kind: "drumhaus.kit"`, `version: 1`) mapping each instrument to a sample path. Good reference if/when this app adds an optional sample mode to replace or augment the current synthesis approach.
+https://github.com/mxfng/drumhaus — a polished Tone.js drum machine that uses **sample playback** (`Tone.Player` loading `.wav` files from classic drum machines like the Roland TR-808). Its `.dhkit` format is a clean JSON schema (`kind: "drumhaus.kit"`, `version: 1`) mapping each instrument to a sample path. Good architectural reference for the sample playback approach now used in this app.
+
+### Drum samples
+
+Drum sounds use **MuldjordKit** (CC BY 4.0, https://freepats.zenvoid.org/Percussion/acoustic-drum-kit.html) — an acoustic kit recorded at multiple velocity layers. 14 OGG files (~1.2 MB total) live in `public/samples/` and are loaded via `Tone.Player` instances created at engine init so loading begins before first play. Each sequence callback prefers the sample player when its buffer is loaded and falls back to the synth otherwise. Clap has no sample equivalent and remains synth-only.
 
 ## Planned features
 
