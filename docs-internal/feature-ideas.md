@@ -1,62 +1,8 @@
 # Feature Ideas
 
-## Tap Tempo
+## Section-level playback overrides
 
-Ability to tap tempo.
-Likely both in setup and in the player pills.
-
-## Major vs Minor key
-
-Right now all key selection is assumed to be major.
-It would be nice to specify major vs minor and then roman numerals are resolved against it.
-
-### Claude's Thoughts
-
-Add `mode: 'major' | 'minor'` to state. Mode controls which scale Roman numeral degrees map to — case still determines chord quality (uppercase = major triad, lowercase = minor), so `I` in minor mode = major triad on the minor root, `i` in minor mode = minor tonic. Users can override any chord quality explicitly regardless of mode.
-
-Impacted areas:
-
-1. Add `MINOR_SCALE = [0, 2, 3, 5, 7, 8, 10]` alongside `MAJOR_SCALE`
-2. `buildChord()` — swap hardcoded `MAJOR_SCALE[degree]` for the mode-selected scale; mode flows in as a parameter
-3. `resolvedChordName()` — same, uses `MAJOR_SCALE` for chip display name resolution
-4. `parseProgression()` — passes mode/scale through to `buildChord`
-5. State defaults, URL serialization — add `mode` param
-6. UI — mode toggle (pill or part of key picker)
-
-Built-in minor cycle presets currently load `i` — they still work since case controls quality. With mode support the natural approach shifts to `I` in minor mode; worth revisiting when implementing.
-
-Open question: natural minor only, or also harmonic minor (raised 7th = `[0,2,3,5,7,8,11]`)? Harmonic minor gives a proper dominant V in minor keys. Recommendation: ship natural minor as a toggle first; harmonic minor as a follow-up if requested. Users can always write `V7` explicitly in a minor progression regardless.
-
-## Extended Voicings
-
-Right now, we support major, minor, and 7 chords.
-We should expand to support b3 b6 b7 etc.
-Maybe there is a good resource that lists common chords which we should support?
-
-### Claude's Thoughts
-
-Impacted areas (all in progression-core.js except noted):
-
-1. QUALITY_INTERVALS (~line 75) — add interval arrays for each new type (e.g. dim: [0,3,6], sus4: [0,5,7], etc.)
-2. QUALITY_IS_MINOR (~line 87) — add false/true entries per new quality (used by bass pattern selection)
-3. QUALITY_DISPLAY (~line 91) — add display strings (e.g. dim7: 'dim7', aug: 'aug')
-4. suffixToQuality() (~line 217) — map new suffix strings to qualities; add symbol aliases here too (° → dim, ø → m7b5, + → aug) — essentially free once the quality exists
-5. @typedef ChordQuality (~line 10) — expand the union type
-
-progression-audio.js and index.html need no changes — they consume ChordQuality generically.
-
-Known bass issues to fix before shipping — both bassThird and bassFifth in makeChord() are hardcoded rather than derived from QUALITY_INTERVALS:
-
-- dim, aug, m7b5, dim7: bassFifth is hardcoded +7; should be +6 (dim) or +8 (aug)
-- sus2, sus4, 7sus4: bassThird is hardcoded to isMinor ? 3 : 4; sus chords have no third (+2 or +5 instead)
-
-Real fix: derive both bassThird and bassFifth from QUALITY_INTERVALS[quality] rather than the isMinor shortcut.
-
-Remaining questions:
-
-1. For Roman numerals, idim vs Idim — should case still matter (root degree), with suffix overriding quality? Or should dim/aug/sus always force a specific base?
-2. ° in the URL encodes as %C2%B0 — acceptable, or prefer always using the plain-text dim/aug as canonical with symbols as input aliases only?
-3. mMaj7 — camelCase is the most common notation but mmaj7 or mM7 also appear. Which spellings to accept?
+`PlaybackSettings` is now a named type and each section can carry an optional `Partial<PlaybackSettings>` that merges with the song-level base at playback time — enabling per-section key changes, tempo changes, style changes, etc. The merge is: `{ ...state.playback, ...section.playback }`. This is the natural next step now that `AppState` is restructured.
 
 ## External (Foot) Controller Support
 
@@ -84,14 +30,7 @@ The "advance-on-press" cycle mode is the real prize: nail ii-V-I in C, foot pres
 If the feature is good, then invest in Web MIDI integration. Web MIDI works in Chrome/Edge but not Safari; iOS is rough. I'd target one specific switch (iRig Blueboard, AirTurn) rather
 than aim for universal.
 
-## Higher Quality Sounds
-
-Worth exploring samples or other ways to produce better sounding progressions?
-
-#### Claude's thoughts
-
-The current synths are functional but tiring over a long session. Salamander Grand piano samples (~few MB, public domain) via Tone.js Sampler would transform chord/bass feel. Drums could
-stay synthesized. Moderate work.
+HID-keyboard path: 2-switch + tap/long-press = 4 configurable actions. App-side mode toggle for more. Host-level feature — calls `app.togglePlay()` and `app.queueJump()`. Core needs no changes.
 
 ## Beats per Chord
 
