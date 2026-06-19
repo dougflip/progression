@@ -107,10 +107,79 @@
         color: #555;
         font-size: 0.9rem;
       }
+
+      .section-heading {
+        font-size: 0.8rem;
+        color: #555;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        margin-bottom: 0.75rem;
+      }
+
+      .sample-kit {
+        margin-bottom: 2rem;
+      }
+
+      .sample-loading {
+        color: #555;
+        font-size: 0.85rem;
+        padding: 0.5rem 0;
+      }
+
+      .sample-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        gap: 0.75rem;
+      }
+
+      .sample-pad {
+        padding: 1.25rem 0.5rem;
+        border-radius: 10px;
+        border: 2px solid #2a3a2a;
+        background: #151e15;
+        color: #aaccaa;
+        font-size: 0.9rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        cursor: pointer;
+        text-align: center;
+        transition:
+          background 80ms,
+          border-color 80ms,
+          transform 80ms;
+        user-select: none;
+      }
+      .sample-pad:active {
+        transform: scale(0.95);
+      }
+      .sample-pad.flash {
+        background: #243824;
+        border-color: #5a9a5a;
+      }
+      .sample-pad:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+      }
+
+      .synth-section-heading {
+        font-size: 0.8rem;
+        color: #555;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        margin-bottom: 0.75rem;
+      }
     </style>
   </head>
   <body>
     <h1>🥁 Drum Lab</h1>
+
+    <div id="sample-kit" class="sample-kit">
+      <div class="section-heading">Sample Kit — MuldjordKit (CC BY 4.0)</div>
+      <div class="sample-loading">Loading samples…</div>
+      <div class="sample-grid"></div>
+    </div>
+
+    <div class="synth-section-heading">Synth Kit</div>
     <div id="pad-grid"></div>
     <div id="params"><span id="empty-msg">Select a pad to tweak its parameters.</span></div>
     <script type="module" src="/src/drum-test.ts"></script>
