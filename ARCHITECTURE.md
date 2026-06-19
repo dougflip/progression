@@ -7,6 +7,7 @@ index.html                — host: CSS, HTML markup
 src/app.ts                — host: DOM wiring, render callbacks, event handlers
 src/progression-core.ts   — pure logic: music theory, state, URL, presets, factory
 src/progression-audio.ts  — Tone.js engine: plays what core gives it
+src/styles.ts             — pure data: style/bass pattern definitions
 public/favicon.svg        — static asset, copied to dist/ as-is
 vite.config.js            — build config: multi-page entry points, Tone vendor chunk
 tsconfig.json             — strict TypeScript config (noEmit; Vite handles transpilation)
@@ -100,21 +101,20 @@ Pause state is stored in private `_pausedAt: { posIndex, chipIndex, lapIndex } |
 
 ## File structure and split thresholds
 
-Four source files with clear per-file purpose: logic, audio, view, markup. The structure has absorbed multi-section, custom cycle, scrubbers, seek, and the Vite + TypeScript migration without breaking down — evidence the split is right.
+Five source files with clear per-file purpose: logic, audio, view, markup, style data. The structure has absorbed multi-section, custom cycle, scrubbers, seek, and the Vite + TypeScript migration without breaking down — evidence the split is right.
 
 **Current pressure points:**
 
-`progression-core.ts` carries two distinct concerns that share a file comfortably at current size:
+`progression-core.ts` carries two distinct concerns that share a file comfortably at current size (~1230 lines):
 
-- **Music theory** — constants, note math, chord building, name resolution (`resolvedChordName`, `buildChord`, `STYLES`, etc.)
+- **Music theory** — constants, note math, chord building, name resolution (`resolvedChordName`, `buildChord`, etc.)
 - **App architecture** — `AppState`, `DEFAULTS`, URL serialization, `makeProgressionPlayer`
 
 **Triggers to split:**
 
 - `progression-core.ts` crossing ~1500 lines → separate music-theory utilities from state/player factory. The cut is clean; coupling between the two halves is already minimal.
-- `STYLES` patterns growing significantly (new styles added) → extract to `styles.ts`. It's pure data with no logic dependencies.
 
-`progression-audio.ts` and `src/app.ts` are well-scoped and not under pressure.
+`progression-audio.ts` (~840 lines) and `src/app.ts` (~1085 lines) are growing but well-scoped; revisit if either approaches 1500 lines.
 
 ## References
 
@@ -125,30 +125,3 @@ https://github.com/mxfng/drumhaus — a polished Tone.js drum machine that uses 
 ### Drum samples
 
 Drum sounds use **MuldjordKit** (CC BY 4.0, https://freepats.zenvoid.org/Percussion/acoustic-drum-kit.html) — an acoustic kit recorded at multiple velocity layers. 14 OGG files (~1.2 MB total) live in `public/samples/` and are loaded via `Tone.Player` instances created at engine init so loading begins before first play. Each sequence callback prefers the sample player when its buffer is loaded and falls back to the synth otherwise. Clap has no sample equivalent and remains synth-only.
-
-## Planned features
-
-### Section-level playback overrides
-
-`PlaybackSettings` is now a named type and each section can carry an optional `Partial<PlaybackSettings>` that merges with the song-level base at playback time — enabling per-section key changes, tempo changes, style changes, etc. The merge is: `{ ...state.playback, ...section.playback }`. This is the natural next step now that `AppState` is restructured.
-
-### Foot pedal support
-
-HID-keyboard path: 2-switch + tap/long-press = 4 configurable actions. App-side mode toggle for more. Host-level feature — calls `app.togglePlay()` and `app.queueJump()`. Core needs no changes.
-
-### Practice Idea addition
-
-A progression which allows you to practice mixlydian mode
-
-## Issues and Fixes
-
-### Changing options during playback
-
-Currently changing an option is "live" but usually drops some portion of audio until the next "phrase".
-Wondering if we "schedule" changes for the next chord change if this problem would go away?
-The tradeoff would be changes are not instant.
-
-### Mute bug
-
-I need concrete steps, but I've had mute (and volume) NOT work for me on occassion.
-It would take several attempts or sometimes refreshing the app.
