@@ -68,6 +68,7 @@ export function makeProgressionAudio(): AudioEngine {
     openHat: new Tone.Player("samples/hihat-open.ogg"),
     crash: new Tone.Player("samples/crash-l.ogg"),
     ride: new Tone.Player("samples/ride.ogg").set({ volume: -8 }),
+    rideBell: new Tone.Player("samples/ride-bell.ogg").set({ volume: -8 }),
     tom: new Tone.Player("samples/tom1.ogg"),
     tom2: new Tone.Player("samples/tom2.ogg"),
   };
@@ -84,8 +85,6 @@ export function makeProgressionAudio(): AudioEngine {
   let _crashFilter: Tone.Filter | null = null;
   let _ride: Tone.NoiseSynth | null = null;
   let _rideFilter: Tone.Filter | null = null;
-  let _clap: Tone.NoiseSynth | null = null;
-  let _clapFilter: Tone.Filter | null = null;
   let _tom: Tone.MembraneSynth | null = null;
   let _tom2: Tone.MembraneSynth | null = null;
   let _kickSeq: Tone.Sequence<number> | null = null;
@@ -94,7 +93,7 @@ export function makeProgressionAudio(): AudioEngine {
   let _openHatSeq: Tone.Sequence<number> | null = null;
   let _crashSeq: Tone.Sequence<number> | null = null;
   let _rideSeq: Tone.Sequence<number> | null = null;
-  let _clapSeq: Tone.Sequence<number> | null = null;
+  let _rideBellSeq: Tone.Sequence<number> | null = null;
   let _tomSeq: Tone.Sequence<number> | null = null;
   let _tom2Seq: Tone.Sequence<number> | null = null;
   let _bass: Tone.MonoSynth | null = null;
@@ -181,7 +180,7 @@ export function makeProgressionAudio(): AudioEngine {
       _openHatSeq,
       _crashSeq,
       _rideSeq,
-      _clapSeq,
+      _rideBellSeq,
       _tomSeq,
       _tom2Seq,
       _bassSeq,
@@ -196,7 +195,7 @@ export function makeProgressionAudio(): AudioEngine {
       _openHatSeq =
       _crashSeq =
       _rideSeq =
-      _clapSeq =
+      _rideBellSeq =
       _tomSeq =
       _tom2Seq =
       _bassSeq =
@@ -213,8 +212,6 @@ export function makeProgressionAudio(): AudioEngine {
       _crashFilter,
       _ride,
       _rideFilter,
-      _clap,
-      _clapFilter,
       _tom,
       _tom2,
       _bass,
@@ -231,8 +228,6 @@ export function makeProgressionAudio(): AudioEngine {
       _crashFilter =
       _ride =
       _rideFilter =
-      _clap =
-      _clapFilter =
       _tom =
       _tom2 =
       _bass =
@@ -480,17 +475,6 @@ export function makeProgressionAudio(): AudioEngine {
     }).connect(_rideFilter);
     _ride.volume.value = -22;
 
-    _clapFilter = new Tone.Filter({
-      type: "highpass",
-      frequency: 1200,
-      Q: 0.8,
-    }).connect(_channels!.drum);
-    _clap = new Tone.NoiseSynth({
-      noise: { type: "white" },
-      envelope: { attack: 0.001, decay: 0.06, sustain: 0, release: 0.1 },
-    }).connect(_clapFilter);
-    _clap.volume.value = -12;
-
     _tom = new Tone.MembraneSynth({
       pitchDecay: 0.025,
       octaves: 3,
@@ -565,12 +549,12 @@ export function makeProgressionAudio(): AudioEngine {
       ).start(0);
     }
 
-    if (v.clap) {
-      _clapSeq = new Tone.Sequence<number>(
+    if (v.rideBell) {
+      _rideBellSeq = new Tone.Sequence<number>(
         (time, hit) => {
-          if (hit && _clap) _safe(() => _clap!.triggerAttackRelease("16n", time));
+          if (hit) _triggerDrum(time, _sp.rideBell, () => _ride!.triggerAttackRelease("32n", time));
         },
-        v.clap,
+        v.rideBell,
         "16n",
       ).start(0);
     }
@@ -604,7 +588,7 @@ export function makeProgressionAudio(): AudioEngine {
       _openHatSeq,
       _crashSeq,
       _rideSeq,
-      _clapSeq,
+      _rideBellSeq,
       _tomSeq,
       _tom2Seq,
     ])
@@ -807,7 +791,7 @@ export function makeProgressionAudio(): AudioEngine {
           _openHatSeq,
           _crashSeq,
           _rideSeq,
-          _clapSeq,
+          _rideBellSeq,
           _tomSeq,
           _tom2Seq,
         ])
