@@ -65,7 +65,7 @@ export function makeProgressionAudio(): AudioEngine {
     kick: new Tone.Player("samples/kick.ogg"),
     snare: new Tone.Player("samples/snare1.ogg"),
     hat: new Tone.Player("samples/hihat-closed.ogg"),
-    openHat: new Tone.Player("samples/hihat-open.ogg"),
+    hatOpen: new Tone.Player("samples/hihat-open.ogg"),
     crash: new Tone.Player("samples/crash-l.ogg"),
     ride: new Tone.Player("samples/ride.ogg").set({ volume: -8 }),
     rideBell: new Tone.Player("samples/ride-bell.ogg").set({ volume: -8 }),
@@ -79,8 +79,8 @@ export function makeProgressionAudio(): AudioEngine {
   let _kick: Tone.MembraneSynth | null = null;
   let _snare: Tone.NoiseSynth | null = null;
   let _hat: Tone.MetalSynth | null = null;
-  let _openHat: Tone.NoiseSynth | null = null;
-  let _openHatFilter: Tone.Filter | null = null;
+  let _hatOpen: Tone.NoiseSynth | null = null;
+  let _hatOpenFilter: Tone.Filter | null = null;
   let _crash: Tone.NoiseSynth | null = null;
   let _crashFilter: Tone.Filter | null = null;
   let _ride: Tone.NoiseSynth | null = null;
@@ -90,7 +90,7 @@ export function makeProgressionAudio(): AudioEngine {
   let _kickSeq: Tone.Sequence<number> | null = null;
   let _snareSeq: Tone.Sequence<number> | null = null;
   let _hatSeq: Tone.Sequence<number> | null = null;
-  let _openHatSeq: Tone.Sequence<number> | null = null;
+  let _hatOpenSeq: Tone.Sequence<number> | null = null;
   let _crashSeq: Tone.Sequence<number> | null = null;
   let _rideSeq: Tone.Sequence<number> | null = null;
   let _rideBellSeq: Tone.Sequence<number> | null = null;
@@ -177,7 +177,7 @@ export function makeProgressionAudio(): AudioEngine {
       _kickSeq,
       _snareSeq,
       _hatSeq,
-      _openHatSeq,
+      _hatOpenSeq,
       _crashSeq,
       _rideSeq,
       _rideBellSeq,
@@ -192,7 +192,7 @@ export function makeProgressionAudio(): AudioEngine {
     _kickSeq =
       _snareSeq =
       _hatSeq =
-      _openHatSeq =
+      _hatOpenSeq =
       _crashSeq =
       _rideSeq =
       _rideBellSeq =
@@ -206,8 +206,8 @@ export function makeProgressionAudio(): AudioEngine {
       _kick,
       _snare,
       _hat,
-      _openHat,
-      _openHatFilter,
+      _hatOpen,
+      _hatOpenFilter,
       _crash,
       _crashFilter,
       _ride,
@@ -222,8 +222,8 @@ export function makeProgressionAudio(): AudioEngine {
       _kick =
       _snare =
       _hat =
-      _openHat =
-      _openHatFilter =
+      _hatOpen =
+      _hatOpenFilter =
       _crash =
       _crashFilter =
       _ride =
@@ -442,16 +442,16 @@ export function makeProgressionAudio(): AudioEngine {
     _hat.frequency.value = 250;
     _hat.volume.value = -28;
 
-    _openHatFilter = new Tone.Filter({
+    _hatOpenFilter = new Tone.Filter({
       type: "highpass",
       frequency: 7000,
       Q: 0.5,
     }).connect(_channels!.drum);
-    _openHat = new Tone.NoiseSynth({
+    _hatOpen = new Tone.NoiseSynth({
       noise: { type: "white" },
       envelope: { attack: 0.001, decay: 0.4, sustain: 0, release: 0.5 },
-    }).connect(_openHatFilter);
-    _openHat.volume.value = -18;
+    }).connect(_hatOpenFilter);
+    _hatOpen.volume.value = -18;
 
     _crashFilter = new Tone.Filter({
       type: "highpass",
@@ -510,7 +510,7 @@ export function makeProgressionAudio(): AudioEngine {
     _hatSeq = new Tone.Sequence<number>(
       (time, hit) => {
         if (hit) {
-          _safe(() => _sp.openHat.stop(time));
+          _safe(() => _sp.hatOpen.stop(time));
           _triggerDrum(time, _sp.hat, () => _hat!.triggerAttackRelease("32n", time));
         }
       },
@@ -518,13 +518,13 @@ export function makeProgressionAudio(): AudioEngine {
       "16n",
     ).start(0);
 
-    if (v.openHat) {
-      _openHatSeq = new Tone.Sequence<number>(
+    if (v.hatOpen) {
+      _hatOpenSeq = new Tone.Sequence<number>(
         (time, hit) => {
           if (hit)
-            _triggerDrum(time, _sp.openHat, () => _openHat!.triggerAttackRelease("8n", time));
+            _triggerDrum(time, _sp.hatOpen, () => _hatOpen!.triggerAttackRelease("8n", time));
         },
-        v.openHat,
+        v.hatOpen,
         "16n",
       ).start(0);
     }
@@ -585,7 +585,7 @@ export function makeProgressionAudio(): AudioEngine {
       _kickSeq,
       _snareSeq,
       _hatSeq,
-      _openHatSeq,
+      _hatOpenSeq,
       _crashSeq,
       _rideSeq,
       _rideBellSeq,
@@ -788,7 +788,7 @@ export function makeProgressionAudio(): AudioEngine {
           _kickSeq,
           _snareSeq,
           _hatSeq,
-          _openHatSeq,
+          _hatOpenSeq,
           _crashSeq,
           _rideSeq,
           _rideBellSeq,
