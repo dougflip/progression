@@ -525,7 +525,10 @@ export function makeProgressionAudio(): AudioEngine {
 
     _hatSeq = new Tone.Sequence<number>(
       (time, hit) => {
-        if (hit) _triggerDrum(time, _sp.hat, () => _hat!.triggerAttackRelease("32n", time));
+        if (hit) {
+          _safe(() => _sp.openHat.stop(time));
+          _triggerDrum(time, _sp.hat, () => _hat!.triggerAttackRelease("32n", time));
+        }
       },
       v.hat,
       "16n",
