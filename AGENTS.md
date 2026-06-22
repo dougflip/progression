@@ -11,7 +11,7 @@ Make sure all proposed plans and changes adhere to the guidelines in ARCHITECTUR
 ## Before Pull Request
 
 1. Ask the user if e2e tests have been run
-2. Ensure HTML documentation is up to date. If it is not suggest updating and follow `docs-guidelines.md`.
+2. Ensure HTML documentation is up to date. If it is not, suggest updating and invoke the `docs-authoring` skill before editing `docs.html`.
 
 ## Manual Testing
 
