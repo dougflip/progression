@@ -12,7 +12,6 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, "index.html"),
         docs: resolve(__dirname, "docs.html"),
-        drumTest: resolve(__dirname, "drum-test.html"),
       },
       output: {
         manualChunks: (id) => {
