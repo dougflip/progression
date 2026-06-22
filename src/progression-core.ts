@@ -77,10 +77,10 @@ export interface StyleVariant {
   kick?: DrumPattern;
   snare?: DrumPattern;
   hat?: DrumPattern;
-  openHat?: DrumPattern;
+  hatOpen?: DrumPattern;
   crash?: DrumPattern;
   ride?: DrumPattern;
-  clap?: DrumPattern;
+  rideBell?: DrumPattern;
   tom?: DrumPattern;
   tom2?: DrumPattern;
   bass: StyleBassPhrase;
