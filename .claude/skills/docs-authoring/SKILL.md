@@ -80,8 +80,7 @@ For syntax tables, make the example itself the link:
 Link section names to their Reference anchors when mentioned elsewhere — especially in Quick Start steps and feature descriptions.
 
 ```html
-<a href="#loop-modes">cycle the keys</a>
-<a href="#progression-syntax">per-chord bar notation</a>
+<a href="#loop-modes">cycle the keys</a> <a href="#progression-syntax">per-chord bar notation</a>
 ```
 
 Readout pill names in the Playback screen section should each link to their respective Setup sections:

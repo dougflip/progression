@@ -4,6 +4,30 @@
 
 `PlaybackSettings` is now a named type and each section can carry an optional `Partial<PlaybackSettings>` that merges with the song-level base at playback time — enabling per-section key changes, tempo changes, style changes, etc. The merge is: `{ ...state.playback, ...section.playback }`. This is the natural next step now that `AppState` is restructured.
 
+Directly related to [agent config](./agent-config-idea.md)
+
+## Jump to chord via tap
+
+## Drum mixer per instrument
+
+Allow tweaking individual kit piece volume.
+
+## Enhance user presets
+
+Current experience is rough around the edges.
+
+- Hard to know if it actually saved
+- Unclear how to edit
+- Kind of buried in the UI
+
+Not sure of specifics for a change, but could definitely use improvement
+
+## Chord Chips collapse multiple vs repeat
+
+Right now, `I:4` produces 1 chip whereas `I I I I` produces 4 chord chips.
+Is this what we want?
+Should we always collapse consecutive identical chords?
+
 ## External (Foot) Controller Support
 
 It would be nice to have at least basic support for a foot controller.
@@ -42,6 +66,8 @@ One use case is a progression with a resolution or leading tone,
 for example a IV to a minor iv chord.
 Not high priority, again, not necessary for most practicing but could be cool
 and don't want to lose track of it.
+
+If we use Claude's `V:0.5` idea - what does this do visually in playback for chord chips?
 
 #### Claude's thoughts
 
