@@ -463,6 +463,18 @@
         </h2>
         <p>The main screen shows everything you need while you play — no drawers required.</p>
 
+        <h3 id="preset-pill">
+          Preset pill
+          <button class="anchor-copy" data-id="preset-pill" title="Copy link to this section">
+            #
+          </button>
+        </h3>
+        <p>
+          The pill in the top-left shows the currently loaded <a href="#presets">preset</a> name. A
+          <strong>*</strong> means you have unsaved changes. Tap it to save, revert, or switch
+          presets without opening Setup.
+        </p>
+
         <h3 id="key-display">
           Key display
           <button class="anchor-copy" data-id="key-display" title="Copy link to this section">
@@ -541,7 +553,8 @@
         </h2>
         <p>
           Open from the <strong>Setup</strong> button in the action bar. Controls are grouped into
-          Playback, Progression, and App sections.
+          Playback, Progression, and App sections. Presets are managed via the pill in the top-left
+          corner — see <a href="#presets">Presets</a>.
         </p>
 
         <h3 id="key">
@@ -973,19 +986,52 @@
           Presets
           <button class="anchor-copy" data-id="presets" title="Copy link to this section">#</button>
         </h2>
+        <p>
+          The preset pill in the top-left corner shows the currently loaded preset. Tap it to open
+          the preset menu.
+        </p>
 
-        <h3>Built-in</h3>
-        <p>A set of common progressions ready to load — tap any chip in Setup to apply.</p>
+        <h3 id="starter-presets">
+          Starter presets
+          <button class="anchor-copy" data-id="starter-presets" title="Copy link to this section">
+            #
+          </button>
+        </h3>
+        <p>
+          A set of ready-to-play configurations — progression, key, tempo, style, and mix included.
+          Tap any to load it. Use <strong>Save as new…</strong> to fork it into your own preset.
+        </p>
 
         <h3 id="saved-presets">
-          Saved presets
+          My presets
           <button class="anchor-copy" data-id="saved-presets" title="Copy link to this section">
             #
           </button>
         </h3>
         <p>
-          Tap <strong>+ Save current</strong> in Setup to snapshot the full app state. Saved presets
-          appear above the built-ins. Rename with the pencil icon, delete with ×.
+          Tap <strong>+ Save preset</strong> (or <strong>Save as new…</strong> from the menu) to
+          name and save the current state. Your presets appear at the top of the menu.
+        </p>
+        <p>
+          Once a preset is loaded, the pill shows its name. Changing any setting marks it with
+          <strong>*</strong>. From the menu:
+        </p>
+        <ul>
+          <li>
+            <strong>Save</strong> — overwrite the preset with the current state (enabled when
+            modified)
+          </li>
+          <li>
+            <strong>Revert</strong> — restore the preset's saved state (enabled when modified)
+          </li>
+          <li>
+            <strong>Save as new…</strong> — save as a new named preset without affecting the loaded
+            one
+          </li>
+        </ul>
+        <p>
+          Tap the pencil icon (✎) next to a preset to rename it, or × to delete it (with
+          confirmation).
         </p>
 
         <hr />
@@ -1003,7 +1049,7 @@
         </h3>
         <p>
           Light / Dark toggle in Setup. Defaults to dark. Stored per-device — not included in URLs
-          or saved presets.
+          or presets.
         </p>
 
         <h3 id="keep-awake">
