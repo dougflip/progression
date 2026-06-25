@@ -560,7 +560,10 @@ function renderPresetIndicator(): void {
 
 function renderPresetDropdownList(): void {
   presetDropdownListEl.innerHTML = "";
-  const presets = app.getUserPresets();
+  const presets = app
+    .getUserPresets()
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name));
   const loadedId = app.getLoadedPreset()?.id;
 
   if (presets.length) {
@@ -634,7 +637,7 @@ function renderPresetDropdownList(): void {
       textContent: p.label,
     });
     btn.addEventListener("click", () => {
-      app.loadBuiltinPreset(p.label, p.state);
+      app.loadBuiltinPreset(p.id, p.label, p.state);
       presetDropdownEl.hidden = true;
     });
     presetDropdownListEl.appendChild(btn);
@@ -727,10 +730,16 @@ function syncBodyPadding(): void {
 }
 
 let _urlTimer: ReturnType<typeof setTimeout> | null = null;
+function buildSearchString(state: AppState): string {
+  const base = serializeUrl(state);
+  const presetId = app.getLoadedPresetId();
+  return presetId ? `${base}&presetId=${encodeURIComponent(presetId)}` : base;
+}
+
 function syncUrl(state: AppState): void {
   clearTimeout(_urlTimer ?? undefined);
   _urlTimer = setTimeout(() => {
-    history.replaceState(null, "", "?" + serializeUrl(state));
+    history.replaceState(null, "", "?" + buildSearchString(state));
   }, 200);
 }
 
@@ -1114,7 +1123,7 @@ document.querySelectorAll<HTMLDialogElement>("dialog").forEach((d) =>
 
 ($("copy-share") as HTMLButtonElement).addEventListener("click", async () => {
   clearTimeout(_urlTimer ?? undefined);
-  history.replaceState(null, "", "?" + app.serializeUrl());
+  history.replaceState(null, "", "?" + buildSearchString(app.getState()));
   const btn = $("copy-share") as HTMLButtonElement;
   try {
     await navigator.clipboard.writeText(window.location.href);
@@ -1145,5 +1154,15 @@ if (!localStorage.getItem(WELCOMED)) ($("welcome-modal") as HTMLDialogElement).s
 // ── Init ──────────────────────────────────────────────────────────────────
 
 app.applyUrl(location.search);
+const _initPresetId = new URLSearchParams(location.search).get("presetId");
+if (_initPresetId) {
+  const _userPreset = app.getUserPresets().find((p) => p.id === _initPresetId);
+  if (_userPreset) {
+    app.setLoadedUserPresetContext(_userPreset);
+  } else {
+    const _builtin = PRESETS.find((p) => p.id === _initPresetId);
+    if (_builtin) app.setLoadedBuiltinPresetContext(_builtin.id, _builtin.label, _builtin.state);
+  }
+}
 renderPresetIndicator();
 applyTheme(localStorage.getItem("theme") ?? "dark");

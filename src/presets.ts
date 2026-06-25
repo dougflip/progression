@@ -1,12 +1,14 @@
 import type { AppStatePartial } from "./progression-core.js";
 
 export interface BuiltinPreset {
+  id: string;
   label: string;
   state: AppStatePartial;
 }
 
 export const PRESETS: BuiltinPreset[] = [
   {
+    id: "builtin-i-vi-ii-v",
     label: "I vi ii V",
     state: {
       sections: [{ progression: "I vi ii V" }],
@@ -15,14 +17,17 @@ export const PRESETS: BuiltinPreset[] = [
     },
   },
   {
+    id: "builtin-cycle-4ths",
     label: "Cycle 4ths",
     state: { sections: [{ progression: "I" }], arrangement: "", playback: { cycle: "4ths" } },
   },
   {
+    id: "builtin-cycle-5ths",
     label: "Cycle 5ths",
     state: { sections: [{ progression: "I" }], arrangement: "", playback: { cycle: "5ths" } },
   },
   {
+    id: "builtin-12-bar-blues",
     label: "12-bar blues",
     state: {
       sections: [{ progression: "I7:4 IV7:2 I7:2 V7:1 IV7:1 I7:1 V7:1" }],
@@ -31,6 +36,7 @@ export const PRESETS: BuiltinPreset[] = [
     },
   },
   {
+    id: "builtin-otherside",
     label: "♫ Otherside",
     state: {
       sections: [

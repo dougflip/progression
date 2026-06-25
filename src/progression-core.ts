@@ -869,7 +869,7 @@ export function makeProgressionPlayer(config: PlayerConfig) {
   let _lastChordPos: PausedAt = { posIndex: 0, chipIndex: 0, lapIndex: 0 };
   let _pausedAt: PausedAt | null = null;
   let _loadedPreset: UserPreset | null = null;
-  let _loadedBuiltinPreset: { label: string; state: PresetState } | null = null;
+  let _loadedBuiltinPreset: { id: string; label: string; state: PresetState } | null = null;
 
   function _toPresetState(s: PresetState): PresetState {
     return {
@@ -1132,11 +1132,30 @@ export function makeProgressionPlayer(config: PlayerConfig) {
       _afterPresetApply();
     },
 
-    loadBuiltinPreset(label: string, state: AppStatePartial): void {
+    loadBuiltinPreset(id: string, label: string, state: AppStatePartial): void {
       _loadedPreset = null;
       _applyPresetState(state);
-      _loadedBuiltinPreset = { label, state: _toPresetState(_state) };
+      _loadedBuiltinPreset = { id, label, state: _toPresetState(_state) };
       _afterPresetApply();
+    },
+
+    setLoadedUserPresetContext(preset: UserPreset): void {
+      _loadedPreset = preset;
+      _loadedBuiltinPreset = null;
+    },
+
+    setLoadedBuiltinPresetContext(id: string, label: string, state: AppStatePartial): void {
+      _loadedPreset = null;
+      _loadedBuiltinPreset = {
+        id,
+        label,
+        state: {
+          playback: { ...DEFAULTS.playback, ...state.playback },
+          mix: state.mix !== undefined ? { ...DEFAULTS.mix, ...state.mix } : { ...DEFAULTS.mix },
+          sections: state.sections ?? DEFAULTS.sections,
+          arrangement: state.arrangement ?? DEFAULTS.arrangement,
+        },
+      };
     },
 
     getUserPresets: _getUserPresets,
@@ -1144,6 +1163,8 @@ export function makeProgressionPlayer(config: PlayerConfig) {
     getLoadedPreset: (): UserPreset | null => _loadedPreset,
 
     getLoadedBuiltinName: (): string | null => _loadedBuiltinPreset?.label ?? null,
+
+    getLoadedPresetId: (): string | null => _loadedPreset?.id ?? _loadedBuiltinPreset?.id ?? null,
 
     isDirty(): boolean {
       const baseline = _loadedPreset?.state ?? _loadedBuiltinPreset?.state ?? null;
