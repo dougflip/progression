@@ -182,6 +182,8 @@ export interface AppState {
   activeSection: number;
 }
 
+export type PresetState = Omit<AppState, "activeSection">;
+
 export type AppStatePartial = {
   playback?: Partial<PlaybackSettings>;
   mix?: Partial<MixSettings>;
@@ -193,7 +195,7 @@ export type AppStatePartial = {
 export interface UserPreset {
   id: string;
   name: string;
-  state: AppState;
+  state: PresetState;
 }
 
 export interface PlayerConfig {
@@ -390,47 +392,6 @@ export {
   VOICING_PILL_LABELS,
   STYLES,
 } from "./styles.js";
-
-// ─── Built-in Presets ────────────────────────────────────────────────────────
-
-export const PRESETS: Array<{ label: string; state: AppStatePartial }> = [
-  {
-    label: "I vi ii V",
-    state: {
-      sections: [{ progression: "I vi ii V" }],
-      arrangement: "",
-      playback: { cycle: "none" },
-    },
-  },
-  {
-    label: "12-bar blues",
-    state: {
-      sections: [{ progression: "I7:4 IV7:2 I7:2 V7:1 IV7:1 I7:1 V7:1" }],
-      arrangement: "",
-      playback: { cycle: "none", tempo: 120, style: "rock" },
-    },
-  },
-  {
-    label: "Sample Song",
-    state: {
-      sections: [
-        { progression: "I V vi IV" },
-        { progression: "IV V I vi" },
-        { progression: "ii V I I" },
-      ],
-      arrangement: "1 2 1 2 3 2",
-      playback: { cycle: "none", tempo: 120, style: "pop" },
-    },
-  },
-  {
-    label: "Cycle 4ths",
-    state: { sections: [{ progression: "I" }], arrangement: "", playback: { cycle: "4ths" } },
-  },
-  {
-    label: "Cycle 5ths",
-    state: { sections: [{ progression: "I" }], arrangement: "", playback: { cycle: "5ths" } },
-  },
-];
 
 // ─── Token utilities ─────────────────────────────────────────────────────────
 
@@ -907,6 +868,37 @@ export function makeProgressionPlayer(config: PlayerConfig) {
   };
   let _lastChordPos: PausedAt = { posIndex: 0, chipIndex: 0, lapIndex: 0 };
   let _pausedAt: PausedAt | null = null;
+  let _loadedPreset: UserPreset | null = null;
+  let _loadedBuiltinPreset: { label: string; state: PresetState } | null = null;
+
+  function _toPresetState(s: PresetState): PresetState {
+    return {
+      playback: { ...s.playback },
+      mix: { ...s.mix },
+      sections: s.sections,
+      arrangement: s.arrangement,
+    };
+  }
+
+  function _applyPresetState(presetState: AppStatePartial): void {
+    _pausedAt = null;
+    _state = {
+      playback: { ...DEFAULTS.playback, ...presetState.playback },
+      mix:
+        presetState.mix !== undefined ? { ...DEFAULTS.mix, ...presetState.mix } : { ..._state.mix },
+      sections: presetState.sections ?? DEFAULTS.sections,
+      arrangement: presetState.arrangement ?? DEFAULTS.arrangement,
+      activeSection: _state.activeSection,
+    };
+  }
+
+  function _afterPresetApply(): void {
+    _notify();
+    if (!config.audio?.isPlaying()) return;
+    config.audio.setTempo(_state.playback.tempo);
+    config.audio.setAdvance(_state.playback.advance);
+    _scheduleRebuild();
+  }
 
   function _notify(): void {
     config.onStateChange({
@@ -1127,40 +1119,58 @@ export function makeProgressionPlayer(config: PlayerConfig) {
     // ── Presets ───────────────────────────────────────────────────────────
 
     loadPreset(presetState: AppStatePartial): void {
-      _pausedAt = null;
-      _state = {
-        playback: { ...DEFAULTS.playback, ...presetState.playback },
-        mix:
-          presetState.mix !== undefined
-            ? { ...DEFAULTS.mix, ...presetState.mix }
-            : { ..._state.mix },
-        sections: presetState.sections ?? DEFAULTS.sections,
-        arrangement: presetState.arrangement ?? DEFAULTS.arrangement,
-        activeSection: presetState.activeSection ?? DEFAULTS.activeSection,
-      };
-      _notify();
-      if (!config.audio?.isPlaying()) return;
-      config.audio.setTempo(_state.playback.tempo);
-      config.audio.setAdvance(_state.playback.advance);
-      _scheduleRebuild();
+      _loadedPreset = null;
+      _loadedBuiltinPreset = null;
+      _applyPresetState(presetState);
+      _afterPresetApply();
+    },
+
+    loadUserPreset(preset: UserPreset): void {
+      _loadedPreset = preset;
+      _loadedBuiltinPreset = null;
+      _applyPresetState(preset.state);
+      _afterPresetApply();
+    },
+
+    loadBuiltinPreset(label: string, state: AppStatePartial): void {
+      _loadedPreset = null;
+      _applyPresetState(state);
+      _loadedBuiltinPreset = { label, state: _toPresetState(_state) };
+      _afterPresetApply();
     },
 
     getUserPresets: _getUserPresets,
 
+    getLoadedPreset: (): UserPreset | null => _loadedPreset,
+
+    getLoadedBuiltinName: (): string | null => _loadedBuiltinPreset?.label ?? null,
+
+    isDirty(): boolean {
+      const baseline = _loadedPreset?.state ?? _loadedBuiltinPreset?.state ?? null;
+      if (!baseline) return false;
+      return JSON.stringify(_toPresetState(_state)) !== JSON.stringify(_toPresetState(baseline));
+    },
+
     saveUserPreset(name: string): string {
       const id = Date.now().toString(36);
-      config.persist(
-        PRESETS_STORAGE_KEY,
-        JSON.stringify([
-          ..._getUserPresets(),
-          {
-            id,
-            name,
-            state: { ..._state, playback: { ..._state.playback }, mix: { ..._state.mix } },
-          },
-        ]),
-      );
+      const preset: UserPreset = { id, name, state: _toPresetState(_state) };
+      config.persist(PRESETS_STORAGE_KEY, JSON.stringify([..._getUserPresets(), preset]));
+      _loadedPreset = preset;
       return id;
+    },
+
+    overwriteUserPreset(id: string): void {
+      const state = _toPresetState(_state);
+      const presets = _getUserPresets().map((p) => (p.id === id ? { ...p, state } : p));
+      config.persist(PRESETS_STORAGE_KEY, JSON.stringify(presets));
+      _loadedPreset = presets.find((p) => p.id === id) ?? null;
+    },
+
+    revertPreset(): void {
+      const baseline = _loadedPreset?.state ?? _loadedBuiltinPreset?.state;
+      if (!baseline) return;
+      _applyPresetState(baseline);
+      _afterPresetApply();
     },
 
     renameUserPreset(id: string, name: string): void {
@@ -1168,6 +1178,7 @@ export function makeProgressionPlayer(config: PlayerConfig) {
         PRESETS_STORAGE_KEY,
         JSON.stringify(_getUserPresets().map((p) => (p.id === id ? { ...p, name } : p))),
       );
+      if (_loadedPreset?.id === id) _loadedPreset = { ..._loadedPreset, name };
     },
 
     deleteUserPreset(id: string): void {
@@ -1175,6 +1186,7 @@ export function makeProgressionPlayer(config: PlayerConfig) {
         PRESETS_STORAGE_KEY,
         JSON.stringify(_getUserPresets().filter((p) => p.id !== id)),
       );
+      if (_loadedPreset?.id === id) _loadedPreset = null;
     },
 
     // ── Playback ──────────────────────────────────────────────────────────

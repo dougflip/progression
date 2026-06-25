@@ -12,15 +12,12 @@ Directly related to [agent config](./agent-config-idea.md)
 
 Allow tweaking individual kit piece volume.
 
-## Enhance user presets
+## Enable/Disable Arrangement
 
-Current experience is rough around the edges.
-
-- Hard to know if it actually saved
-- Unclear how to edit
-- Kind of buried in the UI
-
-Not sure of specifics for a change, but could definitely use improvement
+It might be nice to disable the arrangement of a song without removing it.
+I could see a time when you want to just have all sections play once
+but you don't want to remove the hand crafted arrangement.
+This could just be a checkbox.
 
 ## Chord Chips collapse multiple vs repeat
 

@@ -16,7 +16,6 @@ import {
   CYCLE_OPTIONS,
   CYCLE_LABELS,
   BARS_OPTIONS,
-  PRESETS,
   tokenize,
   parseToken,
   resolvePlayOrder,
@@ -30,6 +29,7 @@ import {
   type UserPreset,
   type ChordTickEvent,
 } from "./progression-core.js";
+import { PRESETS } from "./presets.js";
 import { makeProgressionAudio } from "./progression-audio.js";
 
 // ── App instance ────────────────────────────────────────────────────────
@@ -66,7 +66,17 @@ const arrangementEl = $("arrangement") as HTMLInputElement;
 const sectionRowsEl = $("section-rows") as HTMLDivElement;
 const sectionCountEl = $("section-count-label") as HTMLElement;
 const addSectionEl = $("add-section") as HTMLButtonElement;
-const userPresetsEl = $("user-presets") as HTMLDivElement;
+const presetControlEl = $("preset-control") as HTMLDivElement;
+const presetIndicatorBtn = $("preset-indicator") as HTMLButtonElement;
+const presetDropdownEl = $("preset-dropdown") as HTMLDivElement;
+const presetSaveBtn = $("preset-save") as HTMLButtonElement;
+const presetSaveNewBtn = $("preset-save-new") as HTMLButtonElement;
+const presetRevertBtn = $("preset-revert") as HTMLButtonElement;
+const presetDropdownListEl = $("preset-dropdown-list") as HTMLDivElement;
+const presetNameSheetEl = $("preset-name-sheet") as HTMLDialogElement;
+const presetNameTitleEl = $("preset-name-title") as HTMLElement;
+const presetNameInputEl = $("preset-name-input") as HTMLInputElement;
+const presetNameSubmitEl = $("preset-name-submit") as HTMLButtonElement;
 const scrubberBar = $("scrubber-bar") as HTMLDivElement;
 const scrubberTrack = $("scrubber-track") as HTMLDivElement;
 const readoutTempoEl = $("readout-tempo") as HTMLElement;
@@ -101,6 +111,7 @@ function render(state: AppState): void {
   renderKeyScrubber(state);
   renderMix(state);
   syncUrl(state);
+  renderPresetIndicator();
 }
 
 function renderChips(state: AppState): void {
@@ -536,89 +547,98 @@ function makeSectionRow(index: number, state: AppState): HTMLDivElement {
   return row;
 }
 
-function renderUserPresets(focusId: string | null = null): void {
-  userPresetsEl.innerHTML = "";
-  const list = app.getUserPresets();
-  if (!list.length) {
-    userPresetsEl.appendChild(
-      Object.assign(document.createElement("div"), {
-        className: "empty-presets",
-        textContent: "No saved presets yet.",
-      }),
-    );
-    return;
-  }
-  list.forEach((p) => {
-    const row = document.createElement("div");
-    row.className = "user-preset-row";
-
-    const nameBtn = Object.assign(document.createElement("button"), {
-      type: "button",
-      className: "preset-btn user-preset-name",
-      textContent: p.name,
-    });
-    nameBtn.addEventListener("click", () => app.loadPreset(p.state));
-
-    const editBtn = Object.assign(document.createElement("button"), {
-      type: "button",
-      className: "icon-btn",
-      textContent: "✎",
-    });
-    editBtn.setAttribute("aria-label", `Rename ${p.name}`);
-    editBtn.addEventListener("click", () => enterRename(row, p));
-
-    const delBtn = Object.assign(document.createElement("button"), {
-      type: "button",
-      className: "icon-btn",
-      textContent: "×",
-    });
-    delBtn.setAttribute("aria-label", `Delete ${p.name}`);
-    delBtn.addEventListener("click", () => {
-      app.deleteUserPreset(p.id);
-      renderUserPresets();
-    });
-
-    row.append(nameBtn, editBtn, delBtn);
-    userPresetsEl.appendChild(row);
-    if (focusId === p.id) enterRename(row, p);
-  });
+function renderPresetIndicator(): void {
+  const loaded = app.getLoadedPreset();
+  const builtinName = app.getLoadedBuiltinName();
+  const dirty = app.isDirty();
+  const name = loaded?.name ?? builtinName;
+  presetIndicatorBtn.textContent = name ? `${name}${dirty ? " *" : ""}` : "+ Save preset";
+  presetSaveBtn.disabled = !loaded || !dirty;
+  presetRevertBtn.disabled = !dirty;
+  renderPresetDropdownList();
 }
 
-function enterRename(row: HTMLDivElement, preset: UserPreset): void {
-  row.innerHTML = "";
-  const inp = Object.assign(document.createElement("input"), {
-    type: "text",
-    className: "rename-input",
-    value: preset.name,
-    autocomplete: "off",
-    spellcheck: false,
+function renderPresetDropdownList(): void {
+  presetDropdownListEl.innerHTML = "";
+  const presets = app.getUserPresets();
+  const loadedId = app.getLoadedPreset()?.id;
+
+  if (presets.length) {
+    presetDropdownListEl.appendChild(
+      Object.assign(document.createElement("div"), {
+        className: "preset-dropdown-section",
+        textContent: "My Presets",
+      }),
+    );
+    presets.forEach((p) => {
+      const row = document.createElement("div");
+      row.className = "preset-dropdown-row";
+
+      const nameBtn = Object.assign(document.createElement("button"), {
+        type: "button",
+        className:
+          "preset-dropdown-item" + (p.id === loadedId ? " preset-dropdown-item--active" : ""),
+        textContent: p.name,
+      });
+      nameBtn.addEventListener("click", () => {
+        app.loadUserPreset(p);
+        presetDropdownEl.hidden = true;
+      });
+
+      const editBtn = Object.assign(document.createElement("button"), {
+        type: "button",
+        className: "preset-dropdown-icon-btn",
+        textContent: "✎",
+      });
+      editBtn.setAttribute("aria-label", `Rename ${p.name}`);
+      editBtn.addEventListener("click", () => {
+        presetDropdownEl.hidden = true;
+        openPresetNameSheet(p);
+      });
+
+      const delBtn = Object.assign(document.createElement("button"), {
+        type: "button",
+        className: "preset-dropdown-icon-btn",
+        textContent: "×",
+      });
+      delBtn.setAttribute("aria-label", `Delete ${p.name}`);
+      delBtn.addEventListener("click", () => {
+        if (!window.confirm(`Delete "${p.name}"?`)) return;
+        app.deleteUserPreset(p.id);
+        renderPresetDropdownList();
+        renderPresetIndicator();
+      });
+
+      row.append(nameBtn, editBtn, delBtn);
+      presetDropdownListEl.appendChild(row);
+    });
+  }
+
+  const divider = document.createElement("hr");
+  divider.className = "preset-dropdown-divider";
+  presetDropdownListEl.appendChild(divider);
+
+  presetDropdownListEl.appendChild(
+    Object.assign(document.createElement("div"), {
+      className: "preset-dropdown-section",
+      textContent: "Starter Presets",
+    }),
+  );
+  const loadedBuiltinName = app.getLoadedBuiltinName();
+  PRESETS.forEach((p) => {
+    const btn = Object.assign(document.createElement("button"), {
+      type: "button",
+      className:
+        "preset-dropdown-item" +
+        (p.label === loadedBuiltinName ? " preset-dropdown-item--active" : ""),
+      textContent: p.label,
+    });
+    btn.addEventListener("click", () => {
+      app.loadBuiltinPreset(p.label, p.state);
+      presetDropdownEl.hidden = true;
+    });
+    presetDropdownListEl.appendChild(btn);
   });
-  let done = false;
-  const commit = () => {
-    if (done) return;
-    done = true;
-    app.renameUserPreset(preset.id, inp.value.trim() || preset.name);
-    renderUserPresets();
-  };
-  const cancel = () => {
-    if (done) return;
-    done = true;
-    renderUserPresets();
-  };
-  inp.addEventListener("keydown", (e: KeyboardEvent) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      commit();
-    }
-    if (e.key === "Escape") {
-      e.preventDefault();
-      cancel();
-    }
-  });
-  inp.addEventListener("blur", commit);
-  row.appendChild(inp);
-  inp.focus();
-  inp.select();
 }
 
 // ── Theme ────────────────────────────────────────────────────────────────
@@ -960,28 +980,72 @@ addSectionEl.addEventListener("click", () => {
 
 arrangementEl.addEventListener("input", () => app.setArrangement(arrangementEl.value));
 
-// ── Presets ───────────────────────────────────────────────────────────────
+// ── Preset control ────────────────────────────────────────────────────────
 
-PRESETS.forEach((p) => {
-  const btn = Object.assign(document.createElement("button"), {
-    type: "button",
-    className: "preset-btn",
-    textContent: p.label,
-  });
-  btn.addEventListener("click", () => {
-    const current = app.getState();
-    app.loadPreset({
-      ...p.state,
-      playback: { ...current.playback, ...p.state.playback },
-    });
-  });
-  $("presets").appendChild(btn);
+let _editingPreset: UserPreset | null = null;
+
+function openPresetNameSheet(preset?: UserPreset): void {
+  _editingPreset = preset ?? null;
+  presetNameTitleEl.textContent = preset ? "Rename Preset" : "Save Preset";
+  presetNameSubmitEl.textContent = preset ? "Save" : "Save Preset";
+  presetNameInputEl.value = preset?.name ?? "";
+  presetNameSheetEl.showModal();
+  setTimeout(() => {
+    presetNameInputEl.focus();
+    presetNameInputEl.select();
+  }, 50);
+}
+
+presetIndicatorBtn.addEventListener("click", () => {
+  presetDropdownEl.hidden = !presetDropdownEl.hidden;
 });
 
-($("save-preset") as HTMLButtonElement).addEventListener("click", () => {
-  const n = app.getUserPresets().length + 1;
-  const id = app.saveUserPreset(`Preset ${n}`);
-  renderUserPresets(id);
+document.addEventListener("click", (e: MouseEvent) => {
+  if (presetDropdownEl.hidden) return;
+  if (presetControlEl.contains(e.target as Node)) return;
+  presetDropdownEl.hidden = true;
+});
+
+presetSaveBtn.addEventListener("click", () => {
+  const loaded = app.getLoadedPreset();
+  if (!loaded) return;
+  app.overwriteUserPreset(loaded.id);
+  presetDropdownEl.hidden = true;
+  renderPresetIndicator();
+});
+
+presetRevertBtn.addEventListener("click", () => {
+  app.revertPreset();
+  presetDropdownEl.hidden = true;
+});
+
+presetSaveNewBtn.addEventListener("click", () => {
+  presetDropdownEl.hidden = true;
+  openPresetNameSheet();
+});
+
+presetNameSubmitEl.addEventListener("click", () => {
+  const name = presetNameInputEl.value.trim();
+  if (!name) return;
+  if (_editingPreset) {
+    app.renameUserPreset(_editingPreset.id, name);
+  } else {
+    app.saveUserPreset(name);
+  }
+  presetNameSheetEl.close();
+  renderPresetIndicator();
+  renderPresetDropdownList();
+});
+
+presetNameInputEl.addEventListener("keydown", (e: KeyboardEvent) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    presetNameSubmitEl.click();
+  }
+  if (e.key === "Escape") {
+    e.preventDefault();
+    presetNameSheetEl.close();
+  }
 });
 
 // ── Mix ───────────────────────────────────────────────────────────────────
@@ -1081,5 +1145,5 @@ if (!localStorage.getItem(WELCOMED)) ($("welcome-modal") as HTMLDialogElement).s
 // ── Init ──────────────────────────────────────────────────────────────────
 
 app.applyUrl(location.search);
-renderUserPresets();
+renderPresetIndicator();
 applyTheme(localStorage.getItem("theme") ?? "dark");
