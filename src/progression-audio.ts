@@ -109,8 +109,6 @@ export function makeProgressionAudio(): AudioEngine {
   let _manualLap = 0;
   let _advance = "auto";
   let _muteState = { chordsOn: true, bassOn: true, drumsOn: true };
-  // Track last-set volume per channel so setMute can reapply it on unmute,
-  // guarding against Tone.js silently ignoring -Infinity assignments.
   let _volState = { chords: 50, bass: 100, drums: 100, master: 100 };
 
   // ── Active start params (needed inside Draw callbacks) ─────────────────────
@@ -126,7 +124,7 @@ export function makeProgressionAudio(): AudioEngine {
   // ── Private helpers ────────────────────────────────────────────────────────
 
   function _toDb(v: number): number {
-    if (!Number.isFinite(v) || v <= 0) return -Infinity;
+    if (!Number.isFinite(v) || v <= 0) return -100; // Tone.js may silently ignore -Infinity
     return Tone.gainToDb(Math.min(100, v) / 100);
   }
 
@@ -138,14 +136,17 @@ export function makeProgressionAudio(): AudioEngine {
     }
   }
 
-  function _initChannels({
-    chordVol,
-    bassVol,
-    drumVol,
-    masterVol,
-    chordsOn,
-    bassOn,
-  }: {
+  function _initChannels(): void {
+    if (_channels) return;
+    const master = new Tone.Channel().toDestination();
+    const chord = new Tone.Channel().connect(master);
+    const bass = new Tone.Channel().connect(master);
+    const drum = new Tone.Channel().connect(master);
+    for (const player of Object.values(_sp)) player.connect(drum);
+    _channels = { chord, bass, drum, master };
+  }
+
+  function _syncMixToChannels(mix: {
     chordVol: number;
     bassVol: number;
     drumVol: number;
@@ -153,20 +154,18 @@ export function makeProgressionAudio(): AudioEngine {
     chordsOn: boolean;
     bassOn: boolean;
   }): void {
-    if (_channels) return;
-    _volState = { chords: chordVol, bass: bassVol, drums: drumVol, master: masterVol };
-    const master = new Tone.Channel().toDestination();
-    const chord = new Tone.Channel().connect(master);
-    const bass = new Tone.Channel().connect(master);
-    const drum = new Tone.Channel().connect(master);
-    chord.volume.value = _toDb(chordVol);
-    bass.volume.value = _toDb(bassVol);
-    drum.volume.value = _toDb(drumVol);
-    master.volume.value = _toDb(masterVol);
-    chord.mute = !chordsOn;
-    bass.mute = !bassOn;
-    for (const player of Object.values(_sp)) player.connect(drum);
-    _channels = { chord, bass, drum, master };
+    _volState = {
+      chords: mix.chordVol,
+      bass: mix.bassVol,
+      drums: mix.drumVol,
+      master: mix.masterVol,
+    };
+    _channels!.chord.volume.value = _toDb(mix.chordVol);
+    _channels!.bass.volume.value = _toDb(mix.bassVol);
+    _channels!.drum.volume.value = _toDb(mix.drumVol);
+    _channels!.master.volume.value = _toDb(mix.masterVol);
+    _channels!.chord.mute = !mix.chordsOn;
+    _channels!.bass.mute = !mix.bassOn;
   }
 
   function _teardown(cancelTransport = true, keepSynth = false): void {
@@ -621,7 +620,6 @@ export function makeProgressionAudio(): AudioEngine {
     customCycleKeys: string[],
     style: StyleDef,
     bassVariant: string,
-    bassOn: boolean,
   ): void {
     _bass = new Tone.MonoSynth({
       oscillator: { type: "sawtooth" },
@@ -665,8 +663,6 @@ export function makeProgressionAudio(): AudioEngine {
       steps,
       "16n",
     ).start(0);
-
-    _bassSeq.mute = !bassOn;
   }
 
   // ── Public interface ───────────────────────────────────────────────────────
@@ -711,7 +707,8 @@ export function makeProgressionAudio(): AudioEngine {
       _currentPosIndex = startPosIndex;
       _muteState = { chordsOn: mix.chordsOn, bassOn: mix.bassOn, drumsOn: mix.drumsOn };
 
-      _initChannels(mix);
+      _initChannels();
+      _syncMixToChannels(mix);
       _teardown();
       _buildSynth();
 
@@ -722,7 +719,7 @@ export function makeProgressionAudio(): AudioEngine {
         voicing,
       );
       _buildDrums(style, drumVariant, mix.drumsOn);
-      _buildBass(chordSequence, cycle, customCycleKeys, style, bassVariant, mix.bassOn);
+      _buildBass(chordSequence, cycle, customCycleKeys, style, bassVariant);
 
       Tone.Transport.bpm.value = tempo;
       if (advance === "manual") _currentPosIndex = startPosIndex;
@@ -760,8 +757,11 @@ export function makeProgressionAudio(): AudioEngine {
         _teardown(false, true);
         _buildPart(chordSequence, cycle, customCycleKeys, voicing);
         _buildDrums(style, drumVariant, _muteState.drumsOn);
-        _buildBass(chordSequence, cycle, customCycleKeys, style, bassVariant, _muteState.bassOn);
-        if (_channels) _channels.chord.mute = !_muteState.chordsOn;
+        _buildBass(chordSequence, cycle, customCycleKeys, style, bassVariant);
+        if (_channels) {
+          _channels.chord.mute = !_muteState.chordsOn;
+          _channels.bass.mute = !_muteState.bassOn;
+        }
       } catch (e) {
         console.warn("Audio rebuild failed:", e);
       }
@@ -782,6 +782,10 @@ export function makeProgressionAudio(): AudioEngine {
               ? "drums"
               : "master"
       ] = value;
+      // Skip channel assignment while muted — Tone.js volume.value can override the mute state.
+      // The new value is stored in _volState and applied when the channel is unmuted.
+      if (channel === "chords" && !_muteState.chordsOn) return;
+      if (channel === "bass" && !_muteState.bassOn) return;
       const db = _toDb(value);
       if (channel === "chords") _channels.chord.volume.value = db;
       else if (channel === "bass") _channels.bass.volume.value = db;
@@ -794,10 +798,10 @@ export function makeProgressionAudio(): AudioEngine {
         !muted;
       if (channel === "chords" && _channels) {
         _channels.chord.mute = muted;
-        // Reapply volume in case Tone.js silently rejected a -Infinity assignment earlier
         if (!muted) _channels.chord.volume.value = _toDb(_volState.chords);
       } else if (channel === "bass" && _channels) {
         _channels.bass.mute = muted;
+        if (_bassSeq) _bassSeq.mute = muted;
         if (!muted) _channels.bass.volume.value = _toDb(_volState.bass);
       } else if (channel === "drums") {
         for (const s of [
