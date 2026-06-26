@@ -169,7 +169,7 @@ export function makeProgressionAudio(): AudioEngine {
     _channels = { chord, bass, drum, master };
   }
 
-  function _teardown(): void {
+  function _teardown(cancelTransport = true, keepSynth = false): void {
     safeCall(_part, "stop");
     safeCall(_part, "dispose");
     _part = null;
@@ -201,25 +201,46 @@ export function makeProgressionAudio(): AudioEngine {
       _bassSeq =
       _beatSeq =
         null;
-    for (const v of [
-      _synth,
-      _kick,
-      _snare,
-      _hat,
-      _hatOpen,
-      _hatOpenFilter,
-      _crash,
-      _crashFilter,
-      _ride,
-      _rideFilter,
-      _tom,
-      _tom2,
-      _bass,
-      _reverb,
-    ])
+    if (!keepSynth) {
+      if (_synth) _safe(() => _synth!.releaseAll());
+    }
+    for (const v of keepSynth
+      ? [
+          _kick,
+          _snare,
+          _hat,
+          _hatOpen,
+          _hatOpenFilter,
+          _crash,
+          _crashFilter,
+          _ride,
+          _rideFilter,
+          _tom,
+          _tom2,
+          _bass,
+        ]
+      : [
+          _synth,
+          _kick,
+          _snare,
+          _hat,
+          _hatOpen,
+          _hatOpenFilter,
+          _crash,
+          _crashFilter,
+          _ride,
+          _rideFilter,
+          _tom,
+          _tom2,
+          _bass,
+          _reverb,
+        ])
       safeCall(v, "dispose");
-    _synth =
-      _kick =
+    if (!keepSynth) {
+      _synth = null;
+      _reverb = null;
+    }
+    _kick =
       _snare =
       _hat =
       _hatOpen =
@@ -231,10 +252,9 @@ export function makeProgressionAudio(): AudioEngine {
       _tom =
       _tom2 =
       _bass =
-      _reverb =
         null;
     _safe(() => Tone.Draw.cancel(0));
-    _safe(() => Tone.Transport.cancel());
+    if (cancelTransport) _safe(() => Tone.Transport.cancel());
   }
 
   function _buildSynth(): void {
@@ -733,22 +753,18 @@ export function makeProgressionAudio(): AudioEngine {
       customCycleKeys = [],
     }: AudioRebuildOpts): void {
       if (Tone.Transport.state !== "started") return;
-      Tone.Transport.scheduleOnce(() => {
-        if (Tone.Transport.state !== "started") return;
-        _key = key;
-        _cycle = cycle;
-        _customCycleKeys = customCycleKeys;
-        try {
-          _teardown();
-          _buildSynth();
-          _buildPart(chordSequence, cycle, customCycleKeys, voicing);
-          _buildDrums(style, drumVariant, _muteState.drumsOn);
-          _buildBass(chordSequence, cycle, customCycleKeys, style, bassVariant, _muteState.bassOn);
-          if (_channels) _channels.chord.mute = !_muteState.chordsOn;
-        } catch (e) {
-          console.warn("Audio rebuild failed:", e);
-        }
-      }, "+0");
+      _key = key;
+      _cycle = cycle;
+      _customCycleKeys = customCycleKeys;
+      try {
+        _teardown(false, true);
+        _buildPart(chordSequence, cycle, customCycleKeys, voicing);
+        _buildDrums(style, drumVariant, _muteState.drumsOn);
+        _buildBass(chordSequence, cycle, customCycleKeys, style, bassVariant, _muteState.bassOn);
+        if (_channels) _channels.chord.mute = !_muteState.chordsOn;
+      } catch (e) {
+        console.warn("Audio rebuild failed:", e);
+      }
     },
 
     setTempo(bpm: number): void {
