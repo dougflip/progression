@@ -732,9 +732,6 @@ export function makeProgressionAudio(): AudioEngine {
     stop(): void {
       Tone.Transport.stop();
       _teardown();
-      _onChordTick = null;
-      _onBeatTick = null;
-      _onBarTick = null;
       _pendingJump = null;
       _pendingKeyJump = null;
       _manualLap = 0;
