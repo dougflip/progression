@@ -693,9 +693,17 @@ function onPlaybackChange(playing: boolean): void {
     void releaseWakeLock();
     clearBeats();
     clearBars();
-    _currentScrubPosIndex = null;
-    _currentScrubKey = null;
+    _currentScrubPosIndex = 0;
     _currentLapIndex = 0;
+    const _stopState = app.getState();
+    const _stopShifts = getShiftsForCycle(
+      _stopState.playback.cycle,
+      _stopState.playback.customCycleKeys,
+    );
+    _currentScrubKey =
+      _stopShifts.length > 0
+        ? resolvedKeyName(_stopState.playback.key, _stopShifts[0]!, _stopState.playback.cycle)
+        : null;
     statusEl.textContent = "";
     scrubberTrack
       .querySelectorAll(".scrubber-seg")
