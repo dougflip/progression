@@ -776,6 +776,14 @@ function syncUrl(state: AppState): void {
 
 keyNoteBtnEl.addEventListener("click", () => {
   keyPickerEl.hidden = !keyPickerEl.hidden;
+  if (!keyPickerEl.hidden) {
+    const btnRect = keyNoteBtnEl.getBoundingClientRect();
+    const pickerRect = keyPickerEl.getBoundingClientRect();
+    keyPickerEl.style.setProperty(
+      "--arrow-left",
+      `${btnRect.left + btnRect.width / 2 - pickerRect.left}px`,
+    );
+  }
 });
 document.addEventListener("click", (e: MouseEvent) => {
   if (keyPickerEl.hidden) return;
