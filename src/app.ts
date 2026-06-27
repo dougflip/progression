@@ -136,7 +136,7 @@ function buildChipStructure(tokens: string[]): void {
     c.classList.contains("active"),
   );
   stripEl.innerHTML = "";
-  tokens.forEach((token) => {
+  tokens.forEach((token, i) => {
     const { numeral, bars } = parseToken(token, 0);
     const displayToken = token.includes(":") ? `${numeral}:${bars}` : numeral;
     const isAbsolute = isAbsoluteChord(numeral);
@@ -152,9 +152,25 @@ function buildChipStructure(tokens: string[]): void {
     }
     chip.appendChild(Object.assign(document.createElement("div"), { className: "name" }));
     chip.appendChild(Object.assign(document.createElement("div"), { className: "bar-progress" }));
+    chip.addEventListener("click", () => {
+      if (audio.isPlaying()) return;
+      const posIndex =
+        _currentScrubPosIndex ??
+        (() => {
+          const state = app.getState();
+          const order = resolvePlayOrder(state.sections, state.arrangement);
+          return Math.max(
+            0,
+            order.findIndex((ref) => ref === state.activeSection),
+          );
+        })();
+      app.seekToChip(posIndex, i);
+      setActiveChip(i);
+    });
     stripEl.appendChild(chip);
   });
-  if (activeIdx >= 0) setActiveChip(activeIdx);
+  const defaultIdx = stripEl.classList.contains("playing") ? -1 : 0;
+  setActiveChip(activeIdx >= 0 ? activeIdx : defaultIdx);
 }
 
 function updateChipNames(names: string[]): void {
@@ -165,10 +181,6 @@ function updateChipNames(names: string[]): void {
 
 function setActiveChip(index: number): void {
   stripEl.querySelectorAll(".chip").forEach((c, i) => c.classList.toggle("active", i === index));
-}
-
-function clearActiveChip(): void {
-  setActiveChip(-1);
 }
 
 // ── Beat / bar progress helpers ─────────────────────────────────────────
@@ -665,22 +677,33 @@ function onPlaybackChange(playing: boolean): void {
   playBtn.classList.toggle("playing", playing);
   playBtn.setAttribute("aria-label", playing ? "Pause" : "Play");
   if (playing) {
+    stripEl.classList.add("playing");
     statusEl.textContent = "";
     if (keepAwakeEl.checked) void acquireWakeLock();
   } else if (app.isPaused()) {
+    stripEl.classList.remove("playing");
     void releaseWakeLock();
     clearBeats();
     clearBars();
     scrubberTrack.querySelectorAll(".scrubber-seg").forEach((s) => s.classList.remove("queued"));
     keyScrubberTrack.querySelectorAll(".scrubber-seg").forEach((s) => s.classList.remove("queued"));
   } else {
+    stripEl.classList.remove("playing");
+    setActiveChip(-1);
     void releaseWakeLock();
-    clearActiveChip();
     clearBeats();
     clearBars();
-    _currentScrubPosIndex = null;
-    _currentScrubKey = null;
+    _currentScrubPosIndex = 0;
     _currentLapIndex = 0;
+    const _stopState = app.getState();
+    const _stopShifts = getShiftsForCycle(
+      _stopState.playback.cycle,
+      _stopState.playback.customCycleKeys,
+    );
+    _currentScrubKey =
+      _stopShifts.length > 0
+        ? resolvedKeyName(_stopState.playback.key, _stopShifts[0]!, _stopState.playback.cycle)
+        : null;
     statusEl.textContent = "";
     scrubberTrack
       .querySelectorAll(".scrubber-seg")
@@ -761,6 +784,14 @@ function syncUrl(state: AppState): void {
 
 keyNoteBtnEl.addEventListener("click", () => {
   keyPickerEl.hidden = !keyPickerEl.hidden;
+  if (!keyPickerEl.hidden) {
+    const btnRect = keyNoteBtnEl.getBoundingClientRect();
+    const pickerRect = keyPickerEl.getBoundingClientRect();
+    keyPickerEl.style.setProperty(
+      "--arrow-left",
+      `${btnRect.left + btnRect.width / 2 - pickerRect.left}px`,
+    );
+  }
 });
 document.addEventListener("click", (e: MouseEvent) => {
   if (keyPickerEl.hidden) return;
