@@ -6,8 +6,6 @@
 
 Directly related to [agent config](./agent-config-idea.md)
 
-## Jump to chord via tap
-
 ## Drum mixer per instrument
 
 Allow tweaking individual kit piece volume.

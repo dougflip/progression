@@ -1243,6 +1243,12 @@ export function makeProgressionPlayer(config: PlayerConfig) {
       else _notify();
     },
 
+    seekToChip(posIndex: number, chipIndex: number): void {
+      const lapIndex = _pausedAt !== null ? _pausedAt.lapIndex : 0;
+      _pausedAt = { posIndex, chipIndex, lapIndex };
+      _notify();
+    },
+
     isPaused: (): boolean => _pausedAt !== null,
 
     queueJump(posIndex: number): void {
