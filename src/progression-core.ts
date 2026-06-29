@@ -293,8 +293,8 @@ export const CYCLE_SEMIS = { none: 0, "4ths": 5, "5ths": 7 };
 export const CYCLE_OPTIONS = ["none", "4ths", "5ths", "custom"] as const;
 export const CYCLE_LABELS: Record<string, string> = {
   none: "🔄 Loop",
-  "4ths": "🔄 Cycle 4ths",
-  "5ths": "🔄 Cycle 5ths",
+  "4ths": "🔄 Cycle 4",
+  "5ths": "🔄 Cycle 5",
   custom: "🔄 Custom",
 };
 
