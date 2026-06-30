@@ -14,6 +14,8 @@ RUN cd e2e && npm ci
 COPY . .
 RUN npm run build
 
+RUN chmod 777 /app/e2e
+
 WORKDIR /app/e2e
 
 CMD ["npm", "test"]

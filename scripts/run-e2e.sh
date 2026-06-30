@@ -4,8 +4,14 @@ set -e
 echo "Building e2e test image..."
 docker build -f e2e/Dockerfile -t progression-e2e .
 
+# ensure the test output directories exist
+# otherwise, docker will create them as root
+# and the test runner won't be able to write to them as it runs as the current user
+mkdir -p e2e/tests/snapshots e2e/playwright-report e2e/test-results
+
 echo "Running e2e tests..."
 docker run --rm \
+  --user "$(id -u):$(id -g)" \
   -e CI="${CI:-false}" \
   -v "$(pwd)/e2e/tests:/app/e2e/tests" \
   -v "$(pwd)/e2e/playwright-report:/app/e2e/playwright-report" \
