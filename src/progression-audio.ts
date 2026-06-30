@@ -12,6 +12,7 @@ import {
   clampShift,
   makeChord,
   getShiftsForCycle,
+  type ChordQuality,
   type SongChord,
   type StyleDef,
   type DrumOption,
@@ -28,16 +29,23 @@ interface Channels {
   master: Tone.Channel;
 }
 
+// Single-lap event — shift is resolved at callback time via _currentShift
 interface PartEvent {
   time: string;
   bars: number;
-  notes: string[];
+  root: number;
+  quality: ChordQuality;
   chipIndex: number;
   sectionIndex: number;
   posIndex: number;
-  shift: number;
   sectionNumerals: string[];
   sectionTokens: string[];
+}
+
+// Symbolic bass step — actual note resolved dynamically from _currentShift at callback time
+interface BassStepItem {
+  chordIdx: number;
+  noteType: "R" | "3" | "5" | null;
 }
 
 interface PartOffsets {
@@ -97,19 +105,29 @@ export function makeProgressionAudio(): AudioEngine {
   let _tomSeq: Tone.Sequence<number> | null = null;
   let _tom2Seq: Tone.Sequence<number> | null = null;
   let _bass: Tone.MonoSynth | null = null;
-  let _bassSeq: Tone.Sequence<string | null> | null = null;
+  let _bassSeq: Tone.Sequence<BassStepItem> | null = null;
   let _beatSeq: Tone.Sequence<number> | null = null;
 
   // ── Playback state ─────────────────────────────────────────────────────────
   let _pendingJump: number | null = null;
   let _pendingKeyJump: number | null = null;
   let _currentPosIndex = 0;
-  let _currentLap = 0;
+  let _currentLap = 0; // transport-derived; used only for lap boundary detection
   let _songBars = 0;
-  let _manualLap = 0;
   let _advance = "auto";
   let _muteState = { chordsOn: true, bassOn: true, drumsOn: true };
   let _volState = { chords: 50, bass: 100, drums: 100, master: 100 };
+
+  // ── Cycle / key state ──────────────────────────────────────────────────────
+  let _shifts: number[] = [0];
+  let _currentShiftIndex = 0; // which key in the cycle we're on (reported as lapIndex)
+  let _currentShift = 0; // _shifts[_currentShiftIndex]
+  let _storedChords: SongChord[] = []; // referenced by bass callback for dynamic note lookup
+
+  // ── Voice leading state (engine-level so it persists across Part loop iterations) ──
+  let _prevUpper: number[] | null = null;
+  let _voicingSmooth = false;
+  let _voicingResetEachLap = false;
 
   // ── Active start params (needed inside Draw callbacks) ─────────────────────
   let _key = "C";
@@ -265,15 +283,10 @@ export function makeProgressionAudio(): AudioEngine {
     _synth.volume.value = -13;
   }
 
-  function _buildPart(
-    chords: SongChord[],
-    cycle: string,
-    customCycleKeys: string[],
-    voicing: string,
-  ): PartOffsets {
-    const shifts = getShiftsForCycle(cycle, customCycleKeys);
-    const smooth = voicing === "voice-lead" || voicing === "voice-lead-loop";
-    const resetEachLap = voicing === "voice-lead-loop";
+  function _buildPart(chords: SongChord[], voicing: string): PartOffsets {
+    _voicingSmooth = voicing === "voice-lead" || voicing === "voice-lead-loop";
+    _voicingResetEachLap = voicing === "voice-lead-loop";
+    _prevUpper = null; // reset voice leading on each build/rebuild
 
     const songBars = chords.reduce((s, c) => s + c.bars, 0);
     _songBars = songBars;
@@ -297,92 +310,104 @@ export function makeProgressionAudio(): AudioEngine {
       posSectionTokens[c.posIndex]!.push(c.token);
     }
 
+    // Build events for a single lap — notes resolved dynamically at callback time
     let cumBars = 0;
     const events: PartEvent[] = [];
-    let prevUpper: number[] | null = null;
-
-    for (let i = 0; i < shifts.length; i++) {
-      if (resetEachLap) prevUpper = null;
-      const rawShift = shifts[i]!;
-      const audioShift = clampShift(rawShift);
-
-      for (const c of chords) {
-        const voiced: ReturnType<typeof makeChord> =
-          audioShift || smooth
-            ? makeChord(c.root + audioShift, c.quality, smooth ? prevUpper : null)
-            : c;
-        if (smooth) prevUpper = voiced.upperVoicing;
-
-        events.push({
-          time: `${cumBars}m`,
-          bars: c.bars,
-          notes: voiced.notes,
-          chipIndex: c.chipIndex,
-          sectionIndex: c.sectionIndex,
-          posIndex: c.posIndex,
-          shift: rawShift,
-          sectionNumerals: posSectionNumerals[c.posIndex] ?? [],
-          sectionTokens: posSectionTokens[c.posIndex] ?? [],
-        });
-        cumBars += c.bars;
-      }
+    for (const c of chords) {
+      events.push({
+        time: `${cumBars}m`,
+        bars: c.bars,
+        root: c.root,
+        quality: c.quality,
+        chipIndex: c.chipIndex,
+        sectionIndex: c.sectionIndex,
+        posIndex: c.posIndex,
+        sectionNumerals: posSectionNumerals[c.posIndex] ?? [],
+        sectionTokens: posSectionTokens[c.posIndex] ?? [],
+      });
+      cumBars += c.bars;
     }
 
     let lastPos = -1;
 
     _part = new Tone.Part<PartEvent>((time, ev) => {
-      // ── Key jump: fire at the next lap boundary (end of full song) ──
-      const lapIndex = Math.floor(Tone.Transport.ticks / (Tone.Transport.PPQ * 4) / songBars);
-      if (lapIndex > _currentLap) {
-        _currentLap = lapIndex;
+      // ── Lap boundary: advance key or fire queued key jump (auto mode) ───────
+      // transportLapIndex counts how many times the single-lap Part has looped.
+      const transportLapIndex = Math.floor(
+        Tone.Transport.ticks / (Tone.Transport.PPQ * 4) / songBars,
+      );
+      if (transportLapIndex > _currentLap) {
+        _currentLap = transportLapIndex;
         if (_pendingKeyJump !== null) {
-          const lap = _pendingKeyJump;
+          // Explicit key jump: fire at lap boundary in both auto and manual mode.
+          // In multi-section manual mode the transport never reaches a lap boundary
+          // (section intercept keeps seeking back), so this only fires for
+          // single-section arrangements where there is no section boundary to use.
+          _currentShiftIndex = _pendingKeyJump;
           _pendingKeyJump = null;
-          _currentPosIndex = 0;
-          _manualLap = 0;
-          _currentLap = lap - 1;
-          Tone.Transport.position = `${Math.round(lap * songBars)}:0:0`;
-          return;
+          _currentShift = _shifts[_currentShiftIndex] ?? 0;
+          if (_voicingResetEachLap) _prevUpper = null;
+        } else if (_advance !== "manual") {
+          // Auto mode only: advance to the next key naturally.
+          // Manual mode: key never changes without an explicit user tap.
+          _currentShiftIndex = (_currentShiftIndex + 1) % _shifts.length;
+          _currentShift = _shifts[_currentShiftIndex] ?? 0;
+          if (_voicingResetEachLap) _prevUpper = null;
         }
+        // No transport seek, no return — chord plays immediately with updated shift
       }
 
-      // ── Manual mode: intercept section boundaries ──
+      // ── Manual mode: intercept section boundaries ────────────────────────────
       if (_advance === "manual" && ev.posIndex !== _currentPosIndex) {
         if (_pendingJump !== null) {
           const target = _pendingJump;
           _pendingJump = null;
           _currentPosIndex = target;
-          _manualLap = 0;
-          Tone.Transport.position = `${Math.round(posOffsets[_currentPosIndex] ?? 0)}:0:0`;
-        } else {
-          _manualLap++;
-          Tone.Transport.position = `${Math.round(_manualLap * songBars + (posOffsets[_currentPosIndex] ?? 0))}:0:0`;
         }
+        // Key changes in manual mode fire at section boundaries (fully user-controlled)
+        if (_pendingKeyJump !== null) {
+          _currentShiftIndex = _pendingKeyJump;
+          _pendingKeyJump = null;
+          _currentShift = _shifts[_currentShiftIndex] ?? 0;
+          if (_voicingResetEachLap) _prevUpper = null;
+          // _currentPosIndex is intentionally NOT reset — user keeps their held section
+        }
+        Tone.Transport.position = `${Math.round(posOffsets[_currentPosIndex] ?? 0)}:0:0`;
         return;
       }
 
-      // ── Auto mode: jump on demand ──
+      // ── Auto mode: section jump on demand ───────────────────────────────────
       if (_pendingJump !== null && _advance !== "manual") {
         const target = _pendingJump;
         _pendingJump = null;
-        const ticksPerBar = Tone.Transport.PPQ * 4;
-        const currentBar = Tone.Transport.ticks / ticksPerBar;
-        const lapStart = Math.floor(currentBar / songBars) * songBars;
-        Tone.Transport.position = `${Math.round(lapStart + (posOffsets[target] ?? 0))}:0:0`;
+        Tone.Transport.position = `${Math.round(posOffsets[target] ?? 0)}:0:0`;
         return;
       }
 
-      // ── Play chord ──
-      if (_synth) _safe(() => _synth!.triggerAttackRelease(ev.notes, `${ev.bars}m`, time));
+      // ── Compute voiced notes from current shift ──────────────────────────────
+      const audioShift = clampShift(_currentShift);
+      const voiced = makeChord(
+        ev.root + audioShift,
+        ev.quality,
+        _voicingSmooth ? _prevUpper : null,
+      );
+      if (_voicingSmooth) _prevUpper = voiced.upperVoicing;
 
-      // ── Visual callbacks (animation frame, not audio thread) ──
+      // ── Play chord ──────────────────────────────────────────────────────────
+      if (_synth) _safe(() => _synth!.triggerAttackRelease(voiced.notes, `${ev.bars}m`, time));
+
+      // ── Visual callbacks (animation frame, not audio thread) ─────────────────
+      // Capture shift state now so Draw callbacks reflect the shift at play time,
+      // not whatever _currentShift happens to be when the animation frame fires.
+      const shiftSnapshot = _currentShift;
+      const shiftIndexSnapshot = _currentShiftIndex;
       Tone.Draw.schedule(() => {
         const sectionChanged = ev.posIndex !== lastPos;
         if (sectionChanged) lastPos = ev.posIndex;
 
         if (_onChordTick) {
           const resolvedChipNames = ev.sectionNumerals.map((n) =>
-            resolvedChordName(n, ev.shift, _key, _cycle),
+            resolvedChordName(n, shiftSnapshot, _key, _cycle),
           );
           _onChordTick({
             chipIndex: ev.chipIndex,
@@ -390,10 +415,10 @@ export function makeProgressionAudio(): AudioEngine {
             sectionIndex: ev.sectionIndex,
             sectionChanged,
             resolvedChipNames,
-            resolvedKey: resolvedKeyName(_key, ev.shift, _cycle),
+            resolvedKey: resolvedKeyName(_key, shiftSnapshot, _cycle),
             bars: ev.bars,
             sectionTokens: sectionChanged ? ev.sectionTokens : null,
-            lapIndex,
+            lapIndex: shiftIndexSnapshot,
           });
         }
       }, time);
@@ -614,13 +639,7 @@ export function makeProgressionAudio(): AudioEngine {
       if (s) s.mute = muted;
   }
 
-  function _buildBass(
-    chords: SongChord[],
-    cycle: string,
-    customCycleKeys: string[],
-    style: StyleDef,
-    bassVariant: string,
-  ): void {
+  function _buildBass(chords: SongChord[], style: StyleDef, bassVariant: string): void {
     _bass = new Tone.MonoSynth({
       oscillator: { type: "sawtooth" },
       filter: { Q: 2, type: "lowpass" },
@@ -637,28 +656,38 @@ export function makeProgressionAudio(): AudioEngine {
     _bass.volume.value = -6;
 
     const patterns = (style[bassVariant as DrumOption] ?? style.simple).bass;
-    const shifts = getShiftsForCycle(cycle, customCycleKeys);
-    const steps: (string | null)[] = [];
 
-    for (let i = 0; i < shifts.length; i++) {
-      const shift = clampShift(shifts[i]!);
-      for (const c of chords) {
-        const voiced = shift ? makeChord(c.root + shift, c.quality) : c;
-        const pattern = voiced.isMinor ? patterns.minor : patterns.major;
-        const total = c.bars * 16;
-        for (let s = 0; s < total; s++) {
-          const step = pattern[s % 16];
-          if (step === "R") steps.push(voiced.bassRoot);
-          else if (step === "3") steps.push(voiced.bassThird);
-          else if (step === "5") steps.push(voiced.bassFifth);
-          else steps.push(null);
-        }
+    // Build symbolic steps for one lap — pattern selection uses base chord quality
+    // (shift-independent), actual note resolved dynamically at callback time.
+    const steps: BassStepItem[] = [];
+    for (let ci = 0; ci < chords.length; ci++) {
+      const c = chords[ci]!;
+      const pattern = c.isMinor ? patterns.minor : patterns.major;
+      const total = c.bars * 16;
+      for (let s = 0; s < total; s++) {
+        const step = pattern[s % 16];
+        steps.push({
+          chordIdx: ci,
+          noteType: step === "R" ? "R" : step === "3" ? "3" : step === "5" ? "5" : null,
+        });
       }
     }
 
-    _bassSeq = new Tone.Sequence<string | null>(
-      (time, note) => {
-        if (note && _bass) _safe(() => _bass!.triggerAttackRelease(note, "8n", time));
+    _bassSeq = new Tone.Sequence<BassStepItem>(
+      (time, item) => {
+        if (item.noteType === null || !_bass) return;
+        const c = _storedChords[item.chordIdx];
+        if (!c) return;
+        const shift = clampShift(_currentShift);
+        // When shift=0 reuse pre-computed chord data; otherwise compute shifted chord
+        const voiced = shift ? makeChord(c.root + shift, c.quality) : c;
+        const note =
+          item.noteType === "R"
+            ? voiced.bassRoot
+            : item.noteType === "3"
+              ? voiced.bassThird
+              : voiced.bassFifth;
+        _safe(() => _bass!.triggerAttackRelease(note, "8n", time));
       },
       steps,
       "16n",
@@ -702,30 +731,32 @@ export function makeProgressionAudio(): AudioEngine {
       _onBarTick = onBarTick;
       _pendingJump = null;
       _pendingKeyJump = null;
-      _manualLap = 0;
-      _currentLap = startLapIndex;
+      _currentLap = 0;
       _currentPosIndex = startPosIndex;
       _muteState = { chordsOn: mix.chordsOn, bassOn: mix.bassOn, drumsOn: mix.drumsOn };
+
+      // Cycle / key state
+      _shifts = getShiftsForCycle(cycle, customCycleKeys);
+      _currentShiftIndex = startLapIndex;
+      _currentShift = _shifts[startLapIndex] ?? 0;
+      _storedChords = chordSequence;
 
       _initChannels();
       _syncMixToChannels(mix);
       _teardown();
       _buildSynth();
 
-      const { posOffsets, chipOffsets } = _buildPart(
-        chordSequence,
-        cycle,
-        customCycleKeys,
-        voicing,
-      );
+      const { posOffsets, chipOffsets } = _buildPart(chordSequence, voicing);
       _buildDrums(style, drumVariant, mix.drumsOn);
-      _buildBass(chordSequence, cycle, customCycleKeys, style, bassVariant);
+      _buildBass(chordSequence, style, bassVariant);
 
       Tone.Transport.bpm.value = tempo;
       if (advance === "manual") _currentPosIndex = startPosIndex;
+      // Transport start position: bar offset within one lap (no lap multiplier —
+      // the lap index is captured in _currentShiftIndex instead).
       const startBarOffset =
         chipOffsets[startPosIndex]?.[startChipIndex] ?? posOffsets[startPosIndex] ?? 0;
-      Tone.Transport.position = `${startLapIndex * _songBars + startBarOffset}:0:0`;
+      Tone.Transport.position = `${startBarOffset}:0:0`;
       Tone.Transport.start();
     },
 
@@ -734,9 +765,11 @@ export function makeProgressionAudio(): AudioEngine {
       _teardown();
       _pendingJump = null;
       _pendingKeyJump = null;
-      _manualLap = 0;
       _currentLap = 0;
       _currentPosIndex = 0;
+      _currentShiftIndex = 0;
+      _currentShift = 0;
+      _prevUpper = null;
     },
 
     rebuild({
@@ -753,11 +786,21 @@ export function makeProgressionAudio(): AudioEngine {
       _key = key;
       _cycle = cycle;
       _customCycleKeys = customCycleKeys;
+
+      // Update shift array and clamp index in case cycle length changed
+      _shifts = getShiftsForCycle(cycle, customCycleKeys);
+      _currentShiftIndex = Math.min(_currentShiftIndex, _shifts.length - 1);
+      _currentShift = _shifts[_currentShiftIndex] ?? 0;
+      _storedChords = chordSequence;
+
       try {
         _teardown(false, true);
-        _buildPart(chordSequence, cycle, customCycleKeys, voicing);
+        _buildPart(chordSequence, voicing); // sets _songBars
         _buildDrums(style, drumVariant, _muteState.drumsOn);
-        _buildBass(chordSequence, cycle, customCycleKeys, style, bassVariant);
+        _buildBass(chordSequence, style, bassVariant);
+        // Sync _currentLap to current transport position so the first callback
+        // after rebuild doesn't trigger a false lap boundary.
+        _currentLap = Math.floor(Tone.Transport.ticks / (Tone.Transport.PPQ * 4) / _songBars);
         if (_channels) {
           _channels.chord.mute = !_muteState.chordsOn;
           _channels.bass.mute = !_muteState.bassOn;

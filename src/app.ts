@@ -109,6 +109,7 @@ function render(state: AppState): void {
   renderSectionRows(state);
   renderScrubber(state);
   renderKeyScrubber(state);
+  readoutAdvanceEl.hidden = scrubberBar.hidden && keyScrubberBar.hidden;
   renderMix(state);
   syncUrl(state);
   renderPresetIndicator();
@@ -398,12 +399,10 @@ function renderScrubber(state: AppState): void {
   const order = resolvePlayOrder(state.sections, state.arrangement);
   if (order.length < 2) {
     scrubberBar.hidden = true;
-    readoutAdvanceEl.hidden = true;
     syncBodyPadding();
     return;
   }
   scrubberBar.hidden = false;
-  readoutAdvanceEl.hidden = false;
   scrubberTrack.innerHTML = "";
   order.forEach((sectionRef, posIndex) => {
     const seg = document.createElement("button");
