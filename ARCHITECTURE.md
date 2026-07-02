@@ -25,6 +25,7 @@ tsconfig.json             — strict TypeScript config (noEmit; Vite handles tra
 - **TypeScript with strict mode.** `strict`, `noUncheckedIndexedAccess`, `noImplicitReturns`, and `noFallthroughCasesInSwitch` all enabled. The `AudioEngine` interface in core formally enforces the contract between the player factory and the audio engine.
 - **Host receives only resolved display data.** `onChordTick` carries `resolvedChipNames` (chord names in the current key), `resolvedKey`, position/section indices, `bars`, and `sectionTokens` (raw tokens, only on section change) — no raw semitone shifts or music theory math reaches the host.
 - **Two callback tiers.** `onChordTick` fires once per chord; `onBarTick` fires for each bar after the first within a multi-bar chord; `onBeatTick` fires every quarter-note beat. All three are audio-timing-sensitive (fast, no DOM work). `onStateChange` fires on any state mutation and is unrestricted.
+- **Playback settings are edited only on the main screen.** Key, tempo, bars, style, bass, drums, voicing, and loop mode are set exclusively through the `#readout` pills and the key/tempo popups — there is no duplicate control for any of them in the Setup sheet. This replaced an earlier design where Setup's "Playback" group duplicated every one of these controls; real usage showed that group was never touched once the main-screen pills existed, so it was removed rather than kept in sync. Setup is now purely structural: sections, arrangement, and app-level settings (theme, keep-awake, share link, version).
 
 ## Audio interface
 
@@ -68,6 +69,10 @@ The audio engine replaces the old fixed 12-lap loop with an iteration over the a
 
 Key jump timing: `queueKeyJump(lapIndex)` queues a jump that fires at the next lap boundary (when the full song arrangement completes in the current key), not at the next chord. The engine tracks `_currentLap` from transport ticks on every chord event and fires when `lapIndex > _currentLap`.
 
+**Editing `customCycleKeys`.** There's no dedicated editor screen — the key pill's popup (`#key-picker`) does double duty based on `cycle`. In `'none' | '4ths' | '5ths'` mode it's a single-select grid: tap a key, set `state.playback.key`, close the popup. When `cycle === 'custom'`, the same 12-key grid (`#key-grid`) becomes a toggle instead: tapping an unselected key appends it to `customCycleKeys`, tapping a selected one (highlighted) removes it, and the popup stays open so several keys can be added in one visit. A reorder/delete list (`#custom-key-rows`) renders directly below the grid inside the same popup, driven by the same `renderCustomCycleEditor` that previously targeted a Setup-sheet panel.
+
+The popup's outside-click-to-dismiss listener is registered on the **capture** phase, not the default bubble phase. Reordering a key calls `setPlayback`, which synchronously rebuilds `#custom-key-rows` — detaching the clicked ↑/↓/× button from the DOM before the click event finishes bubbling up to `document`. A bubble-phase listener would then see `keyPickerEl.contains(e.target)` as `false` (the target is detached) and incorrectly close the popup on every reorder. Capture phase evaluates before that rebuild happens, so the containment check still sees the button attached.
+
 ## URL serialization
 
 State is serialized as query parameters. Musical content (`key`, `tempo`, `bars`, `cycle`, `customKeys`, `style`, `section`, `advance`, `arrangement`, `activeSection`) and mix state (`chordsOn`/`bassOn`/`drumsOn`, `*Vol`) are all encoded. Multiple `section` params carry each section's progression string. `customKeys` is a comma-joined list of key names (e.g. `customKeys=A,E,D,G`), only written when non-empty. All values fall back to `DEFAULTS` on parse failure.
@@ -77,7 +82,7 @@ State is serialized as query parameters. Musical content (`key`, `tempo`, `bars`
 The action bar contains two stacked scrubber rows, each only visible when relevant:
 
 - **SONG scrubber** — appears when the arrangement has 2+ positions; segments are section references. While playing: tapping queues a section jump at the next chord boundary (auto mode) or holds until tapped again (manual mode). While stopped/paused: tapping highlights the segment and calls `seekToPos(posIndex)` so play starts from that exact arrangement position (not just the section number — repeated section refs like `1 1 2 1 1 2` resume from the tapped occurrence).
-- **KEY scrubber** — appears when `cycle !== 'none'` and the key sequence has 2+ entries; segments are resolved key names. While playing: tapping queues a lap jump that fires at the end of the current full-song run. While stopped/paused: tapping highlights the segment, calls `seekToLap(lapIndex)`, and immediately updates the chord chips and key display to reflect the selected key.
+- **KEY scrubber** — appears when `cycle !== 'none'` and either the key sequence has 2+ entries or `cycle === 'custom'` (shown with even a single key, so the sequence being built is visible right away); segments are resolved key names. While playing: tapping queues a lap jump that fires at the end of the current full-song run. While stopped/paused: tapping highlights the segment, calls `seekToLap(lapIndex)`, and immediately updates the chord chips and key display to reflect the selected key.
 
 Both scrubbers auto-scroll to keep the active segment centered on each chord tick using `getBoundingClientRect`-based centering (not `offsetLeft`, which is relative to the nearest positioned ancestor rather than the scroll container).
 
@@ -116,7 +121,7 @@ Five source files with clear per-file purpose: logic, audio, view, markup, style
 
 - `progression-core.ts` crossing ~1500 lines → separate music-theory utilities from state/player factory. The cut is clean; coupling between the two halves is already minimal.
 
-`progression-audio.ts` (~840 lines) and `src/app.ts` (~1085 lines) are growing but well-scoped; revisit if either approaches 1500 lines.
+`progression-audio.ts` (~840 lines) and `src/app.ts` (~1120 lines) are growing but well-scoped; revisit if either approaches 1500 lines.
 
 ## References
 
