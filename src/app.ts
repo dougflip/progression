@@ -101,6 +101,8 @@ const bassOnEl = $("bass-on") as HTMLInputElement;
 const drumsOnEl = $("drums-on") as HTMLInputElement;
 const keepAwakeEl = $("keep-awake") as HTMLInputElement;
 
+$("app-version").textContent = `v${__APP_VERSION__} build-${__APP_SHA__}`;
+
 // ── Render ──────────────────────────────────────────────────────────────
 
 function render(state: AppState): void {
