@@ -309,6 +309,16 @@ export function getShiftsForCycle(cycle: string, customCycleKeys: string[]): num
   return [0];
 }
 
+// Custom-cycle shifts are relative to customCycleKeys[0] (see getShiftsForCycle above), and every
+// resolved key is `key` + shift — so `key` must equal customCycleKeys[0] or every lap resolves
+// against the wrong home key. Called wherever playback state can be constructed or mutated.
+export function normalizePlaybackForCycle(playback: PlaybackSettings): PlaybackSettings {
+  if (playback.cycle === "custom" && playback.customCycleKeys.length > 0) {
+    return { ...playback, key: playback.customCycleKeys[0]! };
+  }
+  return playback;
+}
+
 const ROMAN_NUMERALS = [
   "III",
   "VII",
@@ -796,7 +806,7 @@ export function parseUrl(searchString: string): AppState {
   const rawActive = num("activeSection", DEFAULTS.activeSection);
 
   return {
-    playback: {
+    playback: normalizePlaybackForCycle({
       key: (VALID_KEYS as readonly string[]).includes(key) ? key : DEFAULTS.playback.key,
       tempo: Math.max(40, Math.min(220, num("tempo", DEFAULTS.playback.tempo))),
       bars: (BARS_OPTIONS as readonly number[]).includes(bars) ? bars : DEFAULTS.playback.bars,
@@ -809,7 +819,7 @@ export function parseUrl(searchString: string): AppState {
         ? voicing
         : DEFAULTS.playback.voicing,
       advance: ["auto", "manual"].includes(advance) ? advance : DEFAULTS.playback.advance,
-    },
+    }),
     mix: {
       chordVol: num("chordVol", DEFAULTS.mix.chordVol),
       bassVol: num("bassVol", DEFAULTS.mix.bassVol),
@@ -883,7 +893,7 @@ export function makeProgressionPlayer(config: PlayerConfig) {
   function _applyPresetState(presetState: AppStatePartial): void {
     _pausedAt = null;
     _state = {
-      playback: { ...DEFAULTS.playback, ...presetState.playback },
+      playback: normalizePlaybackForCycle({ ...DEFAULTS.playback, ...presetState.playback }),
       mix:
         presetState.mix !== undefined ? { ...DEFAULTS.mix, ...presetState.mix } : { ..._state.mix },
       sections: presetState.sections ?? DEFAULTS.sections,
@@ -909,7 +919,10 @@ export function makeProgressionPlayer(config: PlayerConfig) {
   }
 
   function _setPlayback(partial: Partial<PlaybackSettings>): void {
-    _state = { ..._state, playback: { ..._state.playback, ...partial } };
+    _state = {
+      ..._state,
+      playback: normalizePlaybackForCycle({ ..._state.playback, ...partial }),
+    };
     if (_pausedAt !== null && ("cycle" in partial || "customCycleKeys" in partial)) {
       _pausedAt = null;
     }
@@ -1150,7 +1163,7 @@ export function makeProgressionPlayer(config: PlayerConfig) {
         id,
         label,
         state: {
-          playback: { ...DEFAULTS.playback, ...state.playback },
+          playback: normalizePlaybackForCycle({ ...DEFAULTS.playback, ...state.playback }),
           mix: state.mix !== undefined ? { ...DEFAULTS.mix, ...state.mix } : { ...DEFAULTS.mix },
           sections: state.sections ?? DEFAULTS.sections,
           arrangement: state.arrangement ?? DEFAULTS.arrangement,
