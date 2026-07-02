@@ -1,6 +1,10 @@
 import { defineConfig } from "vite";
 import { resolve } from "path";
+import { execSync } from "child_process";
 import { VitePWA } from "vite-plugin-pwa";
+import pkg from "./package.json" with { type: "json" };
+
+const commitSha = execSync("git rev-parse --short HEAD").toString().trim();
 
 export default defineConfig({
   test: {
@@ -8,6 +12,10 @@ export default defineConfig({
     exclude: ["e2e/**", "node_modules/**"],
   },
   base: "/progression/",
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+    __APP_SHA__: JSON.stringify(commitSha),
+  },
   plugins: [
     VitePWA({
       registerType: "autoUpdate",
