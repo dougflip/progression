@@ -55,13 +55,11 @@ const app = makeProgressionPlayer({
 const $ = (id: string): HTMLElement => document.getElementById(id) as HTMLElement;
 const keyNoteBtnEl = $("key-note-btn") as HTMLButtonElement;
 const keyPickerEl = $("key-picker") as HTMLDivElement;
+const keyGridEl = $("key-grid") as HTMLDivElement;
 const stripEl = $("chord-strip") as HTMLDivElement;
 const statusEl = $("status") as HTMLElement;
 const playBtn = $("play") as HTMLButtonElement;
 const stopBtn = $("stop-btn") as HTMLButtonElement;
-const keySelectEl = $("key-select") as HTMLSelectElement;
-const tempoSliderEl = $("tempo-slider") as HTMLInputElement;
-const tempoDisplayEl = $("tempo-display") as HTMLElement;
 const arrangementEl = $("arrangement") as HTMLInputElement;
 const sectionRowsEl = $("section-rows") as HTMLDivElement;
 const sectionCountEl = $("section-count-label") as HTMLElement;
@@ -90,7 +88,6 @@ const readoutAdvanceEl = $("readout-advance") as HTMLButtonElement;
 const keyScrubberBar = $("key-scrubber-bar") as HTMLDivElement;
 const keyScrubberTrack = $("key-scrubber-track") as HTMLDivElement;
 const customKeysEditorEl = $("custom-keys-editor") as HTMLDivElement;
-const customKeyPickerEl = $("custom-key-picker") as HTMLDivElement;
 const customKeyRowsEl = $("custom-key-rows") as HTMLDivElement;
 const chordVolEl = $("chord-vol") as HTMLInputElement;
 const bassVolEl = $("bass-vol") as HTMLInputElement;
@@ -123,15 +120,16 @@ function renderChips(state: AppState): void {
   buildChipStructure(tokens);
   updateChipNames(getResolvedChipNames(state, _currentLapIndex));
   keyNoteBtnEl.textContent = _currentScrubKey ?? state.playback.key;
-  keySelectEl.value = state.playback.key;
-  keyPickerEl
-    .querySelectorAll<HTMLElement>(".key-chip")
-    .forEach((b) =>
-      b.classList.toggle(
-        "active",
-        (b as HTMLElement & { dataset: DOMStringMap }).dataset["key"] === state.playback.key,
-      ),
+  const isCustomCycle = state.playback.cycle === "custom";
+  keyGridEl.querySelectorAll<HTMLElement>(".key-chip").forEach((b) => {
+    const key = (b as HTMLElement & { dataset: DOMStringMap }).dataset["key"];
+    b.classList.toggle(
+      "active",
+      isCustomCycle
+        ? state.playback.customCycleKeys.includes(key ?? "")
+        : key === state.playback.key,
     );
+  });
 }
 
 function buildChipStructure(tokens: string[]): void {
@@ -302,7 +300,6 @@ function onChordTick({
 
 function renderReadout(state: AppState): void {
   readoutTempoEl.textContent = String(state.playback.tempo);
-  tempoDisplayEl.textContent = `${state.playback.tempo} BPM`;
   readoutStyleEl.textContent =
     STYLE_LABELS[state.playback.style as StyleOption] ?? state.playback.style;
   readoutStyleEl.setAttribute("aria-label", `Style: ${state.playback.style}`);
@@ -324,40 +321,6 @@ function renderReadout(state: AppState): void {
   const isCustom = state.playback.cycle === "custom";
   customKeysEditorEl.hidden = !isCustom;
   if (isCustom) renderCustomCycleEditor(state);
-
-  if (document.activeElement !== tempoSliderEl) tempoSliderEl.value = String(state.playback.tempo);
-
-  document
-    .querySelectorAll<HTMLElement>("[data-bars]")
-    .forEach((btn) =>
-      btn.classList.toggle(
-        "active",
-        parseInt(btn.dataset["bars"] ?? "", 10) === state.playback.bars,
-      ),
-    );
-  document
-    .querySelectorAll<HTMLElement>("[data-cycle]")
-    .forEach((btn) =>
-      btn.classList.toggle("active", btn.dataset["cycle"] === state.playback.cycle),
-    );
-  document
-    .querySelectorAll<HTMLElement>("[data-style]")
-    .forEach((btn) =>
-      btn.classList.toggle("active", btn.dataset["style"] === state.playback.style),
-    );
-  document
-    .querySelectorAll<HTMLElement>("[data-bass]")
-    .forEach((btn) => btn.classList.toggle("active", btn.dataset["bass"] === state.playback.bass));
-  document
-    .querySelectorAll<HTMLElement>("[data-drums]")
-    .forEach((btn) =>
-      btn.classList.toggle("active", btn.dataset["drums"] === state.playback.drums),
-    );
-  document
-    .querySelectorAll<HTMLElement>("[data-voicing]")
-    .forEach((btn) =>
-      btn.classList.toggle("active", btn.dataset["voicing"] === state.playback.voicing),
-    );
 }
 
 function renderSectionRows(state: AppState): void {
@@ -427,7 +390,7 @@ function renderKeyScrubber(state: AppState): void {
   }
   const shifts = getShiftsForCycle(state.playback.cycle, state.playback.customCycleKeys);
   const keys = shifts.map((s) => resolvedKeyName(state.playback.key, s, state.playback.cycle));
-  if (keys.length < 2) {
+  if (keys.length < 2 && state.playback.cycle !== "custom") {
     keyScrubberBar.hidden = true;
     syncBodyPadding();
     return;
@@ -769,7 +732,7 @@ function syncUrl(state: AppState): void {
 
 // ── Key picker ───────────────────────────────────────────────────────────
 
-(["C", "Db", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"] as const).forEach((k) => {
+(VALID_KEYS as readonly string[]).forEach((k) => {
   const btn = Object.assign(document.createElement("button"), {
     type: "button",
     className: "key-chip",
@@ -777,10 +740,18 @@ function syncUrl(state: AppState): void {
   });
   btn.dataset["key"] = k;
   btn.addEventListener("click", () => {
+    if (app.getState().playback.cycle === "custom") {
+      const keys = app.getState().playback.customCycleKeys;
+      const idx = keys.indexOf(k);
+      app.setPlayback({
+        customCycleKeys: idx === -1 ? [...keys, k] : keys.filter((_, j) => j !== idx),
+      });
+      return;
+    }
     app.setPlayback({ key: k });
     keyPickerEl.hidden = true;
   });
-  keyPickerEl.appendChild(btn);
+  keyGridEl.appendChild(btn);
 });
 
 keyNoteBtnEl.addEventListener("click", () => {
@@ -794,11 +765,15 @@ keyNoteBtnEl.addEventListener("click", () => {
     );
   }
 });
-document.addEventListener("click", (e: MouseEvent) => {
-  if (keyPickerEl.hidden) return;
-  if (keyNoteBtnEl.contains(e.target as Node) || keyPickerEl.contains(e.target as Node)) return;
-  keyPickerEl.hidden = true;
-});
+document.addEventListener(
+  "click",
+  (e: MouseEvent) => {
+    if (keyPickerEl.hidden) return;
+    if (keyNoteBtnEl.contains(e.target as Node) || keyPickerEl.contains(e.target as Node)) return;
+    keyPickerEl.hidden = true;
+  },
+  true,
+);
 
 // ── Tempo picker ─────────────────────────────────────────────────────────
 
@@ -829,10 +804,6 @@ document.addEventListener("click", (e: MouseEvent) => {
     return;
   tempoPickerEl.hidden = true;
 });
-
-tempoSliderEl.addEventListener("input", () =>
-  app.setPlayback({ tempo: parseInt(tempoSliderEl.value, 10) }),
-);
 
 // ── Tap tempo ─────────────────────────────────────────────────────────────
 
@@ -866,44 +837,9 @@ function handleTap(btn: HTMLElement): void {
   e.stopPropagation();
   handleTap(e.currentTarget as HTMLElement);
 });
-($("tap-tempo-setup") as HTMLButtonElement).addEventListener("click", (e: MouseEvent) =>
-  handleTap(e.currentTarget as HTMLElement),
-);
 
-// ── Setup sheet option groups ─────────────────────────────────────────────
+// ── Theme ────────────────────────────────────────────────────────────────
 
-keySelectEl.addEventListener("change", () => app.setPlayback({ key: keySelectEl.value }));
-
-document
-  .querySelectorAll<HTMLElement>("[data-bars]")
-  .forEach((btn) =>
-    btn.addEventListener("click", () =>
-      app.setPlayback({ bars: parseInt(btn.dataset["bars"] ?? "", 10) }),
-    ),
-  );
-document
-  .querySelectorAll<HTMLElement>("[data-cycle]")
-  .forEach((btn) => btn.addEventListener("click", () => app.setCycle(btn.dataset["cycle"] ?? "")));
-document
-  .querySelectorAll<HTMLElement>("[data-style]")
-  .forEach((btn) =>
-    btn.addEventListener("click", () => app.setPlayback({ style: btn.dataset["style"] ?? "" })),
-  );
-document
-  .querySelectorAll<HTMLElement>("[data-bass]")
-  .forEach((btn) =>
-    btn.addEventListener("click", () => app.setPlayback({ bass: btn.dataset["bass"] ?? "" })),
-  );
-document
-  .querySelectorAll<HTMLElement>("[data-drums]")
-  .forEach((btn) =>
-    btn.addEventListener("click", () => app.setPlayback({ drums: btn.dataset["drums"] ?? "" })),
-  );
-document
-  .querySelectorAll<HTMLElement>("[data-voicing]")
-  .forEach((btn) =>
-    btn.addEventListener("click", () => app.setPlayback({ voicing: btn.dataset["voicing"] ?? "" })),
-  );
 document
   .querySelectorAll<HTMLElement>("[data-theme-opt]")
   .forEach((btn) => btn.addEventListener("click", () => applyTheme(btn.dataset["themeOpt"] ?? "")));
@@ -991,25 +927,7 @@ function renderCustomCycleEditor(state: AppState): void {
     row.append(num, nameEl, upBtn, downBtn, delBtn);
     customKeyRowsEl.appendChild(row);
   });
-  const atLimit = keys.length >= 12;
-  customKeyPickerEl.querySelectorAll<HTMLButtonElement>(".key-chip").forEach((btn) => {
-    btn.disabled = atLimit;
-  });
 }
-
-(VALID_KEYS as readonly string[]).forEach((k) => {
-  const btn = Object.assign(document.createElement("button"), {
-    type: "button",
-    className: "key-chip",
-    textContent: k,
-  });
-  btn.addEventListener("click", () => {
-    const keys = app.getState().playback.customCycleKeys;
-    if (keys.length >= 12) return;
-    app.setPlayback({ customCycleKeys: [...keys, k] });
-  });
-  customKeyPickerEl.appendChild(btn);
-});
 
 // ── Sections ──────────────────────────────────────────────────────────────
 

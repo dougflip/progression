@@ -119,15 +119,17 @@
         left: 50%;
         transform: translateX(-50%);
         z-index: 20;
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 0.5rem;
         width: 16rem;
         padding: 0.85rem;
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: 0.6rem;
         box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+      }
+      .key-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.5rem;
       }
       #key-picker::before,
       #key-picker::after {
@@ -665,8 +667,7 @@
       }
 
       /* ── Form controls ── */
-      input[type="text"],
-      select {
+      input[type="text"] {
         font-size: 1rem;
         padding: 0.6rem;
         width: 100%;
@@ -691,7 +692,7 @@
         transform: scale(1.2);
       }
 
-      /* ── Option button groups (replaces bars-btn, cycle-btn, style-btn, etc.) ── */
+      /* ── Option button groups ── */
       .option-group {
         display: flex;
         gap: 0.4rem;
@@ -795,12 +796,6 @@
       }
 
       /* ── Custom cycle editor ── */
-      #custom-key-picker {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 0.4rem;
-        margin-top: 0.75rem;
-      }
       .custom-key-name {
         flex: 1;
         padding: 0.45rem 0.6rem;
@@ -1224,7 +1219,13 @@
       <div id="key-display">
         <span class="key-label">Key of</span>
         <button id="key-note-btn" class="key-pill" type="button">C</button>
-        <div id="key-picker" hidden></div>
+        <div id="key-picker" hidden>
+          <div id="key-grid" class="key-grid"></div>
+          <div id="custom-keys-editor" hidden>
+            <label class="field-label" style="margin-top: 0.75rem">Cycle sequence</label>
+            <div id="custom-key-rows" class="section-rows" style="margin-top: 0.4rem"></div>
+          </div>
+        </div>
       </div>
       <div id="chord-strip"></div>
       <div id="beat-indicator">
@@ -1292,79 +1293,6 @@
         <button class="close-btn" type="button" data-close="setup-sheet">×</button>
       </div>
       <div class="sheet-body">
-        <section class="setup-group">
-          <h3 class="setup-group-title">Playback</h3>
-          <label class="field-label" for="key-select">Key</label>
-          <select id="key-select">
-            <option>C</option>
-            <option>Db</option>
-            <option>D</option>
-            <option>Eb</option>
-            <option>E</option>
-            <option>F</option>
-            <option>F#</option>
-            <option>G</option>
-            <option>Ab</option>
-            <option>A</option>
-            <option>Bb</option>
-            <option>B</option>
-          </select>
-          <label class="field-label" for="tempo-slider"
-            >Tempo
-            <span
-              id="tempo-display"
-              style="font-weight: 400; color: var(--text-2); font-size: 0.85rem"
-              >85 BPM</span
-            ></label
-          >
-          <input id="tempo-slider" type="range" min="40" max="220" step="1" value="85" />
-          <button type="button" class="tap-btn" id="tap-tempo-setup" style="margin-top: 0.4rem">
-            Tap tempo
-          </button>
-          <label class="field-label">Bars per chord</label>
-          <div class="option-group" id="bars-group">
-            <button type="button" class="option-btn" data-bars="1">1</button>
-            <button type="button" class="option-btn active" data-bars="2">2</button>
-            <button type="button" class="option-btn" data-bars="4">4</button>
-          </div>
-          <label class="field-label">Loop mode</label>
-          <div class="option-group" id="cycle-group">
-            <button type="button" class="option-btn active" data-cycle="none">Loop</button>
-            <button type="button" class="option-btn" data-cycle="4ths">Cycle 4ths</button>
-            <button type="button" class="option-btn" data-cycle="5ths">Cycle 5ths</button>
-            <button type="button" class="option-btn" data-cycle="custom">Custom</button>
-          </div>
-          <div id="custom-keys-editor" hidden>
-            <div id="custom-key-rows" class="section-rows" style="margin-top: 0.5rem"></div>
-            <div id="custom-key-picker"></div>
-          </div>
-          <label class="field-label">Style</label>
-          <div class="option-group" id="style-group">
-            <button type="button" class="option-btn" data-style="pop">Pop</button>
-            <button type="button" class="option-btn active" data-style="funk">Funk</button>
-            <button type="button" class="option-btn" data-style="ballad">Ballad</button>
-            <button type="button" class="option-btn" data-style="rock">Rock</button>
-          </div>
-          <label class="field-label">Bass</label>
-          <div class="option-group" id="bass-group">
-            <button type="button" class="option-btn" data-bass="simple">Simple</button>
-            <button type="button" class="option-btn active" data-bass="busy">Busy</button>
-          </div>
-          <label class="field-label">Drums</label>
-          <div class="option-group" id="drums-group">
-            <button type="button" class="option-btn active" data-drums="simple">Simple</button>
-            <button type="button" class="option-btn" data-drums="busy">Busy</button>
-          </div>
-          <label class="field-label">Voicing</label>
-          <div class="option-group" id="voicing-group">
-            <button type="button" class="option-btn" data-voicing="root">Root</button>
-            <button type="button" class="option-btn" data-voicing="voice-lead">Voice-lead</button>
-            <button type="button" class="option-btn active" data-voicing="voice-lead-loop">
-              Voice-lead/loop
-            </button>
-          </div>
-        </section>
-
         <section class="setup-group">
           <h3 class="setup-group-title">Progression</h3>
           <label class="field-label">Sections <span id="section-count-label"></span></label>
