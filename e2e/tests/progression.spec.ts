@@ -40,6 +40,11 @@ test.describe("with welcome modal dismissed", () => {
     await expect(page).toHaveScreenshot("cycle-custom-multi-key.png", SCREENSHOT_OPTS);
   });
 
+  test("cycle custom - mismatched key param resolves to customKeys[0]", async ({ page }) => {
+    await page.goto(`${BASE}?key=C&cycle=custom&customKeys=A,D,G&section=I%20ii%20V%20I`);
+    await expect(page).toHaveScreenshot("cycle-custom-mismatched-key.png", SCREENSHOT_OPTS);
+  });
+
   test("multi-section arrangement - song scrubber is visible", async ({ page }) => {
     await page.goto(`${BASE}?key=C&section=I%20vi%20ii%20V&section=IV%20V%20I&arrangement=1%202`);
     await expect(page).toHaveScreenshot("multi-section.png", SCREENSHOT_OPTS);

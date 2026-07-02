@@ -311,6 +311,10 @@
       .readout-btn:active {
         background: var(--surface-alt-active);
       }
+      .readout-btn:disabled {
+        opacity: 0.3;
+        cursor: default;
+      }
       .tempo-group {
         position: relative;
         display: inline-flex;
@@ -1222,7 +1226,7 @@
         <div id="key-picker" hidden>
           <div id="key-grid" class="key-grid"></div>
           <div id="custom-keys-editor" hidden>
-            <label class="field-label" style="margin-top: 0.75rem">Cycle sequence</label>
+            <label class="field-label" style="margin-top: 1.5rem">Cycle sequence</label>
             <div id="custom-key-rows" class="section-rows" style="margin-top: 0.4rem"></div>
           </div>
         </div>
@@ -1253,7 +1257,7 @@
           </div>
         </span>
         <button type="button" class="readout-btn" id="readout-cycle">Loop</button>
-        <button type="button" class="readout-btn" id="readout-advance" hidden>Auto</button>
+        <button type="button" class="readout-btn" id="readout-advance">Auto</button>
       </div>
       <div id="status"></div>
     </main>

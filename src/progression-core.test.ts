@@ -2,7 +2,9 @@ import {
   MAX_CHORDS,
   cycleUsesFlats,
   getShiftsForCycle,
+  normalizePlaybackForCycle,
   parseProgression,
+  parseUrl,
   remapArrangementDelete,
   remapArrangementSwap,
   resolvedChordName,
@@ -39,6 +41,59 @@ describe("getShiftsForCycle", () => {
 
   it("falls back to [0] for 'custom' with empty key list", () => {
     expect(getShiftsForCycle("custom", [])).toEqual([0]);
+  });
+});
+
+const BASE_PLAYBACK = {
+  key: "C",
+  tempo: 85,
+  bars: 2,
+  cycle: "none",
+  customCycleKeys: [],
+  style: "funk",
+  bass: "busy",
+  drums: "simple",
+  voicing: "voice-lead-loop",
+  advance: "auto",
+};
+
+describe("normalizePlaybackForCycle", () => {
+  it("syncs key to customCycleKeys[0] when cycle is custom", () => {
+    const result = normalizePlaybackForCycle({
+      ...BASE_PLAYBACK,
+      key: "C",
+      cycle: "custom",
+      customCycleKeys: ["A", "D", "G"],
+    });
+    expect(result.key).toBe("A");
+  });
+
+  it("leaves key untouched when customCycleKeys is empty", () => {
+    const result = normalizePlaybackForCycle({
+      ...BASE_PLAYBACK,
+      key: "C",
+      cycle: "custom",
+      customCycleKeys: [],
+    });
+    expect(result.key).toBe("C");
+  });
+
+  it("leaves key untouched for non-custom cycles", () => {
+    const result = normalizePlaybackForCycle({
+      ...BASE_PLAYBACK,
+      key: "C",
+      cycle: "4ths",
+      customCycleKeys: ["A", "D", "G"],
+    });
+    expect(result.key).toBe("C");
+  });
+});
+
+describe("parseUrl", () => {
+  it("resolves the key from customCycleKeys[0], not the key param, when cycle=custom", () => {
+    const state = parseUrl("key=C&cycle=custom&customKeys=A,D,G");
+    expect(state.playback.key).toBe("A");
+    expect(state.playback.customCycleKeys).toEqual(["A", "D", "G"]);
   });
 });
 

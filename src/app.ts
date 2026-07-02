@@ -108,7 +108,7 @@ function render(state: AppState): void {
   renderSectionRows(state);
   renderScrubber(state);
   renderKeyScrubber(state);
-  readoutAdvanceEl.hidden = scrubberBar.hidden && keyScrubberBar.hidden;
+  syncAdvancePill(state);
   renderMix(state);
   syncUrl(state);
   renderPresetIndicator();
@@ -315,12 +315,26 @@ function renderReadout(state: AppState): void {
   readoutBarsEl.setAttribute("aria-label", `Bars: ${state.playback.bars}`);
   readoutCycleEl.textContent = CYCLE_LABELS[state.playback.cycle] ?? state.playback.cycle;
   readoutCycleEl.setAttribute("aria-label", `Loop: ${state.playback.cycle}`);
-  readoutAdvanceEl.textContent = state.playback.advance === "manual" ? "⏭️ Manual" : "⏭️ Auto";
-  readoutAdvanceEl.setAttribute("aria-label", `Advance: ${state.playback.advance}`);
 
   const isCustom = state.playback.cycle === "custom";
   customKeysEditorEl.hidden = !isCustom;
   if (isCustom) renderCustomCycleEditor(state);
+}
+
+// Advance (Auto/Manual) only affects queued jumps on a scrubber — kept visible but disabled
+// (rather than hidden) when neither scrubber is showing, so the pill row doesn't reflow as
+// sections/cycle modes change. While disabled it always reads "Auto" regardless of the stored
+// value, since a stale "Manual" would read as if manual mode were quietly still in effect.
+function syncAdvancePill(state: AppState): void {
+  const applies = !scrubberBar.hidden || !keyScrubberBar.hidden;
+  readoutAdvanceEl.disabled = !applies;
+  if (!applies) {
+    readoutAdvanceEl.textContent = "⏭️ Auto";
+    readoutAdvanceEl.setAttribute("aria-label", "Advance: not applicable");
+    return;
+  }
+  readoutAdvanceEl.textContent = state.playback.advance === "manual" ? "⏭️ Manual" : "⏭️ Auto";
+  readoutAdvanceEl.setAttribute("aria-label", `Advance: ${state.playback.advance}`);
 }
 
 function renderSectionRows(state: AppState): void {
@@ -743,6 +757,7 @@ function syncUrl(state: AppState): void {
     if (app.getState().playback.cycle === "custom") {
       const keys = app.getState().playback.customCycleKeys;
       const idx = keys.indexOf(k);
+      if (idx !== -1 && keys.length <= 1) return;
       app.setPlayback({
         customCycleKeys: idx === -1 ? [...keys, k] : keys.filter((_, j) => j !== idx),
       });
@@ -920,6 +935,7 @@ function renderCustomCycleEditor(state: AppState): void {
       type: "button",
       className: "icon-btn",
       textContent: "×",
+      disabled: keys.length <= 1,
     });
     delBtn.addEventListener("click", () =>
       app.setPlayback({ customCycleKeys: keys.filter((_, j) => j !== i) }),
