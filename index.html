@@ -1048,9 +1048,6 @@
       .preset-dropdown-icon-btn:hover {
         color: var(--text);
       }
-      .preset-dropdown-icon-btn--default-active {
-        color: var(--accent);
-      }
       .preset-dropdown-action:disabled {
         opacity: 0.35;
         cursor: default;
@@ -1417,6 +1414,9 @@
           autocorrect="off"
           spellcheck="false"
         />
+        <label class="toggle"
+          ><input id="preset-name-default" type="checkbox" /> Set as default</label
+        >
         <button id="preset-name-submit" type="button" class="primary-btn">Save Preset</button>
       </div>
     </dialog>

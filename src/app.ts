@@ -75,6 +75,7 @@ const presetNameSheetEl = $("preset-name-sheet") as HTMLDialogElement;
 const presetNameTitleEl = $("preset-name-title") as HTMLElement;
 const presetNameInputEl = $("preset-name-input") as HTMLInputElement;
 const presetNameSubmitEl = $("preset-name-submit") as HTMLButtonElement;
+const presetNameDefaultEl = $("preset-name-default") as HTMLInputElement;
 const scrubberBar = $("scrubber-bar") as HTMLDivElement;
 const scrubberTrack = $("scrubber-track") as HTMLDivElement;
 const readoutTempoEl = $("readout-tempo") as HTMLElement;
@@ -557,25 +558,6 @@ function renderPresetDropdownList(): void {
   const loadedId = app.getLoadedPreset()?.id;
   const defaultId = app.getDefaultPresetId();
 
-  const makeDefaultBtn = (id: string, label: string): HTMLButtonElement => {
-    const isDefault = id === defaultId;
-    const btn = Object.assign(document.createElement("button"), {
-      type: "button",
-      className:
-        "preset-dropdown-icon-btn" + (isDefault ? " preset-dropdown-icon-btn--default-active" : ""),
-      textContent: isDefault ? "★" : "☆",
-    });
-    btn.setAttribute(
-      "aria-label",
-      isDefault ? `Unset ${label} as default` : `Set ${label} as default`,
-    );
-    btn.addEventListener("click", () => {
-      app.setDefaultPresetId(isDefault ? null : id);
-      renderPresetDropdownList();
-    });
-    return btn;
-  };
-
   if (presets.length) {
     presetDropdownListEl.appendChild(
       Object.assign(document.createElement("div"), {
@@ -591,7 +573,7 @@ function renderPresetDropdownList(): void {
         type: "button",
         className:
           "preset-dropdown-item" + (p.id === loadedId ? " preset-dropdown-item--active" : ""),
-        textContent: p.name,
+        textContent: p.id === defaultId ? `${p.name} ★` : p.name,
       });
       nameBtn.addEventListener("click", () => {
         app.loadUserPreset(p);
@@ -622,7 +604,7 @@ function renderPresetDropdownList(): void {
         renderPresetIndicator();
       });
 
-      row.append(nameBtn, makeDefaultBtn(p.id, p.name), editBtn, delBtn);
+      row.append(nameBtn, editBtn, delBtn);
       presetDropdownListEl.appendChild(row);
     });
   }
@@ -639,23 +621,19 @@ function renderPresetDropdownList(): void {
   );
   const loadedBuiltinName = app.getLoadedBuiltinName();
   PRESETS.forEach((p) => {
-    const row = document.createElement("div");
-    row.className = "preset-dropdown-row";
-
     const btn = Object.assign(document.createElement("button"), {
       type: "button",
       className:
         "preset-dropdown-item" +
         (p.label === loadedBuiltinName ? " preset-dropdown-item--active" : ""),
-      textContent: p.label,
+      textContent: p.id === defaultId ? `${p.label} ★` : p.label,
     });
     btn.addEventListener("click", () => {
       app.loadBuiltinPreset(p.id, p.label, p.state);
       presetDropdownEl.hidden = true;
     });
 
-    row.append(btn, makeDefaultBtn(p.id, p.label));
-    presetDropdownListEl.appendChild(row);
+    presetDropdownListEl.appendChild(btn);
   });
 }
 
@@ -989,6 +967,7 @@ function openPresetNameSheet(preset?: UserPreset): void {
   presetNameTitleEl.textContent = preset ? "Rename Preset" : "Save Preset";
   presetNameSubmitEl.textContent = preset ? "Save" : "Save Preset";
   presetNameInputEl.value = preset?.name ?? "";
+  presetNameDefaultEl.checked = preset ? preset.id === app.getDefaultPresetId() : false;
   presetNameSheetEl.showModal();
   setTimeout(() => {
     presetNameInputEl.focus();
@@ -1027,10 +1006,17 @@ presetSaveNewBtn.addEventListener("click", () => {
 presetNameSubmitEl.addEventListener("click", () => {
   const name = presetNameInputEl.value.trim();
   if (!name) return;
+  const makeDefault = presetNameDefaultEl.checked;
   if (_editingPreset) {
     app.renameUserPreset(_editingPreset.id, name);
+    if (makeDefault) {
+      app.setDefaultPresetId(_editingPreset.id);
+    } else if (app.getDefaultPresetId() === _editingPreset.id) {
+      app.setDefaultPresetId(null);
+    }
   } else {
-    app.saveUserPreset(name);
+    const id = app.saveUserPreset(name);
+    if (makeDefault) app.setDefaultPresetId(id);
   }
   presetNameSheetEl.close();
   renderPresetIndicator();
