@@ -2,6 +2,7 @@ import {
   MAX_CHORDS,
   cycleUsesFlats,
   getShiftsForCycle,
+  makeProgressionPlayer,
   normalizePlaybackForCycle,
   parseProgression,
   parseUrl,
@@ -10,8 +11,22 @@ import {
   resolvedChordName,
   resolvedKeyName,
   tokenize,
+  type PlayerConfig,
 } from "./progression-core";
 import { describe, expect, it } from "vitest";
+
+function makeMockConfig(): PlayerConfig {
+  const store = new Map<string, string>();
+  return {
+    persist: (key, value) => store.set(key, value),
+    load: (key) => store.get(key) ?? null,
+    onStateChange: () => {},
+    onPlaybackChange: () => {},
+    onChordTick: () => {},
+    onBeatTick: () => {},
+    onBarTick: () => {},
+  };
+}
 
 describe("getShiftsForCycle", () => {
   it("returns [0] for 'none'", () => {
@@ -275,5 +290,41 @@ describe("parseProgression", () => {
 
   it("throws on an unrecognized chord token", () => {
     expect(() => parseProgression("I Xm V", "C", 2)).toThrow();
+  });
+});
+
+describe("default preset", () => {
+  it("returns null when no default has been set", () => {
+    const app = makeProgressionPlayer(makeMockConfig());
+    expect(app.getDefaultPresetId()).toBeNull();
+  });
+
+  it("round-trips an id through setDefaultPresetId/getDefaultPresetId", () => {
+    const app = makeProgressionPlayer(makeMockConfig());
+    app.setDefaultPresetId("preset-1");
+    expect(app.getDefaultPresetId()).toBe("preset-1");
+  });
+
+  it("clears the default id when set to null", () => {
+    const app = makeProgressionPlayer(makeMockConfig());
+    app.setDefaultPresetId("preset-1");
+    app.setDefaultPresetId(null);
+    expect(app.getDefaultPresetId()).toBeNull();
+  });
+
+  it("clears the default id when the default preset is deleted", () => {
+    const app = makeProgressionPlayer(makeMockConfig());
+    const id = app.saveUserPreset("My Preset");
+    app.setDefaultPresetId(id);
+    app.deleteUserPreset(id);
+    expect(app.getDefaultPresetId()).toBeNull();
+  });
+
+  it("leaves the default id untouched when a different preset is deleted", () => {
+    const app = makeProgressionPlayer(makeMockConfig());
+    app.setDefaultPresetId("some-other-preset-id");
+    const otherId = app.saveUserPreset("Other Preset");
+    app.deleteUserPreset(otherId);
+    expect(app.getDefaultPresetId()).toBe("some-other-preset-id");
   });
 });

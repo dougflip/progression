@@ -555,6 +555,26 @@ function renderPresetDropdownList(): void {
     .slice()
     .sort((a, b) => a.name.localeCompare(b.name));
   const loadedId = app.getLoadedPreset()?.id;
+  const defaultId = app.getDefaultPresetId();
+
+  const makeDefaultBtn = (id: string, label: string): HTMLButtonElement => {
+    const isDefault = id === defaultId;
+    const btn = Object.assign(document.createElement("button"), {
+      type: "button",
+      className:
+        "preset-dropdown-icon-btn" + (isDefault ? " preset-dropdown-icon-btn--default-active" : ""),
+      textContent: isDefault ? "★" : "☆",
+    });
+    btn.setAttribute(
+      "aria-label",
+      isDefault ? `Unset ${label} as default` : `Set ${label} as default`,
+    );
+    btn.addEventListener("click", () => {
+      app.setDefaultPresetId(isDefault ? null : id);
+      renderPresetDropdownList();
+    });
+    return btn;
+  };
 
   if (presets.length) {
     presetDropdownListEl.appendChild(
@@ -602,7 +622,7 @@ function renderPresetDropdownList(): void {
         renderPresetIndicator();
       });
 
-      row.append(nameBtn, editBtn, delBtn);
+      row.append(nameBtn, makeDefaultBtn(p.id, p.name), editBtn, delBtn);
       presetDropdownListEl.appendChild(row);
     });
   }
@@ -619,6 +639,9 @@ function renderPresetDropdownList(): void {
   );
   const loadedBuiltinName = app.getLoadedBuiltinName();
   PRESETS.forEach((p) => {
+    const row = document.createElement("div");
+    row.className = "preset-dropdown-row";
+
     const btn = Object.assign(document.createElement("button"), {
       type: "button",
       className:
@@ -630,7 +653,9 @@ function renderPresetDropdownList(): void {
       app.loadBuiltinPreset(p.id, p.label, p.state);
       presetDropdownEl.hidden = true;
     });
-    presetDropdownListEl.appendChild(btn);
+
+    row.append(btn, makeDefaultBtn(p.id, p.label));
+    presetDropdownListEl.appendChild(row);
   });
 }
 
@@ -1119,7 +1144,24 @@ if (!localStorage.getItem(WELCOMED)) ($("welcome-modal") as HTMLDialogElement).s
 
 // ── Init ──────────────────────────────────────────────────────────────────
 
-app.applyUrl(location.search);
+if (!location.search) {
+  const _defaultId = app.getDefaultPresetId();
+  const _userDefault = _defaultId
+    ? app.getUserPresets().find((p) => p.id === _defaultId)
+    : undefined;
+  const _builtinDefault =
+    !_userDefault && _defaultId ? PRESETS.find((p) => p.id === _defaultId) : undefined;
+  if (_userDefault) {
+    app.loadUserPreset(_userDefault);
+  } else if (_builtinDefault) {
+    app.loadBuiltinPreset(_builtinDefault.id, _builtinDefault.label, _builtinDefault.state);
+  } else {
+    if (_defaultId) app.setDefaultPresetId(null);
+    app.applyUrl(location.search);
+  }
+} else {
+  app.applyUrl(location.search);
+}
 const _initPresetId = new URLSearchParams(location.search).get("presetId");
 if (_initPresetId) {
   const _userPreset = app.getUserPresets().find((p) => p.id === _initPresetId);
