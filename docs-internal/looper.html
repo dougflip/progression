@@ -406,6 +406,11 @@
       player dials in by ear once per device, the same idea flagged as a fallback back when this was
       first being designed.
     </p>
+    <div class="note">
+      The right value varies <em>a lot</em> across devices — one laptop landed around 50ms, a phone
+      needed roughly 350ms. Confirms this has to stay per-device/manual (or at minimum, any future
+      auto-detection would need to run per device, not assume one global constant).
+    </div>
     <p>
       Implementation: the full decoded recording is kept around as <code>_rawLoopBuffer</code> (not
       just the trimmed/aligned version), so nudging the offset re-derives the loop buffer from the
@@ -670,9 +675,11 @@
         timing is the thing we can actually act on. <br /><br />
         <strong>Answer so far:</strong> not perfectly — real testing found consistent audible drift
         (input-chain latency), fixed for now with the manual
-        <a href="#sync-offset">sync offset</a> field rather than automatic detection. Worth
-        revisiting whether that latency is roughly constant per-device (a one-time dial-in is
-        enough) or variable enough that a fixed offset won't hold up over longer sessions.
+        <a href="#sync-offset">sync offset</a> field rather than automatic detection. The needed
+        value varies widely by device — ~50ms on one laptop, ~350ms on a phone — so any future
+        auto-detection would need to run per device, not assume a shared constant. Worth revisiting
+        whether that latency is roughly constant per-device (a one-time dial-in is enough) or
+        variable enough that a fixed offset won't hold up over longer sessions.
       </div>
     </div>
 
