@@ -12,7 +12,7 @@ import {
   clampShift,
   makeChord,
   getShiftsForCycle,
-  trimOrPadSamples,
+  alignAndTrimSamples,
   type ChordQuality,
   type SongChord,
   type StyleDef,
@@ -125,6 +125,8 @@ export function makeProgressionAudio(): AudioEngine {
   let _muteDuringRecording = false;
   let _muteOverrideActive = false;
   let _capturedSongBars = 0;
+  let _loopOffsetMs = 0;
+  let _rawLoopBuffer: AudioBuffer | null = null; // full decode, kept so the offset can be re-tweaked without re-recording
   let _userMedia: Tone.UserMedia | null = null;
   let _recorder: Tone.Recorder | null = null;
   let _loopPlayer: Tone.Player | null = null;
@@ -514,29 +516,44 @@ export function makeProgressionAudio(): AudioEngine {
     _restoreMuteIfOverridden();
   }
 
-  function _trimOrPadBuffer(buffer: AudioBuffer, targetSeconds: number): AudioBuffer {
+  function _buildAlignedBuffer(
+    buffer: AudioBuffer,
+    targetSeconds: number,
+    offsetMs: number,
+  ): AudioBuffer {
     const targetLength = Math.max(1, Math.round(targetSeconds * buffer.sampleRate));
+    const offsetSamples = Math.round((offsetMs / 1000) * buffer.sampleRate);
     const ctx = Tone.getContext().rawContext as unknown as AudioContext;
     const out = ctx.createBuffer(buffer.numberOfChannels, targetLength, buffer.sampleRate);
     for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
       out.copyToChannel(
-        new Float32Array(trimOrPadSamples(buffer.getChannelData(ch), targetLength)),
+        new Float32Array(
+          alignAndTrimSamples(buffer.getChannelData(ch), targetLength, offsetSamples),
+        ),
         ch,
       );
     }
     return out;
   }
 
+  // Re-applies the current offset to the raw decoded recording. Called right
+  // after a fresh recording, and again whenever the user tweaks the offset
+  // setting — no need to re-record just to nudge the sync.
+  function _applyLoopOffsetAndTrim(): void {
+    if (!_rawLoopBuffer || !_channels) return;
+    const targetSeconds = Tone.Time(`${_songBars}m`).toSeconds() as number;
+    const trimmed = _buildAlignedBuffer(_rawLoopBuffer, targetSeconds, _loopOffsetMs);
+    if (!_loopPlayer) _loopPlayer = new Tone.Player().connect(_channels.master);
+    _loopPlayer.buffer = new Tone.ToneAudioBuffer(trimmed);
+    _capturedSongBars = _songBars;
+  }
+
   async function _processRecordedBlob(blob: Blob): Promise<void> {
     try {
       const arrayBuffer = await blob.arrayBuffer();
       const ctx = Tone.getContext().rawContext as unknown as AudioContext;
-      const decoded = await ctx.decodeAudioData(arrayBuffer);
-      const targetSeconds = Tone.Time(`${_songBars}m`).toSeconds() as number;
-      const trimmed = _trimOrPadBuffer(decoded, targetSeconds);
-      if (!_loopPlayer) _loopPlayer = new Tone.Player().connect(_channels!.master);
-      _loopPlayer.buffer = new Tone.ToneAudioBuffer(trimmed);
-      _capturedSongBars = _songBars;
+      _rawLoopBuffer = await ctx.decodeAudioData(arrayBuffer);
+      _applyLoopOffsetAndTrim();
     } catch (e) {
       console.warn("Loop decode failed:", e);
       _setLooperState("idle");
@@ -971,6 +988,7 @@ export function makeProgressionAudio(): AudioEngine {
           safeCall(_loopPlayer, "stop");
           safeCall(_loopPlayer, "dispose");
           _loopPlayer = null;
+          _rawLoopBuffer = null;
           _setLooperState("idle");
         }
       } catch (e) {
@@ -1078,10 +1096,16 @@ export function makeProgressionAudio(): AudioEngine {
       safeCall(_loopPlayer, "stop");
       safeCall(_loopPlayer, "dispose");
       _loopPlayer = null;
+      _rawLoopBuffer = null;
       _capturedSongBars = 0;
       _setLooperState("idle");
     },
 
     getLooperState: (): LooperState => _looperState,
+
+    setLoopOffsetMs(ms: number): void {
+      _loopOffsetMs = ms;
+      if (_looperState === "looping") _applyLoopOffsetAndTrim();
+    },
   };
 }

@@ -166,6 +166,7 @@ export interface AudioEngine {
   cancelLoopRecording(): void;
   deleteLoop(): void;
   getLooperState(): LooperState;
+  setLoopOffsetMs(ms: number): void;
 }
 
 export interface PlaybackSettings {
@@ -872,11 +873,23 @@ export function serializeUrl(state: AppState): string {
 
 // ─── Looper utilities ────────────────────────────────────────────────────────
 
-/** Trims or zero-pads a single channel's samples to exactly `targetLength`. */
-export function trimOrPadSamples(data: Float32Array, targetLength: number): Float32Array {
-  if (data.length === targetLength) return data;
+/**
+ * Trims/pads a single channel's samples to exactly `targetLength`, shifted by
+ * `offsetSamples` — a manual latency-compensation nudge, since mic input
+ * latency isn't something we can measure automatically. Positive shifts the
+ * loop's content earlier (skips leading latency in the source); negative
+ * shifts it later (pads the front with silence).
+ */
+export function alignAndTrimSamples(
+  data: Float32Array,
+  targetLength: number,
+  offsetSamples = 0,
+): Float32Array {
   const out = new Float32Array(targetLength);
-  out.set(data.subarray(0, Math.min(data.length, targetLength)));
+  const srcStart = Math.max(0, offsetSamples);
+  const srcEnd = Math.min(data.length, targetLength + offsetSamples);
+  if (srcEnd <= srcStart) return out;
+  out.set(data.subarray(srcStart, srcEnd), srcStart - offsetSamples);
   return out;
 }
 
@@ -1329,5 +1342,9 @@ export function makeProgressionPlayer(config: PlayerConfig) {
     },
 
     getLooperState: (): LooperState => config.audio?.getLooperState() ?? "idle",
+
+    setLoopOffsetMs(ms: number): void {
+      config.audio?.setLoopOffsetMs(ms);
+    },
   };
 }

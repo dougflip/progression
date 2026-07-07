@@ -1340,6 +1340,13 @@
             ><input id="loop-mute-recording" type="checkbox" /> Mute playback while recording a
             loop</label
           >
+          <label class="field-label" for="loop-offset-ms">Loop sync offset (ms)</label>
+          <input id="loop-offset-ms" type="number" step="5" value="0" />
+          <div class="hint">
+            If the loop sounds early or late, nudge this. Positive shifts the loop earlier; negative
+            shifts it later. Takes effect immediately on an existing loop — no need to re-record
+            while you experiment.
+          </div>
           <button id="copy-share" class="share-btn" type="button">Copy share link</button>
           <div id="app-version" class="app-version"></div>
         </section>

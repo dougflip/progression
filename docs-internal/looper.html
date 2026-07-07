@@ -393,6 +393,39 @@
       </li>
     </ol>
 
+    <h2 id="sync-offset">Manual sync offset</h2>
+    <p>
+      Real-world testing surfaced audible drift — recorded content lands slightly early or late
+      relative to the beat, from mic/input-chain latency (ADC, OS audio stack, sometimes Bluetooth)
+      that varies per device and isn't something this app can measure. Waveform/beat-detection
+      analysis could estimate it, but that's real complexity for uncertain payoff. Simpler and
+      matches the spike's philosophy: a manual "Loop sync offset (ms)" field in Setup that the
+      player dials in by ear once per device, the same idea flagged as a fallback back when this was
+      first being designed.
+    </p>
+    <p>
+      Implementation: the full decoded recording is kept around as <code>_rawLoopBuffer</code> (not
+      just the trimmed/aligned version), so nudging the offset re-derives the loop buffer from the
+      original decode <em>without re-recording</em> — the point of a "tweak it by ear" control is
+      fast iteration, and re-recording every time you change the number by 5ms would defeat that. A
+      single pure function does the alignment math:
+    </p>
+    <pre><code>alignAndTrimSamples(data: Float32Array, targetLength: number, offsetSamples = 0): Float32Array</code></pre>
+    <p>
+      Positive <code>offsetSamples</code> skips that many samples off the front of the source
+      (compensates for content that arrived late — shifts the loop's content earlier); negative pads
+      the front of the output with silence (shifts content later). Zero offset reduces to the
+      original trim-or-pad behavior. Unit tested directly (plain arrays in, no
+      <code>AudioBuffer</code>
+      needed) — trim, pad, both offset directions, and the fully-out-of-range case.
+    </p>
+    <p>
+      <code>AudioEngine.setLoopOffsetMs(ms)</code> stores the value and, if a loop is already
+      captured, immediately re-applies it to <code>_rawLoopBuffer</code> — takes effect on the very
+      next lap's force-restart, no re-arm needed. The Setup field is localStorage-persisted like the
+      other looper settings, so a dialed-in value survives reloads.
+    </p>
+
     <h2 id="flag">Feature flag</h2>
     <p>
       A Setup-sheet toggle ("Looper (experimental)"), persisted the same way theme/keep-awake
@@ -450,7 +483,9 @@
           Extend the <code>AudioEngine</code> interface:
           <code>armLoopRecording(): Promise&lt;void&gt;</code>,
           <code>cancelLoopRecording(): void</code>, <code>deleteLoop(): void</code>,
-          <code>getLooperState(): LooperState</code>. Add <code>onLooperStateChange</code> to
+          <code>getLooperState(): LooperState</code>, <code>setLoopOffsetMs(ms): void</code>. Add a
+          pure <code>alignAndTrimSamples(data, targetLength, offsetSamples)</code> helper alongside
+          the other music-theory utilities. Add <code>onLooperStateChange</code> to
           <code>AudioStartOpts</code>. Add thin wrapper methods on the player object mirroring how
           <code>togglePlay()</code>/<code>stop()</code> wrap <code>audio.start()</code>/<code
             >audio.stop()</code
@@ -538,7 +573,12 @@
         <strong>Watch for:</strong> real-world <code>MediaRecorder</code> start/stop jitter across
         browsers/devices, and whether the trim/pad step is enough to hide it or whether the loop
         audibly stutters at the restart point. Quality (mic, codec) is largely out of our hands —
-        timing is the thing we can actually act on.
+        timing is the thing we can actually act on. <br /><br />
+        <strong>Answer so far:</strong> not perfectly — real testing found consistent audible drift
+        (input-chain latency), fixed for now with the manual
+        <a href="#sync-offset">sync offset</a> field rather than automatic detection. Worth
+        revisiting whether that latency is roughly constant per-device (a one-time dial-in is
+        enough) or variable enough that a fixed offset won't hold up over longer sessions.
       </div>
     </div>
 

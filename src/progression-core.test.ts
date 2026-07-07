@@ -1,5 +1,6 @@
 import {
   MAX_CHORDS,
+  alignAndTrimSamples,
   cycleUsesFlats,
   getShiftsForCycle,
   makeProgressionPlayer,
@@ -327,5 +328,33 @@ describe("default preset", () => {
     const otherId = app.saveUserPreset("Other Preset");
     app.deleteUserPreset(otherId);
     expect(app.getDefaultPresetId()).toBe("some-other-preset-id");
+  });
+});
+
+describe("alignAndTrimSamples", () => {
+  it("trims to targetLength when longer than needed and no offset", () => {
+    const data = new Float32Array([1, 2, 3, 4, 5]);
+    expect(Array.from(alignAndTrimSamples(data, 3))).toEqual([1, 2, 3]);
+  });
+
+  it("zero-pads when shorter than targetLength and no offset", () => {
+    const data = new Float32Array([1, 2]);
+    expect(Array.from(alignAndTrimSamples(data, 4))).toEqual([1, 2, 0, 0]);
+  });
+
+  it("shifts content earlier for a positive offset (skips leading samples)", () => {
+    const data = new Float32Array([1, 2, 3, 4, 5]);
+    expect(Array.from(alignAndTrimSamples(data, 3, 2))).toEqual([3, 4, 5]);
+  });
+
+  it("shifts content later for a negative offset (pads the front with silence)", () => {
+    const data = new Float32Array([1, 2, 3]);
+    expect(Array.from(alignAndTrimSamples(data, 5, -2))).toEqual([0, 0, 1, 2, 3]);
+  });
+
+  it("returns all zeros when the offset pushes entirely out of range", () => {
+    const data = new Float32Array([1, 2, 3]);
+    expect(Array.from(alignAndTrimSamples(data, 3, 10))).toEqual([0, 0, 0]);
+    expect(Array.from(alignAndTrimSamples(data, 3, -10))).toEqual([0, 0, 0]);
   });
 });

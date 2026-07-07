@@ -65,6 +65,7 @@ const stopBtn = $("stop-btn") as HTMLButtonElement;
 const loopBtnEl = $("loop-btn") as HTMLButtonElement;
 const looperEnabledEl = $("looper-enabled") as HTMLInputElement;
 const loopMuteRecordingEl = $("loop-mute-recording") as HTMLInputElement;
+const loopOffsetMsEl = $("loop-offset-ms") as HTMLInputElement;
 const arrangementEl = $("arrangement") as HTMLInputElement;
 const sectionRowsEl = $("section-rows") as HTMLDivElement;
 const sectionCountEl = $("section-count-label") as HTMLElement;
@@ -1126,6 +1127,14 @@ loopMuteRecordingEl.checked = localStorage.getItem("loop-mute-recording") === "1
 loopMuteRecordingEl.addEventListener("change", () =>
   localStorage.setItem("loop-mute-recording", loopMuteRecordingEl.checked ? "1" : "0"),
 );
+
+loopOffsetMsEl.value = localStorage.getItem("loop-offset-ms") ?? "0";
+app.setLoopOffsetMs(parseInt(loopOffsetMsEl.value, 10) || 0);
+loopOffsetMsEl.addEventListener("input", () => {
+  const ms = parseInt(loopOffsetMsEl.value, 10) || 0;
+  localStorage.setItem("loop-offset-ms", String(ms));
+  app.setLoopOffsetMs(ms);
+});
 
 // ── Sheets ────────────────────────────────────────────────────────────────
 
