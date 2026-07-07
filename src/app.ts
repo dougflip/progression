@@ -1136,6 +1136,8 @@ loopOffsetMsEl.addEventListener("input", () => {
   app.setLoopOffsetMs(ms);
 });
 
+void app.restoreLoop().then(() => onLooperStateChange(app.getLooperState()));
+
 // ── Sheets ────────────────────────────────────────────────────────────────
 
 ($("open-setup") as HTMLButtonElement).addEventListener("click", () =>

@@ -167,6 +167,7 @@ export interface AudioEngine {
   deleteLoop(): void;
   getLooperState(): LooperState;
   setLoopOffsetMs(ms: number): void;
+  restoreLoop(): Promise<void>;
 }
 
 export interface PlaybackSettings {
@@ -1345,6 +1346,10 @@ export function makeProgressionPlayer(config: PlayerConfig) {
 
     setLoopOffsetMs(ms: number): void {
       config.audio?.setLoopOffsetMs(ms);
+    },
+
+    restoreLoop(): Promise<void> {
+      return config.audio?.restoreLoop() ?? Promise.resolve();
     },
   };
 }

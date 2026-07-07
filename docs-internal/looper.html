@@ -465,11 +465,50 @@
     <p>
       Still-<code>arming</code>/<code>recording</code> state is discarded on
       <code>stop()</code>/<code>rebuild()</code> (mid-capture is meaningless once the transport
-      resets). A completed loop (<code>looping</code>) survives an ordinary
-      <code>rebuild()</code> the same way audio channels do, but a structural edit
-      (sections/arrangement) that changes <code>_songBars</code> invalidates it outright — the loop
-      no longer matches one lap, so it's cleared and the player re-arms from scratch.
+      resets). A completed loop (<code>looping</code>) survives every other structural/settings
+      change, including edits (sections/arrangement) that change <code>_songBars</code> — see
+      <a href="#persistence">Persistence</a>. No auto-invalidation on mismatch: this was tried and
+      deliberately removed (see <a href="#tradeoffs">tradeoffs log</a>) in favor of trusting the
+      player to manage it, matching how tempo-change mismatches already degrade gracefully rather
+      than being blocked.
     </p>
+
+    <h2 id="persistence">Persistence</h2>
+    <p>
+      The loop survives a page reload — deliberately scoped to "the current loop persists" rather
+      than a loop library. IndexedDB, not localStorage: the recorded blob is binary and can be a few
+      hundred KB, past localStorage's practical string-only limit. Single fixed record (key
+      <code>"current"</code>), no per-progression or per-preset scoping.
+    </p>
+    <ul class="tight">
+      <li>
+        Saved (the original recorder <code>Blob</code>, not the decoded buffer — much smaller) right
+        after a successful recording, alongside the trim/decode step already happening in
+        <code>_processRecordedBlob</code>.
+      </li>
+      <li>Cleared on <code>deleteLoop()</code>.</li>
+      <li>
+        <code>restoreLoop()</code> — a new <code>AudioEngine</code> method — decodes the persisted
+        blob and sets state to <code>looping</code> at boot, <em>unconditionally</em>: no check that
+        it matches the currently-loaded progression. The player explicitly asked for this — wants to
+        be able to switch progressions and come back to find the loop still there, and is fine
+        managing any mismatch themselves.
+      </li>
+      <li>
+        One wrinkle: at boot, <code>_songBars</code>/<code>_channels</code> aren't known yet
+        (nothing's played), so the restored buffer can't be trimmed into a
+        <code>Tone.Player</code> immediately. <code>restoreLoop()</code> only stores the raw decoded
+        buffer; the actual <code>Player</code> gets built the first time <code>start()</code> runs
+        afterward, reusing the exact same "restore" branch that already existed for resuming a
+        same-session loop after stop→start.
+      </li>
+      <li>
+        App boot calls <code>app.restoreLoop()</code> once, then manually syncs the loop button's
+        label — the state change happens before <code>onLooperStateChange</code> is wired up (that
+        only happens inside <code>start()</code>), so the callback alone wouldn't reach the UI in
+        time.
+      </li>
+    </ul>
 
     <h2 id="files">Files to touch</h2>
     <table>
@@ -483,9 +522,10 @@
           Extend the <code>AudioEngine</code> interface:
           <code>armLoopRecording(): Promise&lt;void&gt;</code>,
           <code>cancelLoopRecording(): void</code>, <code>deleteLoop(): void</code>,
-          <code>getLooperState(): LooperState</code>, <code>setLoopOffsetMs(ms): void</code>. Add a
-          pure <code>alignAndTrimSamples(data, targetLength, offsetSamples)</code> helper alongside
-          the other music-theory utilities. Add <code>onLooperStateChange</code> to
+          <code>getLooperState(): LooperState</code>, <code>setLoopOffsetMs(ms): void</code>,
+          <code>restoreLoop(): Promise&lt;void&gt;</code>. Add a pure
+          <code>alignAndTrimSamples(data, targetLength, offsetSamples)</code> helper alongside the
+          other music-theory utilities. Add <code>onLooperStateChange</code> to
           <code>AudioStartOpts</code>. Add thin wrapper methods on the player object mirroring how
           <code>togglePlay()</code>/<code>stop()</code> wrap <code>audio.start()</code>/<code
             >audio.stop()</code
@@ -504,6 +544,8 @@
           decode/trim helper, a <code>Tone.Player</code> for loop playback, the
           <code>_triggerDrum</code>-style forced restart. Teardown: dispose the recorder/mic only on
           <code>deleteLoop()</code> or full app teardown, not on an ordinary <code>rebuild()</code>.
+          A small IndexedDB wrapper (open/save/load/delete, one fixed record) for
+          <a href="#persistence">Persistence</a>.
         </td>
       </tr>
       <tr>
@@ -557,6 +599,14 @@
           <li>stopping playback mid-recording (confirm clean cancel/discard)</li>
           <li>deleting a loop and recording a fresh one in its place</li>
           <li>switching away from <code>cycle: 'none'</code> while a loop exists</li>
+          <li>
+            reload the page after capturing a loop — confirm it's still there and plays in sync
+            (once <code>start()</code> runs) without re-recording
+          </li>
+          <li>
+            change the progression's bar count, then reload — confirm the mismatched loop still
+            restores rather than being silently dropped
+          </li>
         </ul>
       </li>
     </ol>
@@ -721,6 +771,14 @@
     <div class="tradeoff">
       <strong>No pulsing/color styling for recording state</strong> — just a plain label swap on the
       existing <code>.bar-btn</code>, per the "raw UI" scope decision. Easy to layer on later.
+    </div>
+    <div class="tradeoff">
+      <strong>Removed rebuild-time auto-invalidation of a mismatched loop</strong> — the player
+      explicitly asked for this: wants to switch progressions and come back to find the loop still
+      there, fully willing to manage a mismatch themselves. The removed code was defensive but
+      unnecessary: the force-restart-every-lap mechanism already degrades gracefully (truncate/gap)
+      for a tempo mismatch, and the same reasoning covers a bar-count mismatch just as well —
+      nothing new needed, just less code.
     </div>
 
     <h2 id="decisions-final">Final UI decision</h2>

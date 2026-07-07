@@ -65,6 +65,81 @@ function safeCall(obj: unknown, method: "stop" | "dispose"): void {
   }
 }
 
+// ── Loop persistence (spike) ─────────────────────────────────────────────────
+// IndexedDB, not localStorage — the recorded blob is binary and can be a few
+// hundred KB, well past localStorage's string-only ~5-10MB practical limit.
+// Single fixed record: no loop library, just "the current loop," matching the
+// single-track scope of this spike. No auto-invalidation on restore — if the
+// current progression doesn't match what was recorded, that's left entirely
+// to the player to notice and manage (same graceful truncate/gap already
+// accepted for tempo changes covers a length mismatch too).
+
+interface StoredLoop {
+  blob: Blob;
+  capturedSongBars: number;
+}
+
+const LOOP_DB_NAME = "progression-looper";
+const LOOP_DB_VERSION = 1;
+const LOOP_STORE_NAME = "loop";
+const LOOP_RECORD_KEY = "current";
+
+function _openLoopDb(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(LOOP_DB_NAME, LOOP_DB_VERSION);
+    req.onupgradeneeded = () => req.result.createObjectStore(LOOP_STORE_NAME);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function _saveLoopToDb(blob: Blob, capturedSongBars: number): Promise<void> {
+  try {
+    const db = await _openLoopDb();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(LOOP_STORE_NAME, "readwrite");
+      tx.objectStore(LOOP_STORE_NAME).put({ blob, capturedSongBars }, LOOP_RECORD_KEY);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+  } catch (e) {
+    console.warn("Failed to persist loop:", e);
+  }
+}
+
+async function _loadLoopFromDb(): Promise<StoredLoop | null> {
+  try {
+    const db = await _openLoopDb();
+    const result = await new Promise<StoredLoop | null>((resolve, reject) => {
+      const tx = db.transaction(LOOP_STORE_NAME, "readonly");
+      const req = tx.objectStore(LOOP_STORE_NAME).get(LOOP_RECORD_KEY);
+      req.onsuccess = () => resolve((req.result as StoredLoop | undefined) ?? null);
+      req.onerror = () => reject(req.error);
+    });
+    db.close();
+    return result;
+  } catch (e) {
+    console.warn("Failed to load persisted loop:", e);
+    return null;
+  }
+}
+
+async function _deleteLoopFromDb(): Promise<void> {
+  try {
+    const db = await _openLoopDb();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(LOOP_STORE_NAME, "readwrite");
+      tx.objectStore(LOOP_STORE_NAME).delete(LOOP_RECORD_KEY);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+  } catch (e) {
+    console.warn("Failed to delete persisted loop:", e);
+  }
+}
+
 export function makeProgressionAudio(): AudioEngine {
   // ── Audio nodes ────────────────────────────────────────────────────────────
   let _channels: Channels | null = null; // created once, survives rebuild
@@ -554,6 +629,7 @@ export function makeProgressionAudio(): AudioEngine {
       const ctx = Tone.getContext().rawContext as unknown as AudioContext;
       _rawLoopBuffer = await ctx.decodeAudioData(arrayBuffer);
       _applyLoopOffsetAndTrim();
+      await _saveLoopToDb(blob, _songBars);
     } catch (e) {
       console.warn("Loop decode failed:", e);
       _setLooperState("idle");
@@ -919,7 +995,13 @@ export function makeProgressionAudio(): AudioEngine {
       // per-lap boundary check below (it's suppressed on the very first lap
       // of a fresh start, so it wouldn't fire until lap 2). The per-lap
       // force-restart still runs on top of this for ongoing sync.
-      if (_looperState === "looping") _restartLoopPlayer(Tone.now());
+      if (_looperState === "looping" && _rawLoopBuffer) {
+        // A loop restored via restoreLoop() has a raw buffer but no Player
+        // yet — _songBars/_channels weren't known until _buildPart() above
+        // just ran, so this is the first point it can actually be built.
+        if (!_loopPlayer) _applyLoopOffsetAndTrim();
+        _restartLoopPlayer(Tone.now());
+      }
     },
 
     stop(): void {
@@ -979,16 +1061,12 @@ export function makeProgressionAudio(): AudioEngine {
         }
         // A rebuild can happen mid-capture (e.g. style change) — spike keeps this
         // simple by always discarding rather than trying to carry capture through.
+        // A completed loop (looping) is left alone here even if _songBars changed
+        // — no auto-invalidation on mismatch; the existing force-restart-every-lap
+        // mechanism already degrades gracefully (truncate/gap), same as a tempo
+        // change, and the player is trusted to manage this themselves.
         if (_looperState === "arming" || _looperState === "recording") {
           _cancelLoopCapture();
-          _setLooperState("idle");
-        } else if (_looperState === "looping" && _capturedSongBars !== _songBars) {
-          // Structural edit changed the lap length — the captured loop no longer
-          // matches one lap, so it's invalidated rather than remapped.
-          safeCall(_loopPlayer, "stop");
-          safeCall(_loopPlayer, "dispose");
-          _loopPlayer = null;
-          _rawLoopBuffer = null;
           _setLooperState("idle");
         }
       } catch (e) {
@@ -1099,13 +1177,31 @@ export function makeProgressionAudio(): AudioEngine {
       _rawLoopBuffer = null;
       _capturedSongBars = 0;
       _setLooperState("idle");
+      void _deleteLoopFromDb();
     },
 
     getLooperState: (): LooperState => _looperState,
 
     setLoopOffsetMs(ms: number): void {
       _loopOffsetMs = ms;
-      if (_looperState === "looping") _applyLoopOffsetAndTrim();
+      if (_looperState === "looping" && _rawLoopBuffer && _channels) _applyLoopOffsetAndTrim();
+    },
+
+    async restoreLoop(): Promise<void> {
+      if (_looperState !== "idle") return;
+      const record = await _loadLoopFromDb();
+      if (!record) return;
+      try {
+        const arrayBuffer = await record.blob.arrayBuffer();
+        const ctx = Tone.getContext().rawContext as unknown as AudioContext;
+        _rawLoopBuffer = await ctx.decodeAudioData(arrayBuffer);
+        _capturedSongBars = record.capturedSongBars;
+        // _loopPlayer is intentionally not built yet — _songBars/_channels
+        // aren't known until the next start(), which finishes the job.
+        _setLooperState("looping");
+      } catch (e) {
+        console.warn("Failed to restore persisted loop:", e);
+      }
     },
   };
 }
