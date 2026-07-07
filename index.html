@@ -1333,9 +1333,13 @@
           <label class="toggle"
             ><input id="keep-awake" type="checkbox" /> Keep screen on while playing</label
           >
-          <label class="toggle"
-            ><input id="looper-enabled" type="checkbox" /> Looper (experimental)</label
-          >
+          <button id="copy-share" class="share-btn" type="button">Copy share link</button>
+          <div id="app-version" class="app-version"></div>
+        </section>
+
+        <section class="setup-group">
+          <h3 class="setup-group-title">Looper (Experimental)</h3>
+          <label class="toggle"><input id="looper-enabled" type="checkbox" /> Enable looper</label>
           <label class="toggle"
             ><input id="loop-mute-recording" type="checkbox" /> Mute playback while recording a
             loop</label
@@ -1347,8 +1351,6 @@
             shifts it later. Takes effect immediately on an existing loop — no need to re-record
             while you experiment.
           </div>
-          <button id="copy-share" class="share-btn" type="button">Copy share link</button>
-          <div id="app-version" class="app-version"></div>
         </section>
       </div>
     </dialog>
