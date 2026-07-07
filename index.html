@@ -1284,6 +1284,9 @@
             <span class="bar-icon">■</span><span>Stop</span>
           </button>
           <button id="play" type="button" aria-label="Play">▶</button>
+          <button class="bar-btn" id="loop-btn" type="button" hidden>
+            <span class="bar-icon">⏺</span><span>Record Loop</span>
+          </button>
         </div>
         <button class="bar-btn" id="open-mix" type="button">
           <span class="bar-icon">🎚</span><span>Mix</span>
@@ -1329,6 +1332,13 @@
           </div>
           <label class="toggle"
             ><input id="keep-awake" type="checkbox" /> Keep screen on while playing</label
+          >
+          <label class="toggle"
+            ><input id="looper-enabled" type="checkbox" /> Looper (experimental)</label
+          >
+          <label class="toggle"
+            ><input id="loop-mute-recording" type="checkbox" /> Mute playback while recording a
+            loop</label
           >
           <button id="copy-share" class="share-btn" type="button">Copy share link</button>
           <div id="app-version" class="app-version"></div>

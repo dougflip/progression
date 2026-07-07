@@ -12,6 +12,7 @@ import {
   clampShift,
   makeChord,
   getShiftsForCycle,
+  trimOrPadSamples,
   type ChordQuality,
   type SongChord,
   type StyleDef,
@@ -20,6 +21,7 @@ import {
   type AudioStartOpts,
   type AudioRebuildOpts,
   type AudioEngine,
+  type LooperState,
 } from "./progression-core.js";
 
 interface Channels {
@@ -117,6 +119,16 @@ export function makeProgressionAudio(): AudioEngine {
   let _advance = "auto";
   let _muteState = { chordsOn: true, bassOn: true, drumsOn: true };
   let _volState = { chords: 50, bass: 100, drums: 100, master: 100 };
+
+  // ── Looper state (spike — single fixed-length loop, no overdub) ───────────
+  let _looperState: LooperState = "idle";
+  let _muteDuringRecording = false;
+  let _muteOverrideActive = false;
+  let _capturedSongBars = 0;
+  let _userMedia: Tone.UserMedia | null = null;
+  let _recorder: Tone.Recorder | null = null;
+  let _loopPlayer: Tone.Player | null = null;
+  let _onLooperStateChange: ((state: LooperState) => void) | null = null;
 
   // ── Cycle / key state ──────────────────────────────────────────────────────
   let _shifts: number[] = [0];
@@ -355,6 +367,8 @@ export function makeProgressionAudio(): AudioEngine {
           if (_voicingResetEachLap) _prevUpper = null;
         }
         // No transport seek, no return — chord plays immediately with updated shift
+
+        _advanceLooperAtBoundary(time);
       }
 
       // ── Manual mode: intercept section boundaries ────────────────────────────
@@ -459,6 +473,129 @@ export function makeProgressionAudio(): AudioEngine {
       });
     } else {
       _safe(fallback);
+    }
+  }
+
+  // ── Looper (spike) ──────────────────────────────────────────────────────────
+
+  function _setLooperState(state: LooperState, time?: number): void {
+    _looperState = state;
+    if (time === undefined) {
+      _onLooperStateChange?.(state);
+    } else {
+      Tone.Draw.schedule(() => _onLooperStateChange?.(state), time);
+    }
+  }
+
+  function _restoreMuteIfOverridden(): void {
+    if (!_muteOverrideActive || !_channels) return;
+    _muteOverrideActive = false;
+    _channels.chord.mute = !_muteState.chordsOn;
+    _channels.bass.mute = !_muteState.bassOn;
+    const drumMuted = !_muteState.drumsOn;
+    for (const s of [
+      _kickSeq,
+      _snareSeq,
+      _hatSeq,
+      _hatOpenSeq,
+      _crashSeq,
+      _rideSeq,
+      _rideBellSeq,
+      _tomSeq,
+      _tom2Seq,
+    ])
+      if (s) s.mute = drumMuted;
+  }
+
+  function _cancelLoopCapture(): void {
+    _safe(() => {
+      _recorder?.stop().catch(() => {});
+    });
+    _restoreMuteIfOverridden();
+  }
+
+  function _trimOrPadBuffer(buffer: AudioBuffer, targetSeconds: number): AudioBuffer {
+    const targetLength = Math.max(1, Math.round(targetSeconds * buffer.sampleRate));
+    const ctx = Tone.getContext().rawContext as unknown as AudioContext;
+    const out = ctx.createBuffer(buffer.numberOfChannels, targetLength, buffer.sampleRate);
+    for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+      out.copyToChannel(
+        new Float32Array(trimOrPadSamples(buffer.getChannelData(ch), targetLength)),
+        ch,
+      );
+    }
+    return out;
+  }
+
+  async function _processRecordedBlob(blob: Blob): Promise<void> {
+    try {
+      const arrayBuffer = await blob.arrayBuffer();
+      const ctx = Tone.getContext().rawContext as unknown as AudioContext;
+      const decoded = await ctx.decodeAudioData(arrayBuffer);
+      const targetSeconds = Tone.Time(`${_songBars}m`).toSeconds() as number;
+      const trimmed = _trimOrPadBuffer(decoded, targetSeconds);
+      if (!_loopPlayer) _loopPlayer = new Tone.Player().connect(_channels!.master);
+      _loopPlayer.buffer = new Tone.ToneAudioBuffer(trimmed);
+      _capturedSongBars = _songBars;
+    } catch (e) {
+      console.warn("Loop decode failed:", e);
+      _setLooperState("idle");
+    }
+  }
+
+  function _restartLoopPlayer(time: number): void {
+    if (!_loopPlayer || !_loopPlayer.loaded) return;
+    _safe(() => {
+      _loopPlayer!.stop(time);
+      _loopPlayer!.start(time);
+    });
+  }
+
+  // Called once per lap boundary (from inside _buildPart's Part callback, the
+  // same transportLapIndex > _currentLap check that advances the key cycle) —
+  // NOT a fixed 1-bar pre-roll. Recording always starts exactly on the
+  // progression's own bar 1, however long that takes from the moment the user
+  // arms it, so the recorded loop's bar 1 always matches the chord grid's bar
+  // 1. Loop playback restart mirrors the "always force-restart" pattern
+  // already used for drum samples — no Player.loop, no .sync(), so drift
+  // can never accumulate.
+  function _advanceLooperAtBoundary(time: number): void {
+    if (_looperState === "arming") {
+      Tone.Draw.schedule(() => {
+        if (_muteDuringRecording && _channels) {
+          _muteOverrideActive = true;
+          _channels.chord.mute = true;
+          _channels.bass.mute = true;
+          for (const s of [
+            _kickSeq,
+            _snareSeq,
+            _hatSeq,
+            _hatOpenSeq,
+            _crashSeq,
+            _rideSeq,
+            _rideBellSeq,
+            _tomSeq,
+            _tom2Seq,
+          ])
+            if (s) s.mute = true;
+        }
+        _safe(() => {
+          _recorder?.start();
+        });
+      }, time);
+      _setLooperState("recording", time);
+    } else if (_looperState === "recording") {
+      Tone.Draw.schedule(() => {
+        _restoreMuteIfOverridden();
+        _recorder
+          ?.stop()
+          .then((blob) => _processRecordedBlob(blob))
+          .catch((e) => console.warn("Loop recording failed:", e));
+      }, time);
+      _setLooperState("looping", time);
+      _restartLoopPlayer(time); // no-op if the buffer isn't decoded yet — retried next lap
+    } else if (_looperState === "looping") {
+      _restartLoopPlayer(time);
     }
   }
 
@@ -717,6 +854,7 @@ export function makeProgressionAudio(): AudioEngine {
       onChordTick,
       onBeatTick,
       onBarTick,
+      onLooperStateChange,
     }: AudioStartOpts): Promise<void> {
       await Tone.start();
       if ("audioSession" in navigator)
@@ -729,6 +867,7 @@ export function makeProgressionAudio(): AudioEngine {
       _onChordTick = onChordTick;
       _onBeatTick = onBeatTick;
       _onBarTick = onBarTick;
+      _onLooperStateChange = onLooperStateChange;
       _pendingJump = null;
       _pendingKeyJump = null;
       _currentLap = 0;
@@ -758,6 +897,12 @@ export function makeProgressionAudio(): AudioEngine {
         chipOffsets[startPosIndex]?.[startChipIndex] ?? posOffsets[startPosIndex] ?? 0;
       Tone.Transport.position = `${startBarOffset}:0:0`;
       Tone.Transport.start();
+
+      // A captured loop is already decoded and ready — don't wait for the
+      // per-lap boundary check below (it's suppressed on the very first lap
+      // of a fresh start, so it wouldn't fire until lap 2). The per-lap
+      // force-restart still runs on top of this for ongoing sync.
+      if (_looperState === "looping") _restartLoopPlayer(Tone.now());
     },
 
     stop(): void {
@@ -770,6 +915,16 @@ export function makeProgressionAudio(): AudioEngine {
       _currentShiftIndex = 0;
       _currentShift = 0;
       _prevUpper = null;
+      if (_looperState === "arming" || _looperState === "recording") {
+        _cancelLoopCapture();
+        _setLooperState("idle");
+      } else if (_looperState === "looping") {
+        // Stopping the Transport doesn't stop an already-started Tone.Player —
+        // it just keeps playing to the end of its own buffer. State stays
+        // "looping" (the captured loop is still valid) so a future start()
+        // resumes it; only the audible playback is cut.
+        safeCall(_loopPlayer, "stop");
+      }
     },
 
     rebuild({
@@ -804,6 +959,19 @@ export function makeProgressionAudio(): AudioEngine {
         if (_channels) {
           _channels.chord.mute = !_muteState.chordsOn;
           _channels.bass.mute = !_muteState.bassOn;
+        }
+        // A rebuild can happen mid-capture (e.g. style change) — spike keeps this
+        // simple by always discarding rather than trying to carry capture through.
+        if (_looperState === "arming" || _looperState === "recording") {
+          _cancelLoopCapture();
+          _setLooperState("idle");
+        } else if (_looperState === "looping" && _capturedSongBars !== _songBars) {
+          // Structural edit changed the lap length — the captured loop no longer
+          // matches one lap, so it's invalidated rather than remapped.
+          safeCall(_loopPlayer, "stop");
+          safeCall(_loopPlayer, "dispose");
+          _loopPlayer = null;
+          _setLooperState("idle");
         }
       } catch (e) {
         console.warn("Audio rebuild failed:", e);
@@ -884,5 +1052,36 @@ export function makeProgressionAudio(): AudioEngine {
 
     getPendingJump: (): number | null => _pendingJump,
     getPendingKeyJump: (): number | null => _pendingKeyJump,
+
+    async armLoopRecording(muteDuringRecording: boolean): Promise<void> {
+      if (_looperState !== "idle") return;
+      if (Tone.Transport.state !== "started" || !_channels) {
+        throw new Error("Start playback before recording a loop.");
+      }
+      _muteDuringRecording = muteDuringRecording;
+      if (!_userMedia) _userMedia = new Tone.UserMedia();
+      await _userMedia.open();
+      if (!_recorder) {
+        _recorder = new Tone.Recorder();
+        _userMedia.connect(_recorder);
+      }
+      _setLooperState("arming");
+    },
+
+    cancelLoopRecording(): void {
+      if (_looperState === "idle" || _looperState === "looping") return;
+      if (_looperState === "recording") _cancelLoopCapture();
+      _setLooperState("idle");
+    },
+
+    deleteLoop(): void {
+      safeCall(_loopPlayer, "stop");
+      safeCall(_loopPlayer, "dispose");
+      _loopPlayer = null;
+      _capturedSongBars = 0;
+      _setLooperState("idle");
+    },
+
+    getLooperState: (): LooperState => _looperState,
   };
 }

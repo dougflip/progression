@@ -25,6 +25,7 @@ function makeMockConfig(): PlayerConfig {
     onChordTick: () => {},
     onBeatTick: () => {},
     onBarTick: () => {},
+    onLooperStateChange: () => {},
   };
 }
 

@@ -113,6 +113,8 @@ export interface ChordTickEvent {
   lapIndex: number;
 }
 
+export type LooperState = "idle" | "arming" | "recording" | "looping";
+
 export interface AudioStartOpts {
   chordSequence: SongChord[];
   tempo: number;
@@ -131,6 +133,7 @@ export interface AudioStartOpts {
   onChordTick: (ev: ChordTickEvent) => void;
   onBeatTick: (beat: number) => void;
   onBarTick: (bar: number) => void;
+  onLooperStateChange: (state: LooperState) => void;
 }
 
 export interface AudioRebuildOpts {
@@ -159,6 +162,10 @@ export interface AudioEngine {
   cancelKeyJump(): void;
   getPendingJump(): number | null;
   getPendingKeyJump(): number | null;
+  armLoopRecording(muteDuringRecording: boolean): Promise<void>;
+  cancelLoopRecording(): void;
+  deleteLoop(): void;
+  getLooperState(): LooperState;
 }
 
 export interface PlaybackSettings {
@@ -207,6 +214,7 @@ export interface PlayerConfig {
   onChordTick: (ev: ChordTickEvent) => void;
   onBeatTick: (beat: number) => void;
   onBarTick: (bar: number) => void;
+  onLooperStateChange: (state: LooperState) => void;
   onError?: (msg: string) => void;
 }
 
@@ -862,6 +870,16 @@ export function serializeUrl(state: AppState): string {
   return p.toString();
 }
 
+// ─── Looper utilities ────────────────────────────────────────────────────────
+
+/** Trims or zero-pads a single channel's samples to exactly `targetLength`. */
+export function trimOrPadSamples(data: Float32Array, targetLength: number): Float32Array {
+  if (data.length === targetLength) return data;
+  const out = new Float32Array(targetLength);
+  out.set(data.subarray(0, Math.min(data.length, targetLength)));
+  return out;
+}
+
 // ─── Player Factory ──────────────────────────────────────────────────────────
 
 const PRESETS_STORAGE_KEY = "progression-presets-v2";
@@ -1039,6 +1057,7 @@ export function makeProgressionPlayer(config: PlayerConfig) {
       },
       onBeatTick: config.onBeatTick,
       onBarTick: config.onBarTick,
+      onLooperStateChange: config.onLooperStateChange,
     });
 
     config.onPlaybackChange(true);
@@ -1292,5 +1311,23 @@ export function makeProgressionPlayer(config: PlayerConfig) {
 
     getPendingJump: (): number | null => config.audio?.getPendingJump() ?? null,
     getPendingKeyJump: (): number | null => config.audio?.getPendingKeyJump() ?? null,
+
+    // ── Looper (spike) ────────────────────────────────────────────────────
+    armLoopRecording(muteDuringRecording: boolean): Promise<void> {
+      if (!config.audio) return Promise.resolve();
+      return config.audio.armLoopRecording(muteDuringRecording).catch((e) => {
+        config.onError?.(`Loop recording error: ${(e as Error).message}`);
+      });
+    },
+
+    cancelLoopRecording(): void {
+      config.audio?.cancelLoopRecording();
+    },
+
+    deleteLoop(): void {
+      config.audio?.deleteLoop();
+    },
+
+    getLooperState: (): LooperState => config.audio?.getLooperState() ?? "idle",
   };
 }
