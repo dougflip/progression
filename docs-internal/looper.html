@@ -843,6 +843,27 @@
       for a tempo mismatch, and the same reasoning covers a bar-count mismatch just as well —
       nothing new needed, just less code.
     </div>
+    <div class="tradeoff">
+      <strong>Pause/resume desyncs the loop from the progression — known, not fixed.</strong>
+      <code>_pausedAt</code>/<code>_lastChordPos</code> (<code>progression-core.ts</code>) only
+      track chord-chip granularity
+      (<code>posIndex</code>/<code>chipIndex</code>/<code>lapIndex</code>), not bar-within-chord or
+      beat-within-bar — so resuming from pause always snaps the Transport to the top of whatever
+      chord chip was active. The loop, meanwhile, always restarts from sample 0 on resume (see
+      <a href="#sync">Sync mechanism</a>). Unless you happened to pause exactly at the top of the
+      lap, the two are now offset by however many bars into the lap that chip sits — audible desync
+      for the remainder of that lap. It's not permanent: the same force-restart-every-lap mechanism
+      re-syncs both to the true lap boundary the next time it's crossed, same as any other mismatch
+      this doc already accepts. <br /><br />
+      <strong>Possible fix, not attempted:</strong> compute how many bars into the lap the resume
+      point actually is (from the paused chip's bar offset, already available via
+      <code>chipOffsets</code>/<code>posOffsets</code> in <code>_buildPart</code>), and use it to
+      start loop playback from the equivalent point in its own buffer instead of sample 0 — an
+      immediate resync instead of waiting for the next lap. This would be a separate, additive
+      offset from the existing manual <a href="#sync-offset">sync offset</a> (which corrects mic
+      latency in the buffer itself, applied once at trim time) — the two don't conflict, they'd just
+      both apply.
+    </div>
 
     <h2 id="decisions-final">Final UI decision</h2>
     <div class="decided">
