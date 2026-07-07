@@ -817,6 +817,25 @@
       existing <code>.bar-btn</code>, per the "raw UI" scope decision. Easy to layer on later.
     </div>
     <div class="tradeoff">
+      <strong
+        ><code>hidden</code> wasn't actually hiding <code>#loop-btn</code>/<code
+          >#loop-mix-row</code
+        ></strong
+      >
+      — found via manual testing (toggling the flag did nothing visually).
+      <code>.bar-btn</code> sets <code>display: flex</code> and <code>.mix-row</code> sets
+      <code>display: grid</code>; either overrides the browser's default
+      <code>[hidden] { display: none }</code> since author CSS always beats the UA stylesheet
+      regardless of specificity. Fixed with <code>#loop-btn[hidden]</code>/<code
+        >#loop-mix-row[hidden]</code
+      >
+      overrides, the same pattern already used elsewhere in this file for
+      <code>#key-picker</code>/<code>#scrubber-bar</code>/etc. Also affects
+      <code>#stop-btn</code> (same <code>.bar-btn</code> class, no existing override) — checked with
+      the player, confirmed intentional: showing it at all times avoids action-bar layout shift.
+      Left as is.
+    </div>
+    <div class="tradeoff">
       <strong>Removed rebuild-time auto-invalidation of a mismatched loop</strong> — the player
       explicitly asked for this: wants to switch progressions and come back to find the loop still
       there, fully willing to manage a mismatch themselves. The removed code was defensive but
