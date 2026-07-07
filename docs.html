@@ -125,6 +125,8 @@
 
       .tab-panel {
         display: none;
+        max-width: 640px;
+        margin: 0 auto;
       }
       .tab-panel.active {
         display: block;
@@ -132,9 +134,101 @@
 
       /* ── Content ── */
       main {
-        max-width: 640px;
-        margin: 0 auto;
         padding: 1.5rem 1rem 3rem;
+      }
+
+      /* ── Table of contents ── */
+      .toc {
+        margin-bottom: 1.5rem;
+      }
+      .toc-title {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-3);
+        font-weight: 600;
+        margin: 0 0 0.5rem;
+      }
+      .toc ul {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      .toc a {
+        display: inline-block;
+        padding: 0.35rem 0.75rem;
+        background: var(--surface-alt);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        color: var(--text-2);
+        text-decoration: none;
+        font-size: 0.85rem;
+        transition:
+          color 0.1s,
+          border-color 0.1s;
+      }
+      .toc a:hover {
+        color: var(--text);
+        border-color: var(--text-3);
+      }
+
+      @media (min-width: 900px) {
+        #tab-reference.active {
+          max-width: 900px;
+          display: grid;
+          grid-template-columns: 200px 1fr;
+          gap: 3rem;
+          align-items: start;
+        }
+        .toc {
+          position: sticky;
+          top: 6.5rem;
+          margin-bottom: 0;
+        }
+        .toc ul {
+          flex-direction: column;
+          gap: 0.4rem;
+        }
+        .toc a {
+          display: block;
+          padding: 0.25rem 0;
+          background: none;
+          border: none;
+          border-radius: 0;
+          font-size: 0.9rem;
+        }
+      }
+
+      /* ── Back to top ── */
+      .back-to-top {
+        position: fixed;
+        right: 1.25rem;
+        bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+        width: 2.75rem;
+        height: 2.75rem;
+        border-radius: 50%;
+        background: var(--accent);
+        color: var(--accent-text);
+        border: none;
+        font-size: 1.1rem;
+        line-height: 1;
+        cursor: pointer;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(0.5rem);
+        transition:
+          opacity 0.15s,
+          transform 0.15s;
+        z-index: 20;
+      }
+      .back-to-top.visible {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateY(0);
       }
 
       h2 {
@@ -463,628 +557,681 @@
 
       <!-- ── Reference ── -->
       <section class="tab-panel" id="tab-reference" role="tabpanel">
-        <h2 id="playback-screen">
-          Playback screen
-          <button class="anchor-copy" data-id="playback-screen" title="Copy link to this section">
-            #
-          </button>
-        </h2>
-        <p>The main screen shows everything you need while you play.</p>
+        <nav class="toc" aria-label="On this page">
+          <p class="toc-title">On this page</p>
+          <ul>
+            <li><a href="#playback-screen">Playback screen</a></li>
+            <li><a href="#setup">Setup</a></li>
+            <li><a href="#progression-syntax">Progression syntax</a></li>
+            <li><a href="#sections">Sections &amp; arrangement</a></li>
+            <li><a href="#presets">Presets</a></li>
+            <li><a href="#app-settings">App settings</a></li>
+            <li><a href="#mix">Mix</a></li>
+          </ul>
+        </nav>
+        <div class="reference-content">
+          <h2 id="playback-screen">
+            Playback screen
+            <button class="anchor-copy" data-id="playback-screen" title="Copy link to this section">
+              #
+            </button>
+          </h2>
+          <p>The main screen shows everything you need while you play.</p>
 
-        <h3 id="preset-pill">
-          Preset pill
-          <button class="anchor-copy" data-id="preset-pill" title="Copy link to this section">
-            #
-          </button>
-        </h3>
-        <p>
-          The pill in the top-left shows the currently loaded <a href="#presets">preset</a> name. A
-          <strong>*</strong> means you have unsaved changes. Tap it to save, revert, or switch
-          presets without opening Setup.
-        </p>
+          <h3 id="preset-pill">
+            Preset pill
+            <button class="anchor-copy" data-id="preset-pill" title="Copy link to this section">
+              #
+            </button>
+          </h3>
+          <p>
+            The pill in the top-left shows the currently loaded <a href="#presets">preset</a> name.
+            A <strong>*</strong> means you have unsaved changes. Tap it to save, revert, or switch
+            presets without opening Setup.
+          </p>
 
-        <h3 id="key-display">
-          Key display
-          <button class="anchor-copy" data-id="key-display" title="Copy link to this section">
-            #
-          </button>
-        </h3>
-        <p>
-          The large key name at the top (e.g. <strong>C</strong>) shows the current key. Tap it to
-          open a key grid — select a new key and it takes effect at the start of the next loop. In
-          <a href="#loop-custom">Custom loop mode</a>, the same grid is where you build your key
-          sequence instead.
-        </p>
+          <h3 id="key-display">
+            Key display
+            <button class="anchor-copy" data-id="key-display" title="Copy link to this section">
+              #
+            </button>
+          </h3>
+          <p>
+            The large key name at the top (e.g. <strong>C</strong>) shows the current key. Tap it to
+            open a key grid — select a new key and it takes effect at the start of the next loop. In
+            <a href="#loop-custom">Custom loop mode</a>, the same grid is where you build your key
+            sequence instead.
+          </p>
 
-        <h3 id="chord-chips">
-          Chord chips
-          <button class="anchor-copy" data-id="chord-chips" title="Copy link to this section">
-            #
-          </button>
-        </h3>
-        <p>
-          Each chip shows the resolved chord name for the current key. The active chip highlights
-          during playback, and bar-progress dots appear below it when
-          <strong>Bars per chord</strong> is greater than 1.
-        </p>
+          <h3 id="chord-chips">
+            Chord chips
+            <button class="anchor-copy" data-id="chord-chips" title="Copy link to this section">
+              #
+            </button>
+          </h3>
+          <p>
+            Each chip shows the resolved chord name for the current key. The active chip highlights
+            during playback, and bar-progress dots appear below it when
+            <strong>Bars per chord</strong> is greater than 1.
+          </p>
 
-        <h3 id="beat-indicator">
-          Beat indicator
-          <button class="anchor-copy" data-id="beat-indicator" title="Copy link to this section">
-            #
-          </button>
-        </h3>
-        <p>Four dots below the chord strip pulse on each beat.</p>
+          <h3 id="beat-indicator">
+            Beat indicator
+            <button class="anchor-copy" data-id="beat-indicator" title="Copy link to this section">
+              #
+            </button>
+          </h3>
+          <p>Four dots below the chord strip pulse on each beat.</p>
 
-        <h3 id="style">
-          Style
-          <button class="anchor-copy" data-id="style" title="Copy link to this section">#</button>
-        </h3>
+          <h3 id="style">
+            Style
+            <button class="anchor-copy" data-id="style" title="Copy link to this section">#</button>
+          </h3>
 
-        <h4 id="style-pop">
-          Pop
-          <button class="anchor-copy" data-id="style-pop" title="Copy link to this section">
-            #
-          </button>
-        </h4>
-        <p>Straight and steady. <a href="./?style=pop" class="try-link">Try Pop →</a></p>
+          <h4 id="style-pop">
+            Pop
+            <button class="anchor-copy" data-id="style-pop" title="Copy link to this section">
+              #
+            </button>
+          </h4>
+          <p>Straight and steady. <a href="./?style=pop" class="try-link">Try Pop →</a></p>
 
-        <h4 id="style-funk">
-          Funk
-          <button class="anchor-copy" data-id="style-funk" title="Copy link to this section">
-            #
-          </button>
-        </h4>
-        <p>Syncopated, tight pocket. <a href="./?style=funk" class="try-link">Try Funk →</a></p>
+          <h4 id="style-funk">
+            Funk
+            <button class="anchor-copy" data-id="style-funk" title="Copy link to this section">
+              #
+            </button>
+          </h4>
+          <p>Syncopated, tight pocket. <a href="./?style=funk" class="try-link">Try Funk →</a></p>
 
-        <h4 id="style-ballad">
-          Ballad
-          <button class="anchor-copy" data-id="style-ballad" title="Copy link to this section">
-            #
-          </button>
-        </h4>
-        <p>
-          Half-time feel, sparse. Pairs well with slow tempos.
-          <a href="./?style=ballad&tempo=65" class="try-link">Try Ballad →</a>
-        </p>
+          <h4 id="style-ballad">
+            Ballad
+            <button class="anchor-copy" data-id="style-ballad" title="Copy link to this section">
+              #
+            </button>
+          </h4>
+          <p>
+            Half-time feel, sparse. Pairs well with slow tempos.
+            <a href="./?style=ballad&tempo=65" class="try-link">Try Ballad →</a>
+          </p>
 
-        <h4 id="style-rock">
-          Rock
-          <button class="anchor-copy" data-id="style-rock" title="Copy link to this section">
-            #
-          </button>
-        </h4>
-        <p>Driving 8ths, heavier kick. <a href="./?style=rock" class="try-link">Try Rock →</a></p>
+          <h4 id="style-rock">
+            Rock
+            <button class="anchor-copy" data-id="style-rock" title="Copy link to this section">
+              #
+            </button>
+          </h4>
+          <p>Driving 8ths, heavier kick. <a href="./?style=rock" class="try-link">Try Rock →</a></p>
 
-        <h3 id="bass">
-          Bass
-          <button class="anchor-copy" data-id="bass" title="Copy link to this section">#</button>
-        </h3>
+          <h3 id="bass">
+            Bass
+            <button class="anchor-copy" data-id="bass" title="Copy link to this section">#</button>
+          </h3>
 
-        <h4 id="bass-simple">
-          Simple
-          <button class="anchor-copy" data-id="bass-simple" title="Copy link to this section">
-            #
-          </button>
-        </h4>
-        <p>Sparse, less motion. <a href="./?bass=simple" class="try-link">Try Simple bass →</a></p>
+          <h4 id="bass-simple">
+            Simple
+            <button class="anchor-copy" data-id="bass-simple" title="Copy link to this section">
+              #
+            </button>
+          </h4>
+          <p>
+            Sparse, less motion. <a href="./?bass=simple" class="try-link">Try Simple bass →</a>
+          </p>
 
-        <h4 id="bass-busy">
-          Busy
-          <button class="anchor-copy" data-id="bass-busy" title="Copy link to this section">
-            #
-          </button>
-        </h4>
-        <p>More motion than Simple. <a href="./?bass=busy" class="try-link">Try Busy bass →</a></p>
+          <h4 id="bass-busy">
+            Busy
+            <button class="anchor-copy" data-id="bass-busy" title="Copy link to this section">
+              #
+            </button>
+          </h4>
+          <p>
+            More motion than Simple. <a href="./?bass=busy" class="try-link">Try Busy bass →</a>
+          </p>
 
-        <h3 id="drums">
-          Drums
-          <button class="anchor-copy" data-id="drums" title="Copy link to this section">#</button>
-        </h3>
+          <h3 id="drums">
+            Drums
+            <button class="anchor-copy" data-id="drums" title="Copy link to this section">#</button>
+          </h3>
 
-        <h4 id="drums-simple">
-          Simple
-          <button class="anchor-copy" data-id="drums-simple" title="Copy link to this section">
-            #
-          </button>
-        </h4>
-        <p>
-          Sparse drum pattern. <a href="./?drums=simple" class="try-link">Try Simple drums →</a>
-        </p>
+          <h4 id="drums-simple">
+            Simple
+            <button class="anchor-copy" data-id="drums-simple" title="Copy link to this section">
+              #
+            </button>
+          </h4>
+          <p>
+            Sparse drum pattern. <a href="./?drums=simple" class="try-link">Try Simple drums →</a>
+          </p>
 
-        <h4 id="drums-busy">
-          Busy
-          <button class="anchor-copy" data-id="drums-busy" title="Copy link to this section">
-            #
-          </button>
-        </h4>
-        <p>
-          More active drum pattern. <a href="./?drums=busy" class="try-link">Try Busy drums →</a>
-        </p>
+          <h4 id="drums-busy">
+            Busy
+            <button class="anchor-copy" data-id="drums-busy" title="Copy link to this section">
+              #
+            </button>
+          </h4>
+          <p>
+            More active drum pattern. <a href="./?drums=busy" class="try-link">Try Busy drums →</a>
+          </p>
 
-        <h3 id="voicing">
-          Voicing
-          <button class="anchor-copy" data-id="voicing" title="Copy link to this section">#</button>
-        </h3>
+          <h3 id="voicing">
+            Voicing
+            <button class="anchor-copy" data-id="voicing" title="Copy link to this section">
+              #
+            </button>
+          </h3>
 
-        <h4 id="voicing-root">
-          Root
-          <button class="anchor-copy" data-id="voicing-root" title="Copy link to this section">
-            #
-          </button>
-        </h4>
-        <p>
-          Every chord in root position. Clearest chord identity; easiest for ear training.
-          <a href="./?voicing=root" class="try-link">Try Root voicing →</a>
-        </p>
+          <h4 id="voicing-root">
+            Root
+            <button class="anchor-copy" data-id="voicing-root" title="Copy link to this section">
+              #
+            </button>
+          </h4>
+          <p>
+            Every chord in root position. Clearest chord identity; easiest for ear training.
+            <a href="./?voicing=root" class="try-link">Try Root voicing →</a>
+          </p>
 
-        <h4 id="voicing-lead">
-          Voice-lead
-          <button class="anchor-copy" data-id="voicing-lead" title="Copy link to this section">
-            #
-          </button>
-        </h4>
-        <p>
-          Each chord uses the inversion closest to the previous chord. Flows continuously across all
-          chords and across Cycle laps.
-          <a href="./?voicing=voice-lead&cycle=4ths" class="try-link">Try Voice-lead →</a>
-        </p>
+          <h4 id="voicing-lead">
+            Voice-lead
+            <button class="anchor-copy" data-id="voicing-lead" title="Copy link to this section">
+              #
+            </button>
+          </h4>
+          <p>
+            Each chord uses the inversion closest to the previous chord. Flows continuously across
+            all chords and across Cycle laps.
+            <a href="./?voicing=voice-lead&cycle=4ths" class="try-link">Try Voice-lead →</a>
+          </p>
 
-        <h4 id="voicing-loop">
-          Voice-lead / loop
-          <button class="anchor-copy" data-id="voicing-loop" title="Copy link to this section">
-            #
-          </button>
-        </h4>
-        <p>
-          Voice leading within each iteration, resets to root position at the start of each Cycle
-          lap. Same as Voice-lead in Loop mode.
-          <a href="./?voicing=voice-lead-loop&cycle=4ths" class="try-link">Try Voice-lead/loop →</a>
-        </p>
+          <h4 id="voicing-loop">
+            Voice-lead / loop
+            <button class="anchor-copy" data-id="voicing-loop" title="Copy link to this section">
+              #
+            </button>
+          </h4>
+          <p>
+            Voice leading within each iteration, resets to root position at the start of each Cycle
+            lap. Same as Voice-lead in Loop mode.
+            <a href="./?voicing=voice-lead-loop&cycle=4ths" class="try-link"
+              >Try Voice-lead/loop →</a
+            >
+          </p>
 
-        <h3 id="bars">
-          Bars per chord
-          <button class="anchor-copy" data-id="bars" title="Copy link to this section">#</button>
-        </h3>
-        <p>
-          Sets how many bars each chord plays before the progression advances. Individual chords can
-          override this with
-          <a href="#progression-syntax">per-chord bar notation</a> (<code>V:4</code>).
-          <a href="./?bars=4" class="try-link">Try 4 bars →</a>
-        </p>
+          <h3 id="bars">
+            Bars per chord
+            <button class="anchor-copy" data-id="bars" title="Copy link to this section">#</button>
+          </h3>
+          <p>
+            Sets how many bars each chord plays before the progression advances. Individual chords
+            can override this with
+            <a href="#progression-syntax">per-chord bar notation</a> (<code>V:4</code>).
+            <a href="./?bars=4" class="try-link">Try 4 bars →</a>
+          </p>
 
-        <h3 id="tempo">
-          Tempo
-          <button class="anchor-copy" data-id="tempo" title="Copy link to this section">#</button>
-        </h3>
-        <p>
-          Tapping <strong>BPM</strong> opens a popover with a slider, ± nudge buttons, and a
-          tap-tempo button. Changes apply immediately, even during playback.
-        </p>
+          <h3 id="tempo">
+            Tempo
+            <button class="anchor-copy" data-id="tempo" title="Copy link to this section">#</button>
+          </h3>
+          <p>
+            Tapping <strong>BPM</strong> opens a popover with a slider, ± nudge buttons, and a
+            tap-tempo button. Changes apply immediately, even during playback.
+          </p>
 
-        <h3 id="loop-modes">
-          Loop modes
-          <button class="anchor-copy" data-id="loop-modes" title="Copy link to this section">
-            #
-          </button>
-        </h3>
-        <p>
-          Controls how the key changes (or doesn't) across repeated runs. Set via the Loop mode pill
-          on the main screen.
-        </p>
+          <h3 id="loop-modes">
+            Loop modes
+            <button class="anchor-copy" data-id="loop-modes" title="Copy link to this section">
+              #
+            </button>
+          </h3>
+          <p>
+            Controls how the key changes (or doesn't) across repeated runs. Set via the Loop mode
+            pill on the main screen.
+          </p>
 
-        <h4 id="loop-mode-loop">
-          Loop
-          <button class="anchor-copy" data-id="loop-mode-loop" title="Copy link to this section">
-            #
-          </button>
-        </h4>
-        <p>Repeats the progression indefinitely in the configured key. The default mode.</p>
+          <h4 id="loop-mode-loop">
+            Loop
+            <button class="anchor-copy" data-id="loop-mode-loop" title="Copy link to this section">
+              #
+            </button>
+          </h4>
+          <p>Repeats the progression indefinitely in the configured key. The default mode.</p>
 
-        <h4 id="loop-4ths">
-          Cycle 4ths
-          <button class="anchor-copy" data-id="loop-4ths" title="Copy link to this section">
-            #
-          </button>
-        </h4>
-        <p>
-          Plays the progression through all 12 keys ascending by perfect fourths. The key display
-          updates each lap. <a href="./?cycle=4ths" class="try-link">Try Cycle 4ths →</a>
-        </p>
+          <h4 id="loop-4ths">
+            Cycle 4ths
+            <button class="anchor-copy" data-id="loop-4ths" title="Copy link to this section">
+              #
+            </button>
+          </h4>
+          <p>
+            Plays the progression through all 12 keys ascending by perfect fourths. The key display
+            updates each lap. <a href="./?cycle=4ths" class="try-link">Try Cycle 4ths →</a>
+          </p>
 
-        <h4 id="loop-5ths">
-          Cycle 5ths
-          <button class="anchor-copy" data-id="loop-5ths" title="Copy link to this section">
-            #
-          </button>
-        </h4>
-        <p>
-          Same as Cycle 4ths, ascending by perfect fifths.
-          <a href="./?cycle=5ths" class="try-link">Try Cycle 5ths →</a>
-        </p>
+          <h4 id="loop-5ths">
+            Cycle 5ths
+            <button class="anchor-copy" data-id="loop-5ths" title="Copy link to this section">
+              #
+            </button>
+          </h4>
+          <p>
+            Same as Cycle 4ths, ascending by perfect fifths.
+            <a href="./?cycle=5ths" class="try-link">Try Cycle 5ths →</a>
+          </p>
 
-        <h4 id="loop-custom">
-          Custom key sequence
-          <button class="anchor-copy" data-id="loop-custom" title="Copy link to this section">
-            #
-          </button>
-        </h4>
-        <p>
-          Define your own key sequence in any order. Switch the Loop mode pill to
-          <strong>Custom</strong>, then tap the <a href="#key-display">key display</a> to open the
-          key grid — tapping a key adds it to the sequence, tapping it again removes it. The
-          sequence appears as a numbered list below the grid; reorder with ↑↓ and remove with ×.
-        </p>
-        <p>
-          Each entry plays one complete run through the progression before advancing to the next
-          key. Accidentals follow the target key's natural spelling.
-        </p>
-        <a href="./?cycle=custom&customKeys=C,F,Bb,Eb&section=ii+V+I" class="try-link"
-          >Try Custom (C→F→Bb→Eb) →</a
-        >
-
-        <h4 id="key-scrubber">
-          KEY scrubber
-          <button class="anchor-copy" data-id="key-scrubber" title="Copy link to this section">
-            #
-          </button>
-        </h4>
-        <p>
-          When any cycle mode is active, a <strong>KEY</strong> row appears in the action bar
-          showing every key in the sequence. The current key is highlighted. In
-          <a href="#loop-custom">Custom</a> mode this row appears as soon as you switch to Custom —
-          even with just one key — so you can see the sequence forming as you build it.
-        </p>
-        <ul>
-          <li>
-            <strong>While playing (Auto mode)</strong> — keys advance automatically after each full
-            run through the progression. Tap a segment to queue a jump to a specific key; it takes
-            effect after the current key's run completes. Tap the same segment again to cancel.
-          </li>
-          <li>
-            <strong>While playing (Manual mode)</strong> — keys never advance on their own. Tap a
-            segment to queue a key change; it takes effect when the current section completes. Tap
-            again to cancel.
-          </li>
-          <li>
-            <strong>While stopped or paused</strong> — tap a segment to set the starting key. Chord
-            chips and the key display update immediately.
-          </li>
-        </ul>
-
-        <h3 id="play-pause-stop">
-          Play / Pause / Stop
-          <button class="anchor-copy" data-id="play-pause-stop" title="Copy link to this section">
-            #
-          </button>
-        </h3>
-        <p>
-          <strong>Play / Pause</strong> — tap once to start, tap again to pause at the current
-          chord. Spacebar also works when no text input is focused.
-        </p>
-        <p>
-          <strong>Stop</strong> (■) — appears next to Play while paused; resets playback to the
-          beginning.
-        </p>
-        <p>
-          <a href="#setup">Setup</a> and <a href="#mix">Mix</a> buttons live in the action bar at
-          the bottom left and right.
-        </p>
-
-        <hr />
-
-        <h2 id="setup">
-          Setup
-          <button class="anchor-copy" data-id="setup" title="Copy link to this section">#</button>
-        </h2>
-        <p>
-          Open from the <strong>Setup</strong> button in the action bar. Covers
-          <a href="#sections">Progression</a> (sections and arrangement) and
-          <a href="#app-settings">App</a> settings.
-        </p>
-
-        <hr />
-
-        <h2 id="progression-syntax">
-          Progression syntax
-          <button
-            class="anchor-copy"
-            data-id="progression-syntax"
-            title="Copy link to this section"
+          <h4 id="loop-custom">
+            Custom key sequence
+            <button class="anchor-copy" data-id="loop-custom" title="Copy link to this section">
+              #
+            </button>
+          </h4>
+          <p>
+            Define your own key sequence in any order. Switch the Loop mode pill to
+            <strong>Custom</strong>, then tap the <a href="#key-display">key display</a> to open the
+            key grid — tapping a key adds it to the sequence, tapping it again removes it. The
+            sequence appears as a numbered list below the grid; reorder with ↑↓ and remove with ×.
+          </p>
+          <p>
+            Each entry plays one complete run through the progression before advancing to the next
+            key. Accidentals follow the target key's natural spelling.
+          </p>
+          <a href="./?cycle=custom&customKeys=C,F,Bb,Eb&section=ii+V+I" class="try-link"
+            >Try Custom (C→F→Bb→Eb) →</a
           >
-            #
-          </button>
-        </h2>
-        <p>
-          The progression input accepts space-separated tokens. Roman numerals and absolute chord
-          names can be freely mixed.
-        </p>
 
-        <div class="table-wrap">
-          <table class="syntax-table">
-            <thead>
-              <tr>
-                <th>Type</th>
-                <th>Examples</th>
-                <th>Notes</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Major triad</td>
-                <td><a href="./?section=I+IV+V" class="try-link">I IV V →</a></td>
-                <td>Uppercase Roman numerals</td>
-              </tr>
-              <tr>
-                <td>Minor triad</td>
-                <td><a href="./?section=i+iv+vi" class="try-link">i iv vi →</a></td>
-                <td>Lowercase Roman numerals</td>
-              </tr>
-              <tr>
-                <td>Flat scale degree</td>
-                <td><a href="./?section=i+bVII+bVI" class="try-link">i bVII bVI →</a></td>
-                <td>Prefix <code>b</code> lowers by a semitone</td>
-              </tr>
-              <tr>
-                <td>Absolute chord</td>
-                <td><a href="./?section=I+IV+Am+V" class="try-link">I IV Am V →</a></td>
-                <td>Suffix <code>m</code> for minor; mix freely with Roman numerals</td>
-              </tr>
-              <tr>
-                <td>Major 7th</td>
-                <td>
-                  <a href="./?section=Imaj7+IVmaj7+iim7+V7" class="try-link"
-                    >Imaj7 IVmaj7 iim7 V7 →</a
-                  >
-                </td>
-                <td></td>
-              </tr>
-              <tr>
-                <td>Dominant 7th</td>
-                <td><a href="./?section=iim7+V7+I" class="try-link">iim7 V7 I →</a></td>
-                <td>Uppercase numeral + <code>7</code></td>
-              </tr>
-              <tr>
-                <td>Minor 7th</td>
-                <td><a href="./?section=iim7+V7+Imaj7" class="try-link">iim7 V7 Imaj7 →</a></td>
-                <td>Lowercase numeral + <code>7</code></td>
-              </tr>
-              <tr>
-                <td>Diminished triad</td>
-                <td><a href="./?section=I+viidim+I" class="try-link">I viidim I →</a></td>
-                <td>Also <code>°</code></td>
-              </tr>
-              <tr>
-                <td>Augmented triad</td>
-                <td><a href="./?section=Iaug+IV+I" class="try-link">Iaug IV I →</a></td>
-                <td>Also <code>I+</code></td>
-              </tr>
-              <tr>
-                <td>Suspended</td>
-                <td><a href="./?section=Isus4+I+Vsus4+V" class="try-link">Isus4 I Vsus4 V →</a></td>
-                <td></td>
-              </tr>
-              <tr>
-                <td>Half-diminished</td>
-                <td><a href="./?section=iim7b5+V7+i" class="try-link">iim7b5 V7 i →</a></td>
-                <td>Also <code>ø</code></td>
-              </tr>
-              <tr>
-                <td>Fully dim 7th</td>
-                <td><a href="./?section=viidim7+I" class="try-link">viidim7 I →</a></td>
-                <td>Also <code>°7</code></td>
-              </tr>
-              <tr>
-                <td>Minor-major 7th</td>
-                <td><a href="./?section=imMaj7+iv+i" class="try-link">imMaj7 iv i →</a></td>
-                <td></td>
-              </tr>
-              <tr>
-                <td>Dom 7 suspended</td>
-                <td><a href="./?section=V7sus4+V7+I" class="try-link">V7sus4 V7 I →</a></td>
-                <td></td>
-              </tr>
-              <tr>
-                <td>Per-chord bars</td>
-                <td><a href="./?section=I%3A4+IV%3A2+V%3A2" class="try-link">I:4 IV:2 V:2 →</a></td>
-                <td>Append <code>:n</code> to any chord</td>
-              </tr>
-            </tbody>
-          </table>
+          <h4 id="key-scrubber">
+            KEY scrubber
+            <button class="anchor-copy" data-id="key-scrubber" title="Copy link to this section">
+              #
+            </button>
+          </h4>
+          <p>
+            When any cycle mode is active, a <strong>KEY</strong> row appears in the action bar
+            showing every key in the sequence. The current key is highlighted. In
+            <a href="#loop-custom">Custom</a> mode this row appears as soon as you switch to Custom
+            — even with just one key — so you can see the sequence forming as you build it.
+          </p>
+          <ul>
+            <li>
+              <strong>While playing (Auto mode)</strong> — keys advance automatically after each
+              full run through the progression. Tap a segment to queue a jump to a specific key; it
+              takes effect after the current key's run completes. Tap the same segment again to
+              cancel.
+            </li>
+            <li>
+              <strong>While playing (Manual mode)</strong> — keys never advance on their own. Tap a
+              segment to queue a key change; it takes effect when the current section completes. Tap
+              again to cancel.
+            </li>
+            <li>
+              <strong>While stopped or paused</strong> — tap a segment to set the starting key.
+              Chord chips and the key display update immediately.
+            </li>
+          </ul>
+
+          <h3 id="play-pause-stop">
+            Play / Pause / Stop
+            <button class="anchor-copy" data-id="play-pause-stop" title="Copy link to this section">
+              #
+            </button>
+          </h3>
+          <p>
+            <strong>Play / Pause</strong> — tap once to start, tap again to pause at the current
+            chord. Spacebar also works when no text input is focused.
+          </p>
+          <p>
+            <strong>Stop</strong> (■) — appears next to Play while paused; resets playback to the
+            beginning.
+          </p>
+          <p>
+            <a href="#setup">Setup</a> and <a href="#mix">Mix</a> buttons live in the action bar at
+            the bottom left and right.
+          </p>
+
+          <hr />
+
+          <h2 id="setup">
+            Setup
+            <button class="anchor-copy" data-id="setup" title="Copy link to this section">#</button>
+          </h2>
+          <p>
+            Open from the <strong>Setup</strong> button in the action bar. Covers
+            <a href="#sections">Progression</a> (sections and arrangement) and
+            <a href="#app-settings">App</a> settings.
+          </p>
+
+          <hr />
+
+          <h2 id="progression-syntax">
+            Progression syntax
+            <button
+              class="anchor-copy"
+              data-id="progression-syntax"
+              title="Copy link to this section"
+            >
+              #
+            </button>
+          </h2>
+          <p>
+            The progression input accepts space-separated tokens. Roman numerals and absolute chord
+            names can be freely mixed.
+          </p>
+
+          <div class="table-wrap">
+            <table class="syntax-table">
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Examples</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Major triad</td>
+                  <td><a href="./?section=I+IV+V" class="try-link">I IV V →</a></td>
+                  <td>Uppercase Roman numerals</td>
+                </tr>
+                <tr>
+                  <td>Minor triad</td>
+                  <td><a href="./?section=i+iv+vi" class="try-link">i iv vi →</a></td>
+                  <td>Lowercase Roman numerals</td>
+                </tr>
+                <tr>
+                  <td>Flat scale degree</td>
+                  <td><a href="./?section=i+bVII+bVI" class="try-link">i bVII bVI →</a></td>
+                  <td>Prefix <code>b</code> lowers by a semitone</td>
+                </tr>
+                <tr>
+                  <td>Absolute chord</td>
+                  <td><a href="./?section=I+IV+Am+V" class="try-link">I IV Am V →</a></td>
+                  <td>Suffix <code>m</code> for minor; mix freely with Roman numerals</td>
+                </tr>
+                <tr>
+                  <td>Major 7th</td>
+                  <td>
+                    <a href="./?section=Imaj7+IVmaj7+iim7+V7" class="try-link"
+                      >Imaj7 IVmaj7 iim7 V7 →</a
+                    >
+                  </td>
+                  <td></td>
+                </tr>
+                <tr>
+                  <td>Dominant 7th</td>
+                  <td><a href="./?section=iim7+V7+I" class="try-link">iim7 V7 I →</a></td>
+                  <td>Uppercase numeral + <code>7</code></td>
+                </tr>
+                <tr>
+                  <td>Minor 7th</td>
+                  <td><a href="./?section=iim7+V7+Imaj7" class="try-link">iim7 V7 Imaj7 →</a></td>
+                  <td>Lowercase numeral + <code>7</code></td>
+                </tr>
+                <tr>
+                  <td>Diminished triad</td>
+                  <td><a href="./?section=I+viidim+I" class="try-link">I viidim I →</a></td>
+                  <td>Also <code>°</code></td>
+                </tr>
+                <tr>
+                  <td>Augmented triad</td>
+                  <td><a href="./?section=Iaug+IV+I" class="try-link">Iaug IV I →</a></td>
+                  <td>Also <code>I+</code></td>
+                </tr>
+                <tr>
+                  <td>Suspended</td>
+                  <td>
+                    <a href="./?section=Isus4+I+Vsus4+V" class="try-link">Isus4 I Vsus4 V →</a>
+                  </td>
+                  <td></td>
+                </tr>
+                <tr>
+                  <td>Half-diminished</td>
+                  <td><a href="./?section=iim7b5+V7+i" class="try-link">iim7b5 V7 i →</a></td>
+                  <td>Also <code>ø</code></td>
+                </tr>
+                <tr>
+                  <td>Fully dim 7th</td>
+                  <td><a href="./?section=viidim7+I" class="try-link">viidim7 I →</a></td>
+                  <td>Also <code>°7</code></td>
+                </tr>
+                <tr>
+                  <td>Minor-major 7th</td>
+                  <td><a href="./?section=imMaj7+iv+i" class="try-link">imMaj7 iv i →</a></td>
+                  <td></td>
+                </tr>
+                <tr>
+                  <td>Dom 7 suspended</td>
+                  <td><a href="./?section=V7sus4+V7+I" class="try-link">V7sus4 V7 I →</a></td>
+                  <td></td>
+                </tr>
+                <tr>
+                  <td>Per-chord bars</td>
+                  <td>
+                    <a href="./?section=I%3A4+IV%3A2+V%3A2" class="try-link">I:4 IV:2 V:2 →</a>
+                  </td>
+                  <td>Append <code>:n</code> to any chord</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p>
+            Repeat a token to extend its duration: <code>I I vi V</code> gives I two iterations at
+            the default bar count. Chord chips show resolved names and highlight during playback.
+          </p>
+
+          <hr />
+
+          <h2 id="sections">
+            Sections &amp; arrangement
+            <button class="anchor-copy" data-id="sections" title="Copy link to this section">
+              #
+            </button>
+          </h2>
+          <p>
+            Build song structure with multiple sections. A single section (the default) just loops.
+          </p>
+
+          <h3 id="sections-list">
+            Sections
+            <button class="anchor-copy" data-id="sections-list" title="Copy link to this section">
+              #
+            </button>
+          </h3>
+          <p>
+            Each section has its own <a href="#progression-syntax">progression</a>. Reorder with ↑↓,
+            delete with ×.
+          </p>
+
+          <h3 id="arrangement">
+            Arrangement
+            <button class="anchor-copy" data-id="arrangement" title="Copy link to this section">
+              #
+            </button>
+          </h3>
+          <p>
+            An optional sequence of section numbers that controls playback order —
+            <code>1</code> means section 1, <code>2</code> means section 2, and so on. Leave it
+            empty to play all sections in order.
+          </p>
+          <p>
+            For example, <code>1 1 2 3 2 3</code> plays section 1 twice, then alternates sections 2
+            and 3 twice. Append <code>:n</code> to repeat a section multiple times:
+            <code>1:4 2:2</code> plays section 1 four times then section 2 twice.
+          </p>
+          <a
+            href="./?key=C&tempo=100&bars=1&cycle=none&style=rock&bass=simple&voicing=voice-lead-loop&section=vi+IV+I+V&section=vi+iii+vi+iii+vi+iii+V+vi%3A2&section=iii%3A2+I%3A2&arrangement=1+1+2%3A2+1%3A2+3%3A2&advance=auto&chordVol=50&bassVol=100&drumVol=100&masterVol=100&chordsOn=1&bassOn=1&drumsOn=1"
+            class="try-link"
+            >Try 3-section song →</a
+          >
+
+          <h3 id="auto-manual">
+            Auto / Manual
+            <button class="anchor-copy" data-id="auto-manual" title="Copy link to this section">
+              #
+            </button>
+          </h3>
+          <p>Controls both section and key advancement.</p>
+          <ul>
+            <li>
+              <strong>Auto</strong> — sections and keys advance automatically. Use the scrubbers to
+              queue jumps ahead of time.
+            </li>
+            <li>
+              <strong>Manual</strong> — nothing advances without a tap. The progression holds the
+              current section until you tap the <a href="#song-scrubber">SONG scrubber</a>, and
+              holds the current key until you tap the <a href="#key-scrubber">KEY scrubber</a>.
+              Applies to any active cycle mode.
+            </li>
+          </ul>
+
+          <h3 id="song-scrubber">
+            SONG scrubber
+            <button class="anchor-copy" data-id="song-scrubber" title="Copy link to this section">
+              #
+            </button>
+          </h3>
+          <p>Appears in the action bar when the arrangement has two or more steps.</p>
+          <ul>
+            <li>
+              <strong>While playing</strong> — tap a segment to queue a jump to it; takes effect
+              after the current section completes. Tap again to cancel.
+            </li>
+            <li>
+              <strong>While stopped or paused</strong> — tap a segment to set where playback will
+              start.
+            </li>
+          </ul>
+
+          <hr />
+
+          <h2 id="presets">
+            Presets
+            <button class="anchor-copy" data-id="presets" title="Copy link to this section">
+              #
+            </button>
+          </h2>
+          <p>
+            The preset pill in the top-left corner shows the currently loaded preset. Tap it to open
+            the preset menu.
+          </p>
+
+          <h3 id="starter-presets">
+            Starter presets
+            <button class="anchor-copy" data-id="starter-presets" title="Copy link to this section">
+              #
+            </button>
+          </h3>
+          <p>
+            A set of ready-to-play configurations — progression, key, tempo, style, and mix
+            included. Tap any to load it. Use <strong>Save as new…</strong> to fork it into your own
+            preset.
+          </p>
+
+          <h3 id="saved-presets">
+            My presets
+            <button class="anchor-copy" data-id="saved-presets" title="Copy link to this section">
+              #
+            </button>
+          </h3>
+          <p>
+            Tap <strong>+ Save preset</strong> (or <strong>Save as new…</strong> from the menu) to
+            name and save the current state. Your presets appear at the top of the menu.
+          </p>
+          <p>
+            Once a preset is loaded, the pill shows its name. Changing any setting marks it with
+            <strong>*</strong>. From the menu:
+          </p>
+          <ul>
+            <li>
+              <strong>Save</strong> — overwrite the preset with the current state (enabled when
+              modified)
+            </li>
+            <li>
+              <strong>Revert</strong> — restore the preset's saved state (enabled when modified)
+            </li>
+            <li>
+              <strong>Save as new…</strong> — save as a new named preset without affecting the
+              loaded one
+            </li>
+          </ul>
+          <p>
+            Tap the pencil icon (✎) next to a preset to rename it, or × to delete it (with
+            confirmation).
+          </p>
+
+          <h3 id="default-preset">
+            Default preset
+            <button class="anchor-copy" data-id="default-preset" title="Copy link to this section">
+              #
+            </button>
+          </h3>
+          <p>
+            Tap the pencil icon (✎) on one of your presets and check
+            <strong>Set as default</strong>. Opening the app with no link parameters at all then
+            loads that preset instead of the built-in defaults. Only one preset can be default at a
+            time — checking it on another preset replaces the old one. Starter presets can't be set
+            as default directly — use <strong>Save as new…</strong> to make your own copy first,
+            then mark that as default.
+          </p>
+          <p>
+            A <a href="#share-link">share link</a> with specific settings still behaves as before —
+            your default preset only applies when there's nothing else to go on.
+          </p>
+          <p><a href="./" class="try-link">Open with no parameters →</a></p>
+
+          <hr />
+
+          <h2 id="app-settings">
+            App settings
+            <button class="anchor-copy" data-id="app-settings" title="Copy link to this section">
+              #
+            </button>
+          </h2>
+
+          <h3 id="theme">
+            Theme
+            <button class="anchor-copy" data-id="theme" title="Copy link to this section">#</button>
+          </h3>
+          <p>
+            Light / Dark toggle in Setup. Defaults to dark. Stored per-device — not included in URLs
+            or presets.
+          </p>
+
+          <h3 id="keep-awake">
+            Keep screen on
+            <button class="anchor-copy" data-id="keep-awake" title="Copy link to this section">
+              #
+            </button>
+          </h3>
+          <p>Toggle in Setup. When enabled, prevents your screen from dimming during playback.</p>
+
+          <h3 id="share-link">
+            Share link
+            <button class="anchor-copy" data-id="share-link" title="Copy link to this section">
+              #
+            </button>
+          </h3>
+          <p>
+            Every change you make is reflected in the URL — key, progression, tempo, mix, and more.
+            Use <strong>Copy share link</strong> in Setup to copy it and share or bookmark your
+            exact setup.
+          </p>
+
+          <hr />
+
+          <h2 id="mix">
+            Mix
+            <button class="anchor-copy" data-id="mix" title="Copy link to this section">#</button>
+          </h2>
+          <p>
+            Open from the <strong>Mix</strong> button in the action bar. Each instrument —
+            <strong>Chords</strong>, <strong>Bass</strong>, <strong>Drums</strong> — has a mute
+            toggle and volume slider, plus a master volume. All changes apply live during playback.
+          </p>
         </div>
-
-        <p>
-          Repeat a token to extend its duration: <code>I I vi V</code> gives I two iterations at the
-          default bar count. Chord chips show resolved names and highlight during playback.
-        </p>
-
-        <hr />
-
-        <h2 id="sections">
-          Sections &amp; arrangement
-          <button class="anchor-copy" data-id="sections" title="Copy link to this section">
-            #
-          </button>
-        </h2>
-        <p>
-          Build song structure with multiple sections. A single section (the default) just loops.
-        </p>
-
-        <h3 id="sections-list">
-          Sections
-          <button class="anchor-copy" data-id="sections-list" title="Copy link to this section">
-            #
-          </button>
-        </h3>
-        <p>
-          Each section has its own <a href="#progression-syntax">progression</a>. Reorder with ↑↓,
-          delete with ×.
-        </p>
-
-        <h3 id="arrangement">
-          Arrangement
-          <button class="anchor-copy" data-id="arrangement" title="Copy link to this section">
-            #
-          </button>
-        </h3>
-        <p>
-          An optional sequence of section numbers that controls playback order —
-          <code>1</code> means section 1, <code>2</code> means section 2, and so on. Leave it empty
-          to play all sections in order.
-        </p>
-        <p>
-          For example, <code>1 1 2 3 2 3</code> plays section 1 twice, then alternates sections 2
-          and 3 twice. Append <code>:n</code> to repeat a section multiple times:
-          <code>1:4 2:2</code> plays section 1 four times then section 2 twice.
-        </p>
-        <a
-          href="./?key=C&tempo=100&bars=1&cycle=none&style=rock&bass=simple&voicing=voice-lead-loop&section=vi+IV+I+V&section=vi+iii+vi+iii+vi+iii+V+vi%3A2&section=iii%3A2+I%3A2&arrangement=1+1+2%3A2+1%3A2+3%3A2&advance=auto&chordVol=50&bassVol=100&drumVol=100&masterVol=100&chordsOn=1&bassOn=1&drumsOn=1"
-          class="try-link"
-          >Try 3-section song →</a
-        >
-
-        <h3 id="auto-manual">
-          Auto / Manual
-          <button class="anchor-copy" data-id="auto-manual" title="Copy link to this section">
-            #
-          </button>
-        </h3>
-        <p>Controls both section and key advancement.</p>
-        <ul>
-          <li>
-            <strong>Auto</strong> — sections and keys advance automatically. Use the scrubbers to
-            queue jumps ahead of time.
-          </li>
-          <li>
-            <strong>Manual</strong> — nothing advances without a tap. The progression holds the
-            current section until you tap the <a href="#song-scrubber">SONG scrubber</a>, and holds
-            the current key until you tap the <a href="#key-scrubber">KEY scrubber</a>. Applies to
-            any active cycle mode.
-          </li>
-        </ul>
-
-        <h3 id="song-scrubber">
-          SONG scrubber
-          <button class="anchor-copy" data-id="song-scrubber" title="Copy link to this section">
-            #
-          </button>
-        </h3>
-        <p>Appears in the action bar when the arrangement has two or more steps.</p>
-        <ul>
-          <li>
-            <strong>While playing</strong> — tap a segment to queue a jump to it; takes effect after
-            the current section completes. Tap again to cancel.
-          </li>
-          <li>
-            <strong>While stopped or paused</strong> — tap a segment to set where playback will
-            start.
-          </li>
-        </ul>
-
-        <hr />
-
-        <h2 id="presets">
-          Presets
-          <button class="anchor-copy" data-id="presets" title="Copy link to this section">#</button>
-        </h2>
-        <p>
-          The preset pill in the top-left corner shows the currently loaded preset. Tap it to open
-          the preset menu.
-        </p>
-
-        <h3 id="starter-presets">
-          Starter presets
-          <button class="anchor-copy" data-id="starter-presets" title="Copy link to this section">
-            #
-          </button>
-        </h3>
-        <p>
-          A set of ready-to-play configurations — progression, key, tempo, style, and mix included.
-          Tap any to load it. Use <strong>Save as new…</strong> to fork it into your own preset.
-        </p>
-
-        <h3 id="saved-presets">
-          My presets
-          <button class="anchor-copy" data-id="saved-presets" title="Copy link to this section">
-            #
-          </button>
-        </h3>
-        <p>
-          Tap <strong>+ Save preset</strong> (or <strong>Save as new…</strong> from the menu) to
-          name and save the current state. Your presets appear at the top of the menu.
-        </p>
-        <p>
-          Once a preset is loaded, the pill shows its name. Changing any setting marks it with
-          <strong>*</strong>. From the menu:
-        </p>
-        <ul>
-          <li>
-            <strong>Save</strong> — overwrite the preset with the current state (enabled when
-            modified)
-          </li>
-          <li>
-            <strong>Revert</strong> — restore the preset's saved state (enabled when modified)
-          </li>
-          <li>
-            <strong>Save as new…</strong> — save as a new named preset without affecting the loaded
-            one
-          </li>
-        </ul>
-        <p>
-          Tap the pencil icon (✎) next to a preset to rename it, or × to delete it (with
-          confirmation).
-        </p>
-
-        <hr />
-
-        <h2 id="app-settings">
-          App settings
-          <button class="anchor-copy" data-id="app-settings" title="Copy link to this section">
-            #
-          </button>
-        </h2>
-
-        <h3 id="theme">
-          Theme
-          <button class="anchor-copy" data-id="theme" title="Copy link to this section">#</button>
-        </h3>
-        <p>
-          Light / Dark toggle in Setup. Defaults to dark. Stored per-device — not included in URLs
-          or presets.
-        </p>
-
-        <h3 id="keep-awake">
-          Keep screen on
-          <button class="anchor-copy" data-id="keep-awake" title="Copy link to this section">
-            #
-          </button>
-        </h3>
-        <p>Toggle in Setup. When enabled, prevents your screen from dimming during playback.</p>
-
-        <h3 id="share-link">
-          Share link
-          <button class="anchor-copy" data-id="share-link" title="Copy link to this section">
-            #
-          </button>
-        </h3>
-        <p>
-          Every change you make is reflected in the URL — key, progression, tempo, mix, and more.
-          Use <strong>Copy share link</strong> in Setup to copy it and share or bookmark your exact
-          setup.
-        </p>
-
-        <hr />
-
-        <h2 id="mix">
-          Mix <button class="anchor-copy" data-id="mix" title="Copy link to this section">#</button>
-        </h2>
-        <p>
-          Open from the <strong>Mix</strong> button in the action bar. Each instrument —
-          <strong>Chords</strong>, <strong>Bass</strong>, <strong>Drums</strong> — has a mute toggle
-          and volume slider, plus a master volume. All changes apply live during playback.
-        </p>
       </section>
     </main>
+
+    <button id="back-to-top" class="back-to-top" type="button" aria-label="Back to top">↑</button>
 
     <script>
       const tabs = document.querySelectorAll(".tab-btn");
@@ -1150,6 +1297,16 @@
             // silent fail — browser may deny without HTTPS
           }
         });
+      });
+
+      // ── Back to top ──────────────────────────────────────────────────────────
+
+      const backToTopBtn = document.getElementById("back-to-top");
+      window.addEventListener("scroll", () => {
+        backToTopBtn.classList.toggle("visible", window.scrollY > 400);
+      });
+      backToTopBtn.addEventListener("click", () => {
+        window.scrollTo({ top: 0, behavior: "smooth" });
       });
     </script>
   </body>

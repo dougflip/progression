@@ -75,6 +75,7 @@ const presetNameSheetEl = $("preset-name-sheet") as HTMLDialogElement;
 const presetNameTitleEl = $("preset-name-title") as HTMLElement;
 const presetNameInputEl = $("preset-name-input") as HTMLInputElement;
 const presetNameSubmitEl = $("preset-name-submit") as HTMLButtonElement;
+const presetNameDefaultEl = $("preset-name-default") as HTMLInputElement;
 const scrubberBar = $("scrubber-bar") as HTMLDivElement;
 const scrubberTrack = $("scrubber-track") as HTMLDivElement;
 const readoutTempoEl = $("readout-tempo") as HTMLElement;
@@ -555,6 +556,7 @@ function renderPresetDropdownList(): void {
     .slice()
     .sort((a, b) => a.name.localeCompare(b.name));
   const loadedId = app.getLoadedPreset()?.id;
+  const defaultId = app.getDefaultPresetId();
 
   if (presets.length) {
     presetDropdownListEl.appendChild(
@@ -571,7 +573,7 @@ function renderPresetDropdownList(): void {
         type: "button",
         className:
           "preset-dropdown-item" + (p.id === loadedId ? " preset-dropdown-item--active" : ""),
-        textContent: p.name,
+        textContent: p.id === defaultId ? `${p.name} ★` : p.name,
       });
       nameBtn.addEventListener("click", () => {
         app.loadUserPreset(p);
@@ -624,12 +626,13 @@ function renderPresetDropdownList(): void {
       className:
         "preset-dropdown-item" +
         (p.label === loadedBuiltinName ? " preset-dropdown-item--active" : ""),
-      textContent: p.label,
+      textContent: p.id === defaultId ? `${p.label} ★` : p.label,
     });
     btn.addEventListener("click", () => {
       app.loadBuiltinPreset(p.id, p.label, p.state);
       presetDropdownEl.hidden = true;
     });
+
     presetDropdownListEl.appendChild(btn);
   });
 }
@@ -964,6 +967,7 @@ function openPresetNameSheet(preset?: UserPreset): void {
   presetNameTitleEl.textContent = preset ? "Rename Preset" : "Save Preset";
   presetNameSubmitEl.textContent = preset ? "Save" : "Save Preset";
   presetNameInputEl.value = preset?.name ?? "";
+  presetNameDefaultEl.checked = preset ? preset.id === app.getDefaultPresetId() : false;
   presetNameSheetEl.showModal();
   setTimeout(() => {
     presetNameInputEl.focus();
@@ -1002,10 +1006,17 @@ presetSaveNewBtn.addEventListener("click", () => {
 presetNameSubmitEl.addEventListener("click", () => {
   const name = presetNameInputEl.value.trim();
   if (!name) return;
+  const makeDefault = presetNameDefaultEl.checked;
   if (_editingPreset) {
     app.renameUserPreset(_editingPreset.id, name);
+    if (makeDefault) {
+      app.setDefaultPresetId(_editingPreset.id);
+    } else if (app.getDefaultPresetId() === _editingPreset.id) {
+      app.setDefaultPresetId(null);
+    }
   } else {
-    app.saveUserPreset(name);
+    const id = app.saveUserPreset(name);
+    if (makeDefault) app.setDefaultPresetId(id);
   }
   presetNameSheetEl.close();
   renderPresetIndicator();
@@ -1119,7 +1130,24 @@ if (!localStorage.getItem(WELCOMED)) ($("welcome-modal") as HTMLDialogElement).s
 
 // ── Init ──────────────────────────────────────────────────────────────────
 
-app.applyUrl(location.search);
+if (!location.search) {
+  const _defaultId = app.getDefaultPresetId();
+  const _userDefault = _defaultId
+    ? app.getUserPresets().find((p) => p.id === _defaultId)
+    : undefined;
+  const _builtinDefault =
+    !_userDefault && _defaultId ? PRESETS.find((p) => p.id === _defaultId) : undefined;
+  if (_userDefault) {
+    app.loadUserPreset(_userDefault);
+  } else if (_builtinDefault) {
+    app.loadBuiltinPreset(_builtinDefault.id, _builtinDefault.label, _builtinDefault.state);
+  } else {
+    if (_defaultId) app.setDefaultPresetId(null);
+    app.applyUrl(location.search);
+  }
+} else {
+  app.applyUrl(location.search);
+}
 const _initPresetId = new URLSearchParams(location.search).get("presetId");
 if (_initPresetId) {
   const _userPreset = app.getUserPresets().find((p) => p.id === _initPresetId);

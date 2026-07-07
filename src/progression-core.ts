@@ -865,6 +865,7 @@ export function serializeUrl(state: AppState): string {
 // ─── Player Factory ──────────────────────────────────────────────────────────
 
 const PRESETS_STORAGE_KEY = "progression-presets-v2";
+const DEFAULT_PRESET_STORAGE_KEY = "progression-default-preset-v1";
 
 type PausedAt = { posIndex: number; chipIndex: number; lapIndex: number };
 
@@ -1221,6 +1222,15 @@ export function makeProgressionPlayer(config: PlayerConfig) {
         JSON.stringify(_getUserPresets().filter((p) => p.id !== id)),
       );
       if (_loadedPreset?.id === id) _loadedPreset = null;
+      if (config.load(DEFAULT_PRESET_STORAGE_KEY) === id) {
+        config.persist(DEFAULT_PRESET_STORAGE_KEY, "");
+      }
+    },
+
+    getDefaultPresetId: (): string | null => config.load(DEFAULT_PRESET_STORAGE_KEY) || null,
+
+    setDefaultPresetId: (id: string | null): void => {
+      config.persist(DEFAULT_PRESET_STORAGE_KEY, id ?? "");
     },
 
     // ── Playback ──────────────────────────────────────────────────────────
