@@ -260,7 +260,10 @@
       still makes a fixed loop clash against a shifting key.
     </div>
     <div class="decided">
-      Loop audio routes straight to master, no separate vol/mute slider — unchanged.
+      Loop now has its own volume/mute in the Mix sheet — see
+      <a href="#loop-mixer">Loop mixer channel</a>. Originally scoped out ("routes straight to
+      master, no separate slider") but added once the rest of the spike felt solid enough to be
+      worth controlling independently.
     </div>
 
     <h2 id="sync">Sync mechanism</h2>
@@ -511,6 +514,37 @@
       </li>
     </ul>
 
+    <h2 id="loop-mixer">Loop mixer channel</h2>
+    <p>
+      Independent volume/mute for the loop, in the Mix sheet — gated by the same
+      <code>looperEnabled</code> flag as the record button (not by <code>cycle === 'none'</code>,
+      since a captured/restored loop keeps sounding regardless of cycle mode — that restriction only
+      ever applied to <em>arming a new recording</em>).
+    </p>
+    <p>
+      Straightforward: reuses the exact pattern already in place for chords/bass/drums — a 4th
+      <code>Tone.Channel</code> (<code>loop</code>, connected to master alongside the other three),
+      with <code>_loopPlayer</code> connected to it instead of directly to master.
+      <code>setVolume</code>/<code>setMute</code> both grow a <code>"loop"</code> case on the
+      existing channel union, so no new methods were needed on <code>AudioEngine</code> itself —
+      just two new core wrapper methods, <code>setLoopVolume(v)</code>/<code>setLoopMuted(m)</code>,
+      that call straight through to <code>audio.setVolume("loop", v)</code>/<code
+        >audio.setMute("loop", m)</code
+      >
+      — bypassing <code>setMix()</code>/<code>AppState</code> entirely, same "engine-only, not
+      persisted in the URL/presets" treatment as the rest of the looper.
+    </p>
+    <p>
+      One wrinkle mirroring the sync-offset field: the slider/checkbox need to work at boot, before
+      any channel exists (mirrors the same <code>_songBars</code>-not-known-yet problem
+      <a href="#persistence">Persistence</a> hit). <code>setVolume</code>/<code>setMute</code> now
+      store the loop's volume/mute in a closure var <em>before</em> checking whether
+      <code>_channels</code> exists (chords/bass/drums keep their original early-return, unchanged)
+      — a <code>_syncLoopMixToChannel()</code> call inside <code>_initChannels()</code> applies
+      whatever was stored the moment the channel is actually created. Persisted via localStorage,
+      same as the sync offset.
+    </p>
+
     <h2 id="files">Files to touch</h2>
     <table>
       <tr>
@@ -524,9 +558,11 @@
           <code>armLoopRecording(): Promise&lt;void&gt;</code>,
           <code>cancelLoopRecording(): void</code>, <code>deleteLoop(): void</code>,
           <code>getLooperState(): LooperState</code>, <code>setLoopOffsetMs(ms): void</code>,
-          <code>restoreLoop(): Promise&lt;void&gt;</code>. Add a pure
-          <code>alignAndTrimSamples(data, targetLength, offsetSamples)</code> helper alongside the
-          other music-theory utilities. Add <code>onLooperStateChange</code> to
+          <code>restoreLoop(): Promise&lt;void&gt;</code>. Add <code>"loop"</code> to the
+          <code>setVolume</code>/<code>setMute</code> channel unions, plus
+          <code>setLoopVolume(v): void</code>/<code>setLoopMuted(m): void</code> wrapper methods.
+          Add a pure <code>alignAndTrimSamples(data, targetLength, offsetSamples)</code> helper
+          alongside the other music-theory utilities. Add <code>onLooperStateChange</code> to
           <code>AudioStartOpts</code>. Add thin wrapper methods on the player object mirroring how
           <code>togglePlay()</code>/<code>stop()</code> wrap <code>audio.start()</code>/<code
             >audio.stop()</code
@@ -555,16 +591,19 @@
           New <code>loop-btn</code> element ref + click handler (idle → arm, recording → cancel,
           looping → delete), an <code>onLooperStateChange</code> handler updating the button label
           (fast-path, like <code>onPlaybackChange</code> — not routed through full
-          <code>render()</code>), the Setup-sheet "Looper (experimental)" + "Mute during recording"
-          toggles, and hiding the loop button entirely when the flag is off or
-          <code>cycle !== 'none'</code>.
+          <code>render()</code>), the "Looper (Experimental)" Setup section, and hiding the loop
+          button entirely when the flag is off or <code>cycle !== 'none'</code>. A new
+          <code>loop-mix-row</code> in the Mix sheet — checkbox + slider wired directly to
+          <code>setLoopMuted</code>/<code>setLoopVolume</code>, localStorage-persisted, visibility
+          toggled only by the flag (<code>syncLoopMixRowVisibility</code>).
         </td>
       </tr>
       <tr>
         <td class="file">index.html</td>
         <td>
-          One new button in <code>.action-buttons</code>, next to <code>.play-group</code>; two new
-          checkboxes in the Setup sheet.
+          One new button in <code>.action-buttons</code>, next to <code>.play-group</code>; a
+          dedicated Setup section for the looper toggles/offset; one new <code>.mix-row</code> in
+          the Mix sheet.
         </td>
       </tr>
       <tr>
@@ -607,6 +646,10 @@
           <li>
             change the progression's bar count, then reload — confirm the mismatched loop still
             restores rather than being silently dropped
+          </li>
+          <li>
+            Mix sheet Loop row — mute/unmute and drag the volume slider while the loop is playing;
+            confirm the row only appears when the flag is on, and the value survives a reload
           </li>
         </ul>
       </li>

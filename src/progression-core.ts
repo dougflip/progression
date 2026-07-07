@@ -153,8 +153,8 @@ export interface AudioEngine {
   stop(): void;
   rebuild(opts: AudioRebuildOpts): void;
   setTempo(bpm: number): void;
-  setVolume(channel: "chords" | "bass" | "drums" | "master", value: number): void;
-  setMute(channel: "chords" | "bass" | "drums", muted: boolean): void;
+  setVolume(channel: "chords" | "bass" | "drums" | "master" | "loop", value: number): void;
+  setMute(channel: "chords" | "bass" | "drums" | "loop", muted: boolean): void;
   setAdvance(mode: string): void;
   queueJump(posIndex: number): void;
   cancelJump(): void;
@@ -1350,6 +1350,14 @@ export function makeProgressionPlayer(config: PlayerConfig) {
 
     restoreLoop(): Promise<void> {
       return config.audio?.restoreLoop() ?? Promise.resolve();
+    },
+
+    setLoopVolume(value: number): void {
+      config.audio?.setVolume("loop", value);
+    },
+
+    setLoopMuted(muted: boolean): void {
+      config.audio?.setMute("loop", muted);
     },
   };
 }

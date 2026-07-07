@@ -29,6 +29,7 @@ interface Channels {
   bass: Tone.Channel;
   drum: Tone.Channel;
   master: Tone.Channel;
+  loop: Tone.Channel;
 }
 
 // Single-lap event — shift is resolved at callback time via _currentShift
@@ -201,6 +202,8 @@ export function makeProgressionAudio(): AudioEngine {
   let _muteOverrideActive = false;
   let _capturedSongBars = 0;
   let _loopOffsetMs = 0;
+  let _loopVolume = 100;
+  let _loopMuted = false;
   let _rawLoopBuffer: AudioBuffer | null = null; // full decode, kept so the offset can be re-tweaked without re-recording
   let _userMedia: Tone.UserMedia | null = null;
   let _recorder: Tone.Recorder | null = null;
@@ -249,8 +252,19 @@ export function makeProgressionAudio(): AudioEngine {
     const chord = new Tone.Channel().connect(master);
     const bass = new Tone.Channel().connect(master);
     const drum = new Tone.Channel().connect(master);
+    const loop = new Tone.Channel().connect(master);
     for (const player of Object.values(_sp)) player.connect(drum);
-    _channels = { chord, bass, drum, master };
+    _channels = { chord, bass, drum, master, loop };
+    _syncLoopMixToChannel();
+  }
+
+  // Applies the persisted loop volume/mute to the channel — called once when
+  // the channel is created, since it may not exist yet when setVolume/setMute
+  // "loop" calls happen at boot (before any playback has started).
+  function _syncLoopMixToChannel(): void {
+    if (!_channels) return;
+    _channels.loop.mute = _loopMuted;
+    if (!_loopMuted) _channels.loop.volume.value = _toDb(_loopVolume);
   }
 
   function _syncMixToChannels(mix: {
@@ -618,7 +632,7 @@ export function makeProgressionAudio(): AudioEngine {
     if (!_rawLoopBuffer || !_channels) return;
     const targetSeconds = Tone.Time(`${_songBars}m`).toSeconds() as number;
     const trimmed = _buildAlignedBuffer(_rawLoopBuffer, targetSeconds, _loopOffsetMs);
-    if (!_loopPlayer) _loopPlayer = new Tone.Player().connect(_channels.master);
+    if (!_loopPlayer) _loopPlayer = new Tone.Player().connect(_channels.loop);
     _loopPlayer.buffer = new Tone.ToneAudioBuffer(trimmed);
     _capturedSongBars = _songBars;
   }
@@ -1078,7 +1092,12 @@ export function makeProgressionAudio(): AudioEngine {
       Tone.Transport.bpm.value = bpm;
     },
 
-    setVolume(channel: "chords" | "bass" | "drums" | "master", value: number): void {
+    setVolume(channel: "chords" | "bass" | "drums" | "master" | "loop", value: number): void {
+      if (channel === "loop") {
+        _loopVolume = value;
+        if (_channels && !_loopMuted) _channels.loop.volume.value = _toDb(value);
+        return;
+      }
       if (!_channels) return;
       _volState[
         channel === "chords"
@@ -1100,7 +1119,15 @@ export function makeProgressionAudio(): AudioEngine {
       else if (channel === "master") _channels.master.volume.value = db;
     },
 
-    setMute(channel: "chords" | "bass" | "drums", muted: boolean): void {
+    setMute(channel: "chords" | "bass" | "drums" | "loop", muted: boolean): void {
+      if (channel === "loop") {
+        _loopMuted = muted;
+        if (_channels) {
+          _channels.loop.mute = muted;
+          if (!muted) _channels.loop.volume.value = _toDb(_loopVolume);
+        }
+        return;
+      }
       _muteState[channel === "chords" ? "chordsOn" : channel === "bass" ? "bassOn" : "drumsOn"] =
         !muted;
       if (channel === "chords" && _channels) {

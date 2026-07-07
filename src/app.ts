@@ -66,6 +66,9 @@ const loopBtnEl = $("loop-btn") as HTMLButtonElement;
 const looperEnabledEl = $("looper-enabled") as HTMLInputElement;
 const loopMuteRecordingEl = $("loop-mute-recording") as HTMLInputElement;
 const loopOffsetMsEl = $("loop-offset-ms") as HTMLInputElement;
+const loopMixRowEl = $("loop-mix-row") as HTMLDivElement;
+const loopOnEl = $("loop-on") as HTMLInputElement;
+const loopVolEl = $("loop-vol") as HTMLInputElement;
 const arrangementEl = $("arrangement") as HTMLInputElement;
 const sectionRowsEl = $("section-rows") as HTMLDivElement;
 const sectionCountEl = $("section-count-label") as HTMLElement;
@@ -126,6 +129,10 @@ function render(state: AppState): void {
 
 function syncLoopBtnVisibility(state: AppState): void {
   loopBtnEl.hidden = !looperEnabledEl.checked || state.playback.cycle !== "none";
+}
+
+function syncLoopMixRowVisibility(): void {
+  loopMixRowEl.hidden = !looperEnabledEl.checked;
 }
 
 function onLooperStateChange(state: LooperState): void {
@@ -1119,9 +1126,11 @@ keepAwakeEl.addEventListener("change", () =>
 
 looperEnabledEl.checked = localStorage.getItem("looper-enabled") === "1";
 syncLoopBtnVisibility(app.getState());
+syncLoopMixRowVisibility();
 looperEnabledEl.addEventListener("change", () => {
   localStorage.setItem("looper-enabled", looperEnabledEl.checked ? "1" : "0");
   syncLoopBtnVisibility(app.getState());
+  syncLoopMixRowVisibility();
 });
 loopMuteRecordingEl.checked = localStorage.getItem("loop-mute-recording") === "1";
 loopMuteRecordingEl.addEventListener("change", () =>
@@ -1134,6 +1143,23 @@ loopOffsetMsEl.addEventListener("input", () => {
   const ms = parseInt(loopOffsetMsEl.value, 10) || 0;
   localStorage.setItem("loop-offset-ms", String(ms));
   app.setLoopOffsetMs(ms);
+});
+
+loopOnEl.checked = localStorage.getItem("loop-on") !== "0";
+app.setLoopMuted(!loopOnEl.checked);
+loopOnEl.addEventListener("change", () => {
+  localStorage.setItem("loop-on", loopOnEl.checked ? "1" : "0");
+  app.setLoopMuted(!loopOnEl.checked);
+});
+
+loopVolEl.value = localStorage.getItem("loop-vol") ?? "100";
+($("loop-vol-val") as HTMLElement).textContent = loopVolEl.value;
+app.setLoopVolume(parseInt(loopVolEl.value, 10) || 0);
+loopVolEl.addEventListener("input", () => {
+  ($("loop-vol-val") as HTMLElement).textContent = loopVolEl.value;
+  const v = parseInt(loopVolEl.value, 10) || 0;
+  localStorage.setItem("loop-vol", String(v));
+  app.setLoopVolume(v);
 });
 
 void app.restoreLoop().then(() => onLooperStateChange(app.getLooperState()));
