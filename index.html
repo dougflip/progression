@@ -893,9 +893,12 @@
         min-width: 2.5rem;
         text-align: right;
       }
+      #master-mix-row {
+        border-bottom: none;
+      }
       .mix-group {
-        padding-top: 0.75rem;
-        margin-top: 0.75rem;
+        padding-top: 1.75rem;
+        margin-top: 1rem;
         border-top: 1px solid var(--border-faint);
       }
       .mix-group .setup-group-title {
@@ -1397,6 +1400,11 @@
           <input id="drum-vol" type="range" min="0" max="100" step="1" value="100" />
           <span class="val" id="drum-vol-val">100</span>
         </div>
+        <div class="mix-row" id="master-mix-row">
+          <span class="mix-label">Master</span>
+          <input id="master-vol" type="range" min="0" max="100" step="1" value="100" />
+          <span class="val" id="master-vol-val">100</span>
+        </div>
         <div class="mix-group" id="loop-mix-group" hidden>
           <h3 class="setup-group-title">Looper</h3>
           <div class="mix-row">
@@ -1411,11 +1419,6 @@
           </div>
           <label class="toggle"><input id="loop-highpass" type="checkbox" /> Hi-pass filter</label>
           <label class="toggle"><input id="loop-limiter" type="checkbox" /> Limiter</label>
-        </div>
-        <div class="mix-row">
-          <span class="mix-label">Master</span>
-          <input id="master-vol" type="range" min="0" max="100" step="1" value="100" />
-          <span class="val" id="master-vol-val">100</span>
         </div>
       </div>
     </dialog>
