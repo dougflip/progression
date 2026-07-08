@@ -680,6 +680,35 @@
         <em>across</em> takes).
       </div>
     </div>
+    <div class="learn">
+      <strong>Tempo-following loop playback (time-stretch, no pitch shift)</strong>
+      <div class="thoughts">
+        Today, changing tempo after a loop is captured degrades gracefully but doesn't actually stay
+        bar-aligned — the buffer's real-time duration is fixed at capture, so a tempo change causes
+        the "truncate a little early or leave a trailing gap" behavior described in the
+        <a href="#tradeoffs">tradeoffs log</a>. <code>Tone.GrainPlayer</code> (granular synthesis)
+        exposes <code>playbackRate</code> (speed) and <code>detune</code> (pitch) as independent
+        controls — the standard way to time-stretch without the "chipmunk effect" a plain
+        <code>Tone.Player.playbackRate</code> would cause. Recording is unaffected either way: it
+        always captures live mic audio at whatever the real, current tempo/pitch is, so a future
+        overdub stays pitch/tempo-correct regardless of any stretching applied to older material.
+        <br /><br />
+        <strong>Shape of the change:</strong> swap <code>_loopPlayer</code> from
+        <code>Tone.Player</code> to <code>Tone.GrainPlayer</code> (API-compatible for our
+        <code>start(time, offset)</code>/<code>stop(time)</code> usage, so the resume-offset logic
+        carries over unchanged); track <code>_capturedTempo</code> (BPM at record time) alongside
+        <code>_capturedSongBars</code>; recompute
+        <code>playbackRate = currentTempo / _capturedTempo</code> whenever tempo changes, so the
+        loop stays bar-aligned instead of truncating/gapping. <br /><br />
+        <strong>Real risk:</strong> granular stretching isn't free — it can introduce audible
+        warble/graininess, especially on transient-heavy material (drums, plucked chords) or large
+        tempo swings. Small adjustments (a few BPM) should be close to transparent; doubling tempo
+        would probably sound rough. Same philosophy as the other cleanup effects: this should be
+        something to toggle and judge by ear (e.g. against today's truncate/gap behavior), not an
+        assumed win — and <code>grainSize</code>/<code>overlap</code> (defaults 200ms/100ms) would
+        need tuning by ear for musical content, not just accepted as-is.
+      </div>
+    </div>
     <p>
       <strong>Considered and dropped:</strong> a count-in audio click during the arming window. The
       progression's own chords/bass/drums are already playing throughout arming, so there's already
