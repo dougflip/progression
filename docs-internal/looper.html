@@ -226,6 +226,14 @@
       Every shortcut taken to hit goal 1 should be named as it's made — see the
       <a href="#tradeoffs">Tradeoffs log</a>, which starts empty and fills in during implementation.
     </p>
+    <p>
+      <strong>Update — entering phase 2:</strong> the spike is usable now, so the center of gravity
+      is shifting from goal 1 toward goal 2 above — less "ship more capability," more "learn what's
+      worth carrying into a real implementation." The
+      <a href="#loop-cleanup">loop cleanup effects</a> below are the first probe in that direction:
+      deliberately shaped so their audible effect can be judged, not features assumed to be worth
+      keeping as-is.
+    </p>
 
     <h2 id="scope">Spike scope</h2>
     <div class="decided">
@@ -464,8 +472,8 @@
       Delete Loop". Hidden when the feature flag is off, or when <code>cycle !== 'none'</code>.
     </p>
     <p>
-      Tapping "⏺ Record Loop" from a full stop also starts playback — no separate "press Play,
-      then press Record" step. <code>startRecordingFromIdle()</code> (<code>app.ts</code>) calls
+      Tapping "⏺ Record Loop" from a full stop also starts playback — no separate "press Play, then
+      press Record" step. <code>startRecordingFromIdle()</code> (<code>app.ts</code>) calls
       <code>app.togglePlay()</code> first if <code>audio.isPlaying()</code> is false, then
       <code>armLoopRecording()</code> once playback has actually started. No change needed to the
       arming mechanism itself: arming already rides out whatever's left of the <em>current</em> lap
@@ -559,6 +567,49 @@
       — a <code>_syncLoopMixToChannel()</code> call inside <code>_initChannels()</code> applies
       whatever was stored the moment the channel is actually created. Persisted via localStorage,
       same as the sync offset.
+    </p>
+
+    <h2 id="loop-cleanup">Loop cleanup effects</h2>
+    <p>
+      First concrete step into phase 2 (see <a href="#goals">Goals</a>) — the spike is usable now,
+      so this is about learning what's worth productionizing, not shipping more capability. Three
+      built-in Tone.js primitives, chosen because they target the specific problems a phone/laptop
+      mic recording has (rumble, inconsistent gain, occasional clipping) rather than being creative
+      effects:
+    </p>
+    <ul class="tight">
+      <li><code>Tone.Filter</code> (fixed 90Hz highpass) — cuts mic rumble/handling noise.</li>
+      <li><code>Tone.Compressor</code> — evens out inconsistent mic gain across a take.</li>
+      <li><code>Tone.Limiter</code> (fixed -3dB threshold) — catches occasional clipping.</li>
+    </ul>
+    <p>
+      Deliberately shaped as an experiment, not a mixing feature: highpass and limiter are plain
+      on/off checkboxes with no exposed parameters, and compression is a single 0-100 "amount"
+      slider mapping threshold+ratio together (0 → 0dB/1:1, fully transparent; 100 → -30dB/12:1)
+      rather than separate threshold/ratio controls. The point right now is hearing whether each one
+      helps at all, not tuning it — if one turns out to always help, it can just get baked in
+      permanently later; if none of them matter, that's useful data too.
+    </p>
+    <p>
+      Lives in the Mix sheet as a new <strong>Looper</strong> group (replacing the single Loop
+      volume row), containing Volume (unchanged), Compression, Hi-pass filter, and Limiter — same
+      <code>looperEnabled</code> visibility gating and localStorage persistence as everything else
+      in the looper.
+    </p>
+    <p>
+      Highpass/limiter are true bypasses — the node is physically removed from the audio graph when
+      off, not just set to neutral parameters — so toggling one is a clean A/B against "no
+      processing at all," not "processing tuned away." <code>_rewireLoopChain()</code>
+      (<code>progression-audio.ts</code>) disconnects and rebuilds
+      <code>_loopPlayer → [highpass?] → compressor → [limiter?] → loop channel</code>
+      whenever a toggle changes. The compressor stays in the chain unconditionally since its own 0%
+      setting is already transparent.
+    </p>
+    <p class="caption">
+      New <code>AudioEngine</code> methods: <code>setLoopCompression(amount)</code>,
+      <code>setLoopHighpass(enabled)</code>, <code>setLoopLimiter(enabled)</code> — same "store now,
+      apply once <code>_channels</code>/<code>_loopPlayer</code> exist" pattern already used for
+      loop volume/mute/offset, since these can be toggled before any loop has been recorded.
     </p>
 
     <h2 id="files">Files to touch</h2>
@@ -667,8 +718,13 @@
             restores rather than being silently dropped
           </li>
           <li>
-            Mix sheet Loop row — mute/unmute and drag the volume slider while the loop is playing;
-            confirm the row only appears when the flag is on, and the value survives a reload
+            Mix sheet Looper group — mute/unmute and drag the volume slider while the loop is
+            playing; confirm the group only appears when the flag is on, and values survive a reload
+          </li>
+          <li>
+            toggle Hi-pass/Limiter on and off while a loop is playing — confirm an audible,
+            glitch-free change (no click/pop from the graph rewiring), and drag Compression from 0
+            to 100 to hear the range
           </li>
         </ul>
       </li>

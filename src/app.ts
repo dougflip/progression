@@ -66,9 +66,12 @@ const loopBtnEl = $("loop-btn") as HTMLButtonElement;
 const looperEnabledEl = $("looper-enabled") as HTMLInputElement;
 const loopMuteRecordingEl = $("loop-mute-recording") as HTMLInputElement;
 const loopOffsetMsEl = $("loop-offset-ms") as HTMLInputElement;
-const loopMixRowEl = $("loop-mix-row") as HTMLDivElement;
+const loopMixGroupEl = $("loop-mix-group") as HTMLDivElement;
 const loopOnEl = $("loop-on") as HTMLInputElement;
 const loopVolEl = $("loop-vol") as HTMLInputElement;
+const loopCompressionEl = $("loop-compression") as HTMLInputElement;
+const loopHighpassEl = $("loop-highpass") as HTMLInputElement;
+const loopLimiterEl = $("loop-limiter") as HTMLInputElement;
 const arrangementEl = $("arrangement") as HTMLInputElement;
 const sectionRowsEl = $("section-rows") as HTMLDivElement;
 const sectionCountEl = $("section-count-label") as HTMLElement;
@@ -132,7 +135,7 @@ function syncLoopBtnVisibility(state: AppState): void {
 }
 
 function syncLoopMixRowVisibility(): void {
-  loopMixRowEl.hidden = !looperEnabledEl.checked;
+  loopMixGroupEl.hidden = !looperEnabledEl.checked;
 }
 
 function onLooperStateChange(state: LooperState): void {
@@ -1168,6 +1171,30 @@ loopVolEl.addEventListener("input", () => {
   const v = parseInt(loopVolEl.value, 10) || 0;
   localStorage.setItem("loop-vol", String(v));
   app.setLoopVolume(v);
+});
+
+loopCompressionEl.value = localStorage.getItem("loop-compression") ?? "0";
+($("loop-compression-val") as HTMLElement).textContent = loopCompressionEl.value;
+app.setLoopCompression(parseInt(loopCompressionEl.value, 10) || 0);
+loopCompressionEl.addEventListener("input", () => {
+  ($("loop-compression-val") as HTMLElement).textContent = loopCompressionEl.value;
+  const v = parseInt(loopCompressionEl.value, 10) || 0;
+  localStorage.setItem("loop-compression", String(v));
+  app.setLoopCompression(v);
+});
+
+loopHighpassEl.checked = localStorage.getItem("loop-highpass") === "1";
+app.setLoopHighpass(loopHighpassEl.checked);
+loopHighpassEl.addEventListener("change", () => {
+  localStorage.setItem("loop-highpass", loopHighpassEl.checked ? "1" : "0");
+  app.setLoopHighpass(loopHighpassEl.checked);
+});
+
+loopLimiterEl.checked = localStorage.getItem("loop-limiter") === "1";
+app.setLoopLimiter(loopLimiterEl.checked);
+loopLimiterEl.addEventListener("change", () => {
+  localStorage.setItem("loop-limiter", loopLimiterEl.checked ? "1" : "0");
+  app.setLoopLimiter(loopLimiterEl.checked);
 });
 
 void app.restoreLoop().then(() => onLooperStateChange(app.getLooperState()));
