@@ -196,7 +196,7 @@
     </style>
   </head>
   <body>
-    <p class="status">spike notes — not yet built</p>
+    <p class="status">spike notes — built, behind experimental flag</p>
     <h1>Single-track looper — spike</h1>
     <p class="subtitle">
       Record mic input, loop it back with the existing progression. Optimized to ship something
@@ -463,6 +463,17 @@
       arming: "⏳ Get Ready…" (tap = cancel); recording: "● Recording…" (tap = cancel); looping: "🗑
       Delete Loop". Hidden when the feature flag is off, or when <code>cycle !== 'none'</code>.
     </p>
+    <p>
+      Tapping "⏺ Record Loop" from a full stop also starts playback — no separate "press Play,
+      then press Record" step. <code>startRecordingFromIdle()</code> (<code>app.ts</code>) calls
+      <code>app.togglePlay()</code> first if <code>audio.isPlaying()</code> is false, then
+      <code>armLoopRecording()</code> once playback has actually started. No change needed to the
+      arming mechanism itself: arming already rides out whatever's left of the <em>current</em> lap
+      before recording begins (see <a href="#sync">Sync mechanism</a>), and starting fresh from bar
+      1 means that "current lap" is the first pass — so arming-from-a-cold-start naturally waits for
+      the progression's second pass before recording starts, matching the once-manual two-click
+      sequence with one tap.
+    </p>
 
     <h2 id="state">Where the state lives</h2>
     <p>
@@ -639,7 +650,10 @@
             highlights still animate live, and prior manual mute state is restored correctly
             afterward
           </li>
-          <li>arming before playback has started</li>
+          <li>
+            tap "Record Loop" from a full stop (nothing playing) — confirm playback starts
+            automatically and recording begins on the progression's second pass
+          </li>
           <li>tempo change after a loop is captured (confirm graceful truncate/gap, not drift)</li>
           <li>stopping playback mid-recording (confirm clean cancel/discard)</li>
           <li>deleting a loop and recording a fresh one in its place</li>

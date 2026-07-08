@@ -1097,10 +1097,18 @@ playBtn.addEventListener("click", () => {
   });
 });
 stopBtn.addEventListener("click", () => app.stop());
+async function startRecordingFromIdle(): Promise<void> {
+  if (!audio.isPlaying()) {
+    await app.togglePlay();
+    if (!audio.isPlaying()) return;
+  }
+  await app.armLoopRecording(loopMuteRecordingEl.checked);
+}
+
 loopBtnEl.addEventListener("click", () => {
   const state = app.getLooperState();
   if (state === "idle") {
-    void app.armLoopRecording(loopMuteRecordingEl.checked);
+    void startRecordingFromIdle();
   } else if (state === "looping") {
     if (confirm("Delete this loop?")) app.deleteLoop();
   } else {
