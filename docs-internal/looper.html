@@ -1,0 +1,882 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Single-track looper — spike notes</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      body {
+        max-width: 780px;
+        margin: 2rem auto;
+        padding: 0 1.5rem 4rem;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+        line-height: 1.55;
+      }
+      h1 {
+        font-size: 1.6rem;
+        margin-bottom: 0.25rem;
+      }
+      h2 {
+        margin-top: 2.5rem;
+        border-bottom: 1px solid #8884;
+        padding-bottom: 0.3rem;
+      }
+      h3 {
+        margin-top: 1.5rem;
+      }
+      .subtitle {
+        color: #888;
+        margin-top: 0;
+      }
+      code,
+      pre {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 0.9em;
+      }
+      pre {
+        background: #8881;
+        border: 1px solid #8884;
+        border-radius: 6px;
+        padding: 0.75rem 1rem;
+        overflow-x: auto;
+      }
+      code {
+        background: #8881;
+        padding: 0.1em 0.35em;
+        border-radius: 4px;
+      }
+      pre code {
+        background: none;
+        padding: 0;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 1rem 0;
+      }
+      th,
+      td {
+        text-align: left;
+        border: 1px solid #8884;
+        padding: 0.4rem 0.6rem;
+        vertical-align: top;
+      }
+      th {
+        background: #8881;
+      }
+      .file {
+        font-weight: 600;
+      }
+      .note {
+        border-left: 3px solid #e8a33d;
+        background: #e8a33d1a;
+        padding: 0.6rem 1rem;
+        border-radius: 0 6px 6px 0;
+        margin: 1rem 0;
+      }
+      .open-q {
+        border-left: 3px solid #4d8ee0;
+        background: #4d8ee01a;
+        padding: 0.6rem 1rem;
+        border-radius: 0 6px 6px 0;
+        margin: 0.5rem 0;
+      }
+      .decided {
+        border-left: 3px solid #3fa55b;
+        background: #3fa55b1a;
+        padding: 0.6rem 1rem;
+        border-radius: 0 6px 6px 0;
+        margin: 0.5rem 0;
+      }
+      .learn {
+        border-left: 3px solid #9b6bd6;
+        background: #9b6bd61a;
+        padding: 0.6rem 1rem;
+        border-radius: 0 6px 6px 0;
+        margin: 0.75rem 0;
+      }
+      .learn .thoughts {
+        margin-top: 0.5rem;
+        font-size: 0.92rem;
+        color: inherit;
+        opacity: 0.9;
+      }
+      .learn .thoughts strong {
+        opacity: 1;
+      }
+      .tradeoff {
+        border-left: 3px solid #d1483f;
+        background: #d1483f1a;
+        padding: 0.6rem 1rem;
+        border-radius: 0 6px 6px 0;
+        margin: 0.5rem 0;
+      }
+      .goal-box {
+        border: 1px solid #8886;
+        border-radius: 10px;
+        padding: 0.9rem 1.1rem;
+        margin: 0.75rem 0;
+        background: #8880a;
+      }
+      .goal-box h4 {
+        margin: 0 0 0.35rem;
+        font-size: 1rem;
+      }
+      .statecycle {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+        margin: 1.25rem 0;
+        font-size: 0.95rem;
+      }
+      .state-box {
+        border: 1px solid #8886;
+        border-radius: 8px;
+        padding: 0.5rem 0.9rem;
+        background: #8881;
+        white-space: nowrap;
+      }
+      .state-box.active {
+        border-color: #4d8ee0;
+        background: #4d8ee022;
+        font-weight: 600;
+      }
+      .arrow {
+        color: #888;
+      }
+      ul.tight li {
+        margin-bottom: 0.35rem;
+      }
+      .status {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #888;
+      }
+      .mockup-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        padding: 0.6rem 0.8rem;
+        border: 1px solid #8886;
+        border-radius: 10px;
+        background: #8880a;
+        margin: 1rem 0;
+      }
+      .mockup-group {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+      }
+      .mockup-btn {
+        border: 1px solid #8886;
+        border-radius: 8px;
+        padding: 0.45rem 0.7rem;
+        background: #8881;
+        font-size: 0.9rem;
+        white-space: nowrap;
+      }
+      .mockup-btn.primary {
+        border-color: #4d8ee0;
+        background: #4d8ee022;
+      }
+      .mockup-btn.loop {
+        border-color: #d1483f;
+        background: #d1483f1a;
+      }
+      .caption {
+        font-size: 0.85rem;
+        color: #888;
+        margin: 0.3rem 0 1.25rem;
+      }
+    </style>
+  </head>
+  <body>
+    <p class="status">spike notes — not yet built</p>
+    <h1>Single-track looper — spike</h1>
+    <p class="subtitle">
+      Record mic input, loop it back with the existing progression. Optimized to ship something
+      usable fast; architecture notes captured for later, not fully solved now.
+    </p>
+
+    <h2 id="goals">Goals of this spike</h2>
+    <p>
+      This pass has two distinct goals, and they pull in different directions — worth naming
+      explicitly:
+    </p>
+    <div class="goal-box">
+      <h4>1. Working software, deployed, opt-in</h4>
+      Something the user can actually use behind a feature toggle soon. Major tradeoffs are fine to
+      get there — correctness of the long-term architecture is explicitly <em>not</em> the bar for
+      this pass.
+    </div>
+    <div class="goal-box">
+      <h4>2. Learn what "the right way" looks like</h4>
+      Recording timing/quality in practice, where this code should live, and how the data model
+      should evolve once multiple loops, per-section loops, and per-section playback overrides enter
+      the picture. These are captured as
+      <a href="#learning">Learning questions</a> below — notes to make while building, not things to
+      build now.
+    </div>
+    <p>
+      Every shortcut taken to hit goal 1 should be named as it's made — see the
+      <a href="#tradeoffs">Tradeoffs log</a>, which starts empty and fills in during implementation.
+    </p>
+
+    <h2 id="scope">Spike scope</h2>
+    <div class="decided">
+      1. Ships behind an opt-in toggle — off by default. See <a href="#flag">Feature flag</a>.
+    </div>
+    <div class="decided">
+      2. Exactly one loop, no overdub. Delete-and-rerecord is the only "edit" — no undo, no
+      layering.
+    </div>
+    <div class="decided">
+      3. Loop length is always the full progression (one full lap) — no configurable loop-length
+      picker this round. That was designed in the previous pass (divisor-of-total-bars, count-in
+      etc.) but adds real complexity (a dedicated per-bar clock, a picker UI) for a question we
+      don't have data on yet. Deferred to <a href="#learning">Learning question 3</a>.
+    </div>
+    <div class="decided">
+      4. UI is intentionally raw — no polish pass. Three capabilities only: record, play back with
+      the progression, delete.
+    </div>
+    <div class="decided">
+      5. Recording is quantized to the progression's own lap boundary (bar 1 of the chord grid), not
+      a fixed pre-roll length — arming mid-progression just lets the current lap finish as the
+      count-in. Corrected from an earlier "fixed 1-bar pre-roll" design; see
+      <a href="#sync">Sync mechanism</a>.
+    </div>
+    <div class="decided">
+      6. Optional "mute during recording" toggle, for players without headphones — see
+      <a href="#mute">Mute during recording</a>.
+    </div>
+    <div class="decided">
+      <code>cycle === 'none'</code> only — unchanged from before. Every lap being a different key
+      still makes a fixed loop clash against a shifting key.
+    </div>
+    <div class="decided">
+      Loop now has its own volume/mute in the Mix sheet — see
+      <a href="#loop-mixer">Loop mixer channel</a>. Originally scoped out ("routes straight to
+      master, no separate slider") but added once the rest of the spike felt solid enough to be
+      worth controlling independently.
+    </div>
+
+    <h2 id="sync">Sync mechanism</h2>
+    <p>
+      Recording is quantized to the progression's own <strong>lap boundary</strong> (bar 1 of the
+      chord grid), not a fixed-length pre-roll. If you arm mid-progression, the current lap simply
+      finishes playing (acting as the count-in — could be anywhere from 1 bar to a full lap
+      depending on when you armed), then recording starts exactly when the progression restarts, so
+      the recorded loop's bar 1 always lines up with the chord grid's bar 1. (An earlier pass tried
+      a fixed 1-bar pre-roll instead, which needed a separate per-bar clock — see the
+      <a href="#tradeoffs">tradeoffs log</a> for why that was wrong and got reverted.)
+    </p>
+    <p>
+      This reuses the lap-boundary check that already exists inside
+      <code>_buildPart</code> (<code>src/progression-audio.ts</code>, the
+      <code>transportLapIndex &gt; _currentLap</code>
+      block — the same one that advances the key cycle). It already hands us a Tone.js
+      <code>time</code> value — the precise Transport-clock timestamp of "a full cycle just
+      restarted." No dedicated clock needed; the looper piggybacks on the same mechanism that
+      already rebuilds fresh on every <code>start()</code>, so there's nothing extra to keep in sync
+      across stop/start cycles.
+    </p>
+
+    <div class="statecycle">
+      <div class="state-box">idle</div>
+      <span class="arrow">→ arm() →</span>
+      <div class="state-box active">arming</div>
+      <span class="arrow">→ next lap →</span>
+      <div class="state-box">recording</div>
+      <span class="arrow">→ next lap →</span>
+      <div class="state-box">looping</div>
+      <span class="arrow">→ delete() →</span>
+      <div class="state-box">idle</div>
+    </div>
+
+    <table>
+      <tr>
+        <th>State</th>
+        <th>What happens at the next lap boundary</th>
+      </tr>
+      <tr>
+        <td><code>idle</code></td>
+        <td>nothing</td>
+      </tr>
+      <tr>
+        <td><code>arming</code></td>
+        <td>
+          start capture (<code>recorder.start()</code>); if the mute-during-recording toggle is on,
+          mute chords/bass/drums <em>now</em>, at the same boundary recording starts; flip to
+          <code>recording</code>
+        </td>
+      </tr>
+      <tr>
+        <td><code>recording</code></td>
+        <td>
+          stop capture, restore mute state if it was overridden, flip to <code>looping</code>, kick
+          off async decode/trim, and attempt an immediate first playback (a no-op if the buffer
+          isn't decoded yet — retried on the next lap)
+        </td>
+      </tr>
+      <tr>
+        <td><code>looping</code></td>
+        <td>
+          <strong>force-restart the loop player</strong>:
+          <code>player.stop(time); player.start(time)</code>, same pattern as drum sample triggering
+          (<code>_triggerDrum</code>, <code>progression-audio.ts:454-463</code>) — no
+          <code>Player.loop</code>, no <code>.sync()</code>. Drift can't accumulate because the
+          player is re-anchored to the Transport every single lap.
+        </td>
+      </tr>
+    </table>
+
+    <div class="note">
+      Tempo changes after a loop is captured degrade gracefully (truncate a little early or leave a
+      trailing gap) rather than drift, because of the forced-restart trick above. No need to block
+      tempo edits.
+    </div>
+
+    <h3>Capture</h3>
+    <ul class="tight">
+      <li>
+        <code>Tone.UserMedia</code> for mic input (wraps <code>getUserMedia</code>) →
+        <code>Tone.Recorder</code> (thin wrapper over <code>MediaRecorder</code>). Both ship in the
+        installed Tone.js (<code>15.1.22</code>); zero existing usage in this repo today.
+      </li>
+      <li>
+        <code>Recorder</code> start/stop aren't sample-accurate (Tone's own docs say so — it's just
+        <code>MediaRecorder</code> underneath), so we schedule them via
+        <code>Tone.Draw.schedule(fn, time)</code>, the same idiom already used for
+        <code>onChordTick</code>/<code>onBarTick</code>. A few ms of jitter on the recorded
+        <em>content</em> is fine since playback is always re-anchored to the Transport regardless.
+      </li>
+    </ul>
+
+    <h3>Post-record processing</h3>
+    <p>
+      Decode the blob (<code>decodeAudioData</code>), then trim or zero-pad the result to exactly
+      <code>_songBars</code> bars worth of samples at the current tempo. Absorbs
+      <code>MediaRecorder</code>'s imprecise start/stop timing so the buffer's length always matches
+      what one lap expects.
+    </p>
+
+    <h2 id="mute">Mute during recording</h2>
+    <p>
+      For players without headphones: an optional toggle that silences the chord/bass/drum
+      <em>audio</em> during the recording window only, while keeping the progression fully running
+      underneath — beat dots, chord chip highlights, and the Transport clock itself are untouched,
+      since those are driven by ticks, not audio output.
+    </p>
+    <p>
+      No new engine surface needed — <code>AudioEngine</code> already has
+      <code>setMute(channel, muted)</code>. Sequence:
+    </p>
+    <ol class="tight">
+      <li>
+        Before muting, core already knows the current per-channel state from
+        <code>state.mix</code> (<code>chordsOn</code>/<code>bassOn</code>/<code>drumsOn</code>) — no
+        new getter required on the engine.
+      </li>
+      <li>
+        On entering <code>recording</code> (if the toggle is on): call
+        <code>setMute('chords', true)</code>, <code>setMute('bass', true)</code>,
+        <code>setMute('drums', true)</code> directly — a transient override, not a state mutation,
+        so it doesn't touch <code>AppState</code>, doesn't re-render, doesn't hit the URL.
+      </li>
+      <li>
+        On leaving <code>recording</code>: call <code>setMute</code> again per channel using the
+        value already sitting in <code>state.mix</code>, restoring exactly what the user had before
+        (respects a channel the user had already muted manually going into the recording).
+      </li>
+    </ol>
+
+    <h2 id="sync-offset">Manual sync offset</h2>
+    <p>
+      Real-world testing surfaced audible drift — recorded content lands slightly early or late
+      relative to the beat, from mic/input-chain latency (ADC, OS audio stack, sometimes Bluetooth)
+      that varies per device and isn't something this app can measure. Waveform/beat-detection
+      analysis could estimate it, but that's real complexity for uncertain payoff. Simpler and
+      matches the spike's philosophy: a manual "Loop sync offset (ms)" field in Setup that the
+      player dials in by ear once per device, the same idea flagged as a fallback back when this was
+      first being designed.
+    </p>
+    <div class="note">
+      The right value varies <em>a lot</em> across devices — one laptop landed around 50ms, a phone
+      needed roughly 350ms. Confirms this has to stay per-device/manual (or at minimum, any future
+      auto-detection would need to run per device, not assume one global constant).
+    </div>
+    <p>
+      Implementation: the full decoded recording is kept around as <code>_rawLoopBuffer</code> (not
+      just the trimmed/aligned version), so nudging the offset re-derives the loop buffer from the
+      original decode <em>without re-recording</em> — the point of a "tweak it by ear" control is
+      fast iteration, and re-recording every time you change the number by 5ms would defeat that. A
+      single pure function does the alignment math:
+    </p>
+    <pre><code>alignAndTrimSamples(data: Float32Array, targetLength: number, offsetSamples = 0): Float32Array</code></pre>
+    <p>
+      Positive <code>offsetSamples</code> skips that many samples off the front of the source
+      (compensates for content that arrived late — shifts the loop's content earlier); negative pads
+      the front of the output with silence (shifts content later). Zero offset reduces to the
+      original trim-or-pad behavior. Unit tested directly (plain arrays in, no
+      <code>AudioBuffer</code>
+      needed) — trim, pad, both offset directions, and the fully-out-of-range case.
+    </p>
+    <p>
+      <code>AudioEngine.setLoopOffsetMs(ms)</code> stores the value and, if a loop is already
+      captured, immediately re-applies it to <code>_rawLoopBuffer</code> — takes effect on the very
+      next lap's force-restart, no re-arm needed. The Setup field is localStorage-persisted like the
+      other looper settings, so a dialed-in value survives reloads.
+    </p>
+
+    <h2 id="flag">Feature flag</h2>
+    <p>
+      A toggle in its own "Looper (Experimental)" Setup-sheet section (split out from the App group
+      once it grew a few controls), persisted the same way theme/keep-awake already are — an
+      app-level, localStorage-backed setting, not part of <code>AppState</code>/URL serialization.
+      Defaults off. When off, the loop button/UI doesn't render at all (not just disabled) — keeps
+      the raw v1 UI from being seen by anyone who hasn't opted in.
+    </p>
+
+    <h2 id="ui">UI placement</h2>
+    <p>
+      Raw, minimal — one button, in the action bar next to play/stop. No loop-length picker this
+      round (see scope).
+    </p>
+    <div class="mockup-bar">
+      <div class="mockup-btn">Setup</div>
+      <div class="mockup-group">
+        <div class="mockup-btn">■ Stop</div>
+        <div class="mockup-btn primary">▶ Play</div>
+        <div class="mockup-btn loop">⏺ Loop</div>
+      </div>
+      <div class="mockup-btn">Mix</div>
+    </div>
+    <p class="caption">
+      <code>#loop-btn</code> in <code>.play-group</code>, alongside
+      <code>#stop-btn</code>/<code>#play</code>. Label swaps per state — idle: "⏺ Record Loop";
+      arming: "⏳ Get Ready…" (tap = cancel); recording: "● Recording…" (tap = cancel); looping: "🗑
+      Delete Loop". Hidden when the feature flag is off, or when <code>cycle !== 'none'</code>.
+    </p>
+
+    <h2 id="state">Where the state lives</h2>
+    <p>
+      Looper state (<code>idle | arming | recording | looping</code>) is engine-only, never part of
+      <code>AppState</code> — same precedent as <code>_currentLap</code>, <code>_pendingJump</code>,
+      etc. (closure-only in <code>progression-audio.ts</code>, exposed via narrow getters like
+      <code>isPlaying()</code>). Session-only: never serialized to the URL or presets.
+    </p>
+    <p>
+      Still-<code>arming</code>/<code>recording</code> state is discarded on
+      <code>stop()</code>/<code>rebuild()</code> (mid-capture is meaningless once the transport
+      resets). A completed loop (<code>looping</code>) survives every other structural/settings
+      change, including edits (sections/arrangement) that change <code>_songBars</code> — see
+      <a href="#persistence">Persistence</a>. No auto-invalidation on mismatch: this was tried and
+      deliberately removed (see <a href="#tradeoffs">tradeoffs log</a>) in favor of trusting the
+      player to manage it, matching how tempo-change mismatches already degrade gracefully rather
+      than being blocked.
+    </p>
+
+    <h2 id="persistence">Persistence</h2>
+    <p>
+      The loop survives a page reload — deliberately scoped to "the current loop persists" rather
+      than a loop library. IndexedDB, not localStorage: the recorded blob is binary and can be a few
+      hundred KB, past localStorage's practical string-only limit. Single fixed record (key
+      <code>"current"</code>), no per-progression or per-preset scoping.
+    </p>
+    <ul class="tight">
+      <li>
+        Saved (the original recorder <code>Blob</code>, not the decoded buffer — much smaller) right
+        after a successful recording, alongside the trim/decode step already happening in
+        <code>_processRecordedBlob</code>.
+      </li>
+      <li>Cleared on <code>deleteLoop()</code>.</li>
+      <li>
+        <code>restoreLoop()</code> — a new <code>AudioEngine</code> method — decodes the persisted
+        blob and sets state to <code>looping</code> at boot, <em>unconditionally</em>: no check that
+        it matches the currently-loaded progression. The player explicitly asked for this — wants to
+        be able to switch progressions and come back to find the loop still there, and is fine
+        managing any mismatch themselves.
+      </li>
+      <li>
+        One wrinkle: at boot, <code>_songBars</code>/<code>_channels</code> aren't known yet
+        (nothing's played), so the restored buffer can't be trimmed into a
+        <code>Tone.Player</code> immediately. <code>restoreLoop()</code> only stores the raw decoded
+        buffer; the actual <code>Player</code> gets built the first time <code>start()</code> runs
+        afterward, reusing the exact same "restore" branch that already existed for resuming a
+        same-session loop after stop→start.
+      </li>
+      <li>
+        App boot calls <code>app.restoreLoop()</code> once, then manually syncs the loop button's
+        label — the state change happens before <code>onLooperStateChange</code> is wired up (that
+        only happens inside <code>start()</code>), so the callback alone wouldn't reach the UI in
+        time.
+      </li>
+    </ul>
+
+    <h2 id="loop-mixer">Loop mixer channel</h2>
+    <p>
+      Independent volume/mute for the loop, in the Mix sheet — gated by the same
+      <code>looperEnabled</code> flag as the record button (not by <code>cycle === 'none'</code>,
+      since a captured/restored loop keeps sounding regardless of cycle mode — that restriction only
+      ever applied to <em>arming a new recording</em>).
+    </p>
+    <p>
+      Straightforward: reuses the exact pattern already in place for chords/bass/drums — a 4th
+      <code>Tone.Channel</code> (<code>loop</code>, connected to master alongside the other three),
+      with <code>_loopPlayer</code> connected to it instead of directly to master.
+      <code>setVolume</code>/<code>setMute</code> both grow a <code>"loop"</code> case on the
+      existing channel union, so no new methods were needed on <code>AudioEngine</code> itself —
+      just two new core wrapper methods, <code>setLoopVolume(v)</code>/<code>setLoopMuted(m)</code>,
+      that call straight through to <code>audio.setVolume("loop", v)</code>/<code
+        >audio.setMute("loop", m)</code
+      >
+      — bypassing <code>setMix()</code>/<code>AppState</code> entirely, same "engine-only, not
+      persisted in the URL/presets" treatment as the rest of the looper.
+    </p>
+    <p>
+      One wrinkle mirroring the sync-offset field: the slider/checkbox need to work at boot, before
+      any channel exists (mirrors the same <code>_songBars</code>-not-known-yet problem
+      <a href="#persistence">Persistence</a> hit). <code>setVolume</code>/<code>setMute</code> now
+      store the loop's volume/mute in a closure var <em>before</em> checking whether
+      <code>_channels</code> exists (chords/bass/drums keep their original early-return, unchanged)
+      — a <code>_syncLoopMixToChannel()</code> call inside <code>_initChannels()</code> applies
+      whatever was stored the moment the channel is actually created. Persisted via localStorage,
+      same as the sync offset.
+    </p>
+
+    <h2 id="files">Files to touch</h2>
+    <table>
+      <tr>
+        <th>File</th>
+        <th>Change</th>
+      </tr>
+      <tr>
+        <td class="file">src/progression-core.ts</td>
+        <td>
+          Extend the <code>AudioEngine</code> interface:
+          <code>armLoopRecording(): Promise&lt;void&gt;</code>,
+          <code>cancelLoopRecording(): void</code>, <code>deleteLoop(): void</code>,
+          <code>getLooperState(): LooperState</code>, <code>setLoopOffsetMs(ms): void</code>,
+          <code>restoreLoop(): Promise&lt;void&gt;</code>. Add <code>"loop"</code> to the
+          <code>setVolume</code>/<code>setMute</code> channel unions, plus
+          <code>setLoopVolume(v): void</code>/<code>setLoopMuted(m): void</code> wrapper methods.
+          Add a pure <code>alignAndTrimSamples(data, targetLength, offsetSamples)</code> helper
+          alongside the other music-theory utilities. Add <code>onLooperStateChange</code> to
+          <code>AudioStartOpts</code>. Add thin wrapper methods on the player object mirroring how
+          <code>togglePlay()</code>/<code>stop()</code> wrap <code>audio.start()</code>/<code
+            >audio.stop()</code
+          >
+          — <code>app.ts</code> should never talk to the raw engine directly. Add the
+          <code>looperEnabled</code>
+          app-level setting (same shape as theme/keep-awake).
+        </td>
+      </tr>
+      <tr>
+        <td class="file">src/progression-audio.ts</td>
+        <td>
+          The bulk of the work: <code>Tone.UserMedia</code>/<code>Tone.Recorder</code> setup,
+          extending the existing lap-boundary block to drive the state machine (including the
+          mute-during-recording override using the existing <code>setMute</code>), the blob
+          decode/trim helper, a <code>Tone.Player</code> for loop playback, the
+          <code>_triggerDrum</code>-style forced restart. Teardown: dispose the recorder/mic only on
+          <code>deleteLoop()</code> or full app teardown, not on an ordinary <code>rebuild()</code>.
+          A small IndexedDB wrapper (open/save/load/delete, one fixed record) for
+          <a href="#persistence">Persistence</a>.
+        </td>
+      </tr>
+      <tr>
+        <td class="file">src/app.ts</td>
+        <td>
+          New <code>loop-btn</code> element ref + click handler (idle → arm, recording → cancel,
+          looping → delete), an <code>onLooperStateChange</code> handler updating the button label
+          (fast-path, like <code>onPlaybackChange</code> — not routed through full
+          <code>render()</code>), the "Looper (Experimental)" Setup section, and hiding the loop
+          button entirely when the flag is off or <code>cycle !== 'none'</code>. A new
+          <code>loop-mix-row</code> in the Mix sheet — checkbox + slider wired directly to
+          <code>setLoopMuted</code>/<code>setLoopVolume</code>, localStorage-persisted, visibility
+          toggled only by the flag (<code>syncLoopMixRowVisibility</code>).
+        </td>
+      </tr>
+      <tr>
+        <td class="file">index.html</td>
+        <td>
+          One new button in <code>.action-buttons</code>, next to <code>.play-group</code>; a
+          dedicated Setup section for the looper toggles/offset; one new <code>.mix-row</code> in
+          the Mix sheet.
+        </td>
+      </tr>
+      <tr>
+        <td class="file">docs.html</td>
+        <td>
+          Skip for this spike — it's opt-in/experimental, not a documented feature yet. Revisit once
+          it graduates out of the flag.
+        </td>
+      </tr>
+    </table>
+
+    <h2 id="verification">Verification</h2>
+    <p>This is fundamentally live-audio — headless e2e can't meaningfully exercise it.</p>
+    <ol class="tight">
+      <li>
+        <code>npm run check</code> + <code>npm run test:quiet</code> — typecheck, plus unit coverage
+        for the buffer trim/pad math (extracted as a plain function over sample counts, testable
+        without a real <code>AudioBuffer</code>).
+      </li>
+      <li>
+        Manual testing (project convention — the user drives this). Scenario list once built:
+        <ul class="tight">
+          <li>flag off by default — confirm no loop UI appears anywhere</li>
+          <li>flag on, happy path — arm → count-in → record → loop plays back in sync</li>
+          <li>mic-permission-denied path</li>
+          <li>
+            mute-during-recording toggle on — confirm silence during capture but beat dots/chip
+            highlights still animate live, and prior manual mute state is restored correctly
+            afterward
+          </li>
+          <li>arming before playback has started</li>
+          <li>tempo change after a loop is captured (confirm graceful truncate/gap, not drift)</li>
+          <li>stopping playback mid-recording (confirm clean cancel/discard)</li>
+          <li>deleting a loop and recording a fresh one in its place</li>
+          <li>switching away from <code>cycle: 'none'</code> while a loop exists</li>
+          <li>
+            reload the page after capturing a loop — confirm it's still there and plays in sync
+            (once <code>start()</code> runs) without re-recording
+          </li>
+          <li>
+            change the progression's bar count, then reload — confirm the mismatched loop still
+            restores rather than being silently dropped
+          </li>
+          <li>
+            Mix sheet Loop row — mute/unmute and drag the volume slider while the loop is playing;
+            confirm the row only appears when the flag is on, and the value survives a reload
+          </li>
+        </ul>
+      </li>
+    </ol>
+
+    <h2 id="learning">Learning questions</h2>
+    <p>
+      Notes to make <em>while</em> building, not specs to implement now. Revisit this list once the
+      spike is in hand.
+    </p>
+
+    <div class="learn">
+      <strong>1. How well does the device actually record, timing-wise?</strong>
+      <div class="thoughts">
+        <strong>Watch for:</strong> real-world <code>MediaRecorder</code> start/stop jitter across
+        browsers/devices, and whether the trim/pad step is enough to hide it or whether the loop
+        audibly stutters at the restart point. Quality (mic, codec) is largely out of our hands —
+        timing is the thing we can actually act on. <br /><br />
+        <strong>Answer so far:</strong> not perfectly — real testing found consistent audible drift
+        (input-chain latency), fixed for now with the manual
+        <a href="#sync-offset">sync offset</a> field rather than automatic detection. The needed
+        value varies widely by device — ~50ms on one laptop, ~350ms on a phone — so any future
+        auto-detection would need to run per device, not assume a shared constant. Worth revisiting
+        whether that latency is roughly constant per-device (a one-time dial-in is enough) or
+        variable enough that a fixed offset won't hold up over longer sessions.
+      </div>
+    </div>
+
+    <div class="learn">
+      <strong>2. How should the looper code be organized?</strong>
+      <div class="thoughts">
+        <strong>Options:</strong> folded directly into <code>progression-audio.ts</code> (fastest
+        for the spike, what this doc currently plans) vs. a new dedicated module (e.g.
+        <code>progression-looper.ts</code>) that <code>progression-audio.ts</code> composes,
+        mirroring how audio itself is a swappable dep behind the <code>AudioEngine</code> interface.
+        Building it inline first, then watching how much it entangles with existing playback code,
+        is probably the fastest way to find out whether it deserves its own module.
+      </div>
+    </div>
+
+    <div class="learn">
+      <strong>3. How would the data model change for multiple/independent loops?</strong>
+      <div class="thoughts">
+        <strong>Shape of the question:</strong> today's spike has exactly one loop, engine-only,
+        never in <code>AppState</code>. Real overdubbing needs loops to be addressable — mixed
+        independently, muted independently, maybe reordered/deleted independently. That likely means
+        loops <em>do</em> need to become first-class state (if only for UI to list/manage them),
+        even if the audio buffers themselves stay off to the side (probably too large for
+        <code>AppState</code>/URL serialization the way chords are). Also ties into whether loops
+        belong to the whole song or to a specific section (see next question) — worth deciding those
+        together rather than bolting section-scoping on after the fact.
+      </div>
+    </div>
+
+    <div class="learn">
+      <strong
+        >4. Are per-section loops and per-section playback overrides the same underlying
+        need?</strong
+      >
+      <div class="thoughts">
+        <strong>Yes, probably the same shape.</strong> "Section 2 has its own loop" and "section 2
+        plays a different style/bass variant" are both "this section carries an optional
+        override/extra payload beyond the base song settings." Worth designing one mechanism —
+        likely something like an optional <code>Partial&lt;PlaybackSettings&gt;</code> merge per
+        section, already flagged as a candidate in <code>docs-internal/feature-ideas.md</code> under
+        "Section-level playback overrides" — and letting loops hang off the same per-section
+        extension point rather than inventing a second, parallel mechanism.
+      </div>
+    </div>
+
+    <div class="learn">
+      <strong>5. How do we manage multiple loops in the UI?</strong>
+      <div class="thoughts">
+        <strong>Likely needs more surface than a single button.</strong> Once there's more than one
+        loop (per song or per section), the player needs to see what exists, mute/solo/delete
+        individually, and probably see which section a loop belongs to. That's real UI, not a
+        button-label swap — plausibly its own screen/sheet once it gets here, unlike this spike's
+        single button.
+      </div>
+    </div>
+
+    <div class="learn">
+      <strong
+        >6. Does a "build your own drums+bass part" feature imply three screens (playback / loop /
+        drum-bass builder)?</strong
+      >
+      <div class="thoughts">
+        <strong>Plausible, not yet decided.</strong> If both loop management and a drum/bass builder
+        turn out to need real screen space, the app's shape might become: a main playback screen (as
+        today), a loop management screen, and a drum/bass builder screen — each addressing a
+        different "extra layer" on top of the base progression. Worth revisiting once question 5 has
+        an answer, since loop management is likely to need dedicated space first.
+      </div>
+    </div>
+
+    <h2 id="tradeoffs">Tradeoffs log</h2>
+    <p>
+      Filled in during implementation — every shortcut taken to hit "working software fast" gets a
+      line here, so it's not lost by the time we revisit the real architecture.
+    </p>
+    <div class="tradeoff">
+      <strong>Sync mechanism churned through three iterations in one manual-testing pass</strong> —
+      worth recording the sequence, since each step was a genuine correction, not just polish:
+      <ol class="tight">
+        <li>
+          <b>v1</b> — reused the lap-boundary check for every transition. Bug (found via manual
+          testing: "Get Ready…" never advanced): with a fixed-1-bar-pre-roll requirement, that check
+          only fires once per full lap, so arming and pre-roll each took a full lap instead of 1
+          bar.
+        </li>
+        <li>
+          <b>v2</b> — added a dedicated per-bar <code>Tone.Loop</code> clock to get real bar
+          granularity. Fixed the wait-time bug, but introduced a second one: <code>stop()</code>'s
+          <code>Tone.Transport.cancel()</code> silently wiped the clock's schedule, so a loop that
+          survived a stop→start cycle would stop retriggering. Fixed by explicitly recreating the
+          clock in <code>start()</code>.
+        </li>
+        <li>
+          <b>v3</b> — the requirement itself was wrong, not just the mechanism: a fixed 1-bar
+          pre-roll was never what was wanted. Recording needs to quantize to the progression's own
+          lap boundary (bar 1 of the chord grid) so the loop always lines up with the chords, with
+          arming-mid-progression simply riding out the current lap as a variable-length count-in.
+          That's back to exactly v1's mechanism — which makes v2's per-bar clock (and the bug it
+          introduced) entirely unnecessary. Net result: simpler code than v1 started with, once the
+          per-bar clock was removed again.
+        </li>
+      </ol>
+    </div>
+    <div class="tradeoff">
+      <strong><code>stop()</code> didn't actually stop loop playback</strong> — a real bug, found
+      via manual testing (loop kept playing for up to a full lap after hitting Stop). Stopping the
+      Transport doesn't stop an already-started <code>Tone.Player</code>; it just plays out to the
+      end of its own buffer. Fixed with an explicit <code>safeCall(_loopPlayer, "stop")</code> when
+      <code>stop()</code> is called while <code>looping</code> — state stays <code>looping</code>
+      (the captured loop is still valid), only the audible playback is cut.
+    </div>
+    <div class="tradeoff">
+      <strong>Any <code>rebuild()</code> cancels an in-progress capture</strong>, not just
+      structural edits that change <code>_songBars</code>. Changing drum style mid-count-in discards
+      the capture rather than trying to carry it through. Simple; a real implementation might want
+      to preserve capture across a style/bass/voicing tweak.
+    </div>
+    <div class="tradeoff">
+      <strong
+        >Fixed: loop playback used to take one extra silent lap to resume after stop→start.</strong
+      >
+      Found via manual testing ("why does resuming need a delay if the buffer's already decoded?").
+      The forced-restart trigger only fires when <code>transportLapIndex &gt; _currentLap</code>,
+      which is false on the very first lap of a fresh <code>start()</code> (by design, so key-cycle
+      advance doesn't fire early either) — so a completed loop sat silent for one lap before
+      retriggering, even though nothing was actually pending. Fixed with an explicit
+      immediate-trigger-on-<code>start()</code> when a loop already exists, on top of (not instead
+      of) the per-lap force-restart that keeps it in sync going forward. This one only applies on
+      resume — the very first playback after a fresh recording still waits for decode, which is a
+      real constraint, not an artifact.
+    </div>
+    <div class="tradeoff">
+      <strong
+        >Mic stream and <code>Recorder</code> are never explicitly closed for the page
+        session</strong
+      >
+      — only the loop buffer/player are disposed on delete. Avoids re-prompting for mic permission
+      on every re-arm, at the cost of holding the input stream open longer than strictly needed.
+    </div>
+    <div class="tradeoff">
+      <strong>No pulsing/color styling for recording state</strong> — just a plain label swap on the
+      existing <code>.bar-btn</code>, per the "raw UI" scope decision. Easy to layer on later.
+    </div>
+    <div class="tradeoff">
+      <strong
+        ><code>hidden</code> wasn't actually hiding <code>#loop-btn</code>/<code
+          >#loop-mix-row</code
+        ></strong
+      >
+      — found via manual testing (toggling the flag did nothing visually).
+      <code>.bar-btn</code> sets <code>display: flex</code> and <code>.mix-row</code> sets
+      <code>display: grid</code>; either overrides the browser's default
+      <code>[hidden] { display: none }</code> since author CSS always beats the UA stylesheet
+      regardless of specificity. Fixed with <code>#loop-btn[hidden]</code>/<code
+        >#loop-mix-row[hidden]</code
+      >
+      overrides, the same pattern already used elsewhere in this file for
+      <code>#key-picker</code>/<code>#scrubber-bar</code>/etc. Also affects
+      <code>#stop-btn</code> (same <code>.bar-btn</code> class, no existing override) — checked with
+      the player, confirmed intentional: showing it at all times avoids action-bar layout shift.
+      Left as is.
+    </div>
+    <div class="tradeoff">
+      <strong>Removed rebuild-time auto-invalidation of a mismatched loop</strong> — the player
+      explicitly asked for this: wants to switch progressions and come back to find the loop still
+      there, fully willing to manage a mismatch themselves. The removed code was defensive but
+      unnecessary: the force-restart-every-lap mechanism already degrades gracefully (truncate/gap)
+      for a tempo mismatch, and the same reasoning covers a bar-count mismatch just as well —
+      nothing new needed, just less code.
+    </div>
+    <div class="tradeoff">
+      <strong>Pause/resume desyncs the loop from the progression — known, not fixed.</strong>
+      <code>_pausedAt</code>/<code>_lastChordPos</code> (<code>progression-core.ts</code>) only
+      track chord-chip granularity
+      (<code>posIndex</code>/<code>chipIndex</code>/<code>lapIndex</code>), not bar-within-chord or
+      beat-within-bar — so resuming from pause always snaps the Transport to the top of whatever
+      chord chip was active. The loop, meanwhile, always restarts from sample 0 on resume (see
+      <a href="#sync">Sync mechanism</a>). Unless you happened to pause exactly at the top of the
+      lap, the two are now offset by however many bars into the lap that chip sits — audible desync
+      for the remainder of that lap. It's not permanent: the same force-restart-every-lap mechanism
+      re-syncs both to the true lap boundary the next time it's crossed, same as any other mismatch
+      this doc already accepts. <br /><br />
+      <strong>Possible fix, not attempted:</strong> compute how many bars into the lap the resume
+      point actually is (from the paused chip's bar offset, already available via
+      <code>chipOffsets</code>/<code>posOffsets</code> in <code>_buildPart</code>), and use it to
+      start loop playback from the equivalent point in its own buffer instead of sample 0 — an
+      immediate resync instead of waiting for the next lap. This would be a separate, additive
+      offset from the existing manual <a href="#sync-offset">sync offset</a> (which corrects mic
+      latency in the buffer itself, applied once at trim time) — the two don't conflict, they'd just
+      both apply.
+    </div>
+
+    <h2 id="decisions-final">Final UI decision</h2>
+    <div class="decided">
+      Single toggle button (idle → record → loop → delete). Delete goes through a plain
+      <code>confirm()</code> browser dialog to guard against an accidental tap — cheap enough for a
+      spike, revisit if it feels wrong.
+    </div>
+  </body>
+</html>

@@ -28,6 +28,7 @@ import {
   type MixSettings,
   type UserPreset,
   type ChordTickEvent,
+  type LooperState,
 } from "./progression-core.js";
 import { PRESETS } from "./presets.js";
 import { makeProgressionAudio } from "./progression-audio.js";
@@ -45,6 +46,7 @@ const app = makeProgressionPlayer({
   onChordTick: onChordTick,
   onBeatTick: onBeatTick,
   onBarTick: onBarTick,
+  onLooperStateChange: onLooperStateChange,
   onError: (msg) => {
     statusEl.textContent = msg;
   },
@@ -60,6 +62,13 @@ const stripEl = $("chord-strip") as HTMLDivElement;
 const statusEl = $("status") as HTMLElement;
 const playBtn = $("play") as HTMLButtonElement;
 const stopBtn = $("stop-btn") as HTMLButtonElement;
+const loopBtnEl = $("loop-btn") as HTMLButtonElement;
+const looperEnabledEl = $("looper-enabled") as HTMLInputElement;
+const loopMuteRecordingEl = $("loop-mute-recording") as HTMLInputElement;
+const loopOffsetMsEl = $("loop-offset-ms") as HTMLInputElement;
+const loopMixRowEl = $("loop-mix-row") as HTMLDivElement;
+const loopOnEl = $("loop-on") as HTMLInputElement;
+const loopVolEl = $("loop-vol") as HTMLInputElement;
 const arrangementEl = $("arrangement") as HTMLInputElement;
 const sectionRowsEl = $("section-rows") as HTMLDivElement;
 const sectionCountEl = $("section-count-label") as HTMLElement;
@@ -113,6 +122,34 @@ function render(state: AppState): void {
   renderMix(state);
   syncUrl(state);
   renderPresetIndicator();
+  syncLoopBtnVisibility(state);
+}
+
+// ── Looper (spike) ─────────────────────────────────────────────────────────
+
+function syncLoopBtnVisibility(state: AppState): void {
+  loopBtnEl.hidden = !looperEnabledEl.checked || state.playback.cycle !== "none";
+}
+
+function syncLoopMixRowVisibility(): void {
+  loopMixRowEl.hidden = !looperEnabledEl.checked;
+}
+
+function onLooperStateChange(state: LooperState): void {
+  switch (state) {
+    case "idle":
+      loopBtnEl.innerHTML = '<span class="bar-icon">⏺</span><span>Record Loop</span>';
+      break;
+    case "arming":
+      loopBtnEl.innerHTML = '<span class="bar-icon">⏳</span><span>Get Ready…</span>';
+      break;
+    case "recording":
+      loopBtnEl.innerHTML = '<span class="bar-icon">●</span><span>Recording…</span>';
+      break;
+    case "looping":
+      loopBtnEl.innerHTML = '<span class="bar-icon">🗑</span><span>Delete Loop</span>';
+      break;
+  }
 }
 
 function renderChips(state: AppState): void {
@@ -1060,6 +1097,16 @@ playBtn.addEventListener("click", () => {
   });
 });
 stopBtn.addEventListener("click", () => app.stop());
+loopBtnEl.addEventListener("click", () => {
+  const state = app.getLooperState();
+  if (state === "idle") {
+    void app.armLoopRecording(loopMuteRecordingEl.checked);
+  } else if (state === "looping") {
+    if (confirm("Delete this loop?")) app.deleteLoop();
+  } else {
+    app.cancelLoopRecording();
+  }
+});
 document.addEventListener("keydown", (e: KeyboardEvent) => {
   if (e.code !== "Space") return;
   const t = document.activeElement?.tagName;
@@ -1076,6 +1123,46 @@ keepAwakeEl.checked = localStorage.getItem("keep-awake") === "1";
 keepAwakeEl.addEventListener("change", () =>
   localStorage.setItem("keep-awake", keepAwakeEl.checked ? "1" : "0"),
 );
+
+looperEnabledEl.checked = localStorage.getItem("looper-enabled") === "1";
+syncLoopBtnVisibility(app.getState());
+syncLoopMixRowVisibility();
+looperEnabledEl.addEventListener("change", () => {
+  localStorage.setItem("looper-enabled", looperEnabledEl.checked ? "1" : "0");
+  syncLoopBtnVisibility(app.getState());
+  syncLoopMixRowVisibility();
+});
+loopMuteRecordingEl.checked = localStorage.getItem("loop-mute-recording") === "1";
+loopMuteRecordingEl.addEventListener("change", () =>
+  localStorage.setItem("loop-mute-recording", loopMuteRecordingEl.checked ? "1" : "0"),
+);
+
+loopOffsetMsEl.value = localStorage.getItem("loop-offset-ms") ?? "0";
+app.setLoopOffsetMs(parseInt(loopOffsetMsEl.value, 10) || 0);
+loopOffsetMsEl.addEventListener("input", () => {
+  const ms = parseInt(loopOffsetMsEl.value, 10) || 0;
+  localStorage.setItem("loop-offset-ms", String(ms));
+  app.setLoopOffsetMs(ms);
+});
+
+loopOnEl.checked = localStorage.getItem("loop-on") !== "0";
+app.setLoopMuted(!loopOnEl.checked);
+loopOnEl.addEventListener("change", () => {
+  localStorage.setItem("loop-on", loopOnEl.checked ? "1" : "0");
+  app.setLoopMuted(!loopOnEl.checked);
+});
+
+loopVolEl.value = localStorage.getItem("loop-vol") ?? "100";
+($("loop-vol-val") as HTMLElement).textContent = loopVolEl.value;
+app.setLoopVolume(parseInt(loopVolEl.value, 10) || 0);
+loopVolEl.addEventListener("input", () => {
+  ($("loop-vol-val") as HTMLElement).textContent = loopVolEl.value;
+  const v = parseInt(loopVolEl.value, 10) || 0;
+  localStorage.setItem("loop-vol", String(v));
+  app.setLoopVolume(v);
+});
+
+void app.restoreLoop().then(() => onLooperStateChange(app.getLooperState()));
 
 // ── Sheets ────────────────────────────────────────────────────────────────
 

@@ -113,6 +113,8 @@ export interface ChordTickEvent {
   lapIndex: number;
 }
 
+export type LooperState = "idle" | "arming" | "recording" | "looping";
+
 export interface AudioStartOpts {
   chordSequence: SongChord[];
   tempo: number;
@@ -131,6 +133,7 @@ export interface AudioStartOpts {
   onChordTick: (ev: ChordTickEvent) => void;
   onBeatTick: (beat: number) => void;
   onBarTick: (bar: number) => void;
+  onLooperStateChange: (state: LooperState) => void;
 }
 
 export interface AudioRebuildOpts {
@@ -150,8 +153,8 @@ export interface AudioEngine {
   stop(): void;
   rebuild(opts: AudioRebuildOpts): void;
   setTempo(bpm: number): void;
-  setVolume(channel: "chords" | "bass" | "drums" | "master", value: number): void;
-  setMute(channel: "chords" | "bass" | "drums", muted: boolean): void;
+  setVolume(channel: "chords" | "bass" | "drums" | "master" | "loop", value: number): void;
+  setMute(channel: "chords" | "bass" | "drums" | "loop", muted: boolean): void;
   setAdvance(mode: string): void;
   queueJump(posIndex: number): void;
   cancelJump(): void;
@@ -159,6 +162,12 @@ export interface AudioEngine {
   cancelKeyJump(): void;
   getPendingJump(): number | null;
   getPendingKeyJump(): number | null;
+  armLoopRecording(muteDuringRecording: boolean): Promise<void>;
+  cancelLoopRecording(): void;
+  deleteLoop(): void;
+  getLooperState(): LooperState;
+  setLoopOffsetMs(ms: number): void;
+  restoreLoop(): Promise<void>;
 }
 
 export interface PlaybackSettings {
@@ -207,6 +216,7 @@ export interface PlayerConfig {
   onChordTick: (ev: ChordTickEvent) => void;
   onBeatTick: (beat: number) => void;
   onBarTick: (bar: number) => void;
+  onLooperStateChange: (state: LooperState) => void;
   onError?: (msg: string) => void;
 }
 
@@ -862,6 +872,28 @@ export function serializeUrl(state: AppState): string {
   return p.toString();
 }
 
+// ─── Looper utilities ────────────────────────────────────────────────────────
+
+/**
+ * Trims/pads a single channel's samples to exactly `targetLength`, shifted by
+ * `offsetSamples` — a manual latency-compensation nudge, since mic input
+ * latency isn't something we can measure automatically. Positive shifts the
+ * loop's content earlier (skips leading latency in the source); negative
+ * shifts it later (pads the front with silence).
+ */
+export function alignAndTrimSamples(
+  data: Float32Array,
+  targetLength: number,
+  offsetSamples = 0,
+): Float32Array {
+  const out = new Float32Array(targetLength);
+  const srcStart = Math.max(0, offsetSamples);
+  const srcEnd = Math.min(data.length, targetLength + offsetSamples);
+  if (srcEnd <= srcStart) return out;
+  out.set(data.subarray(srcStart, srcEnd), srcStart - offsetSamples);
+  return out;
+}
+
 // ─── Player Factory ──────────────────────────────────────────────────────────
 
 const PRESETS_STORAGE_KEY = "progression-presets-v2";
@@ -1039,6 +1071,7 @@ export function makeProgressionPlayer(config: PlayerConfig) {
       },
       onBeatTick: config.onBeatTick,
       onBarTick: config.onBarTick,
+      onLooperStateChange: config.onLooperStateChange,
     });
 
     config.onPlaybackChange(true);
@@ -1292,5 +1325,39 @@ export function makeProgressionPlayer(config: PlayerConfig) {
 
     getPendingJump: (): number | null => config.audio?.getPendingJump() ?? null,
     getPendingKeyJump: (): number | null => config.audio?.getPendingKeyJump() ?? null,
+
+    // ── Looper (spike) ────────────────────────────────────────────────────
+    armLoopRecording(muteDuringRecording: boolean): Promise<void> {
+      if (!config.audio) return Promise.resolve();
+      return config.audio.armLoopRecording(muteDuringRecording).catch((e) => {
+        config.onError?.(`Loop recording error: ${(e as Error).message}`);
+      });
+    },
+
+    cancelLoopRecording(): void {
+      config.audio?.cancelLoopRecording();
+    },
+
+    deleteLoop(): void {
+      config.audio?.deleteLoop();
+    },
+
+    getLooperState: (): LooperState => config.audio?.getLooperState() ?? "idle",
+
+    setLoopOffsetMs(ms: number): void {
+      config.audio?.setLoopOffsetMs(ms);
+    },
+
+    restoreLoop(): Promise<void> {
+      return config.audio?.restoreLoop() ?? Promise.resolve();
+    },
+
+    setLoopVolume(value: number): void {
+      config.audio?.setVolume("loop", value);
+    },
+
+    setLoopMuted(muted: boolean): void {
+      config.audio?.setMute("loop", muted);
+    },
   };
 }

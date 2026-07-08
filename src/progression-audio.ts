@@ -12,6 +12,7 @@ import {
   clampShift,
   makeChord,
   getShiftsForCycle,
+  alignAndTrimSamples,
   type ChordQuality,
   type SongChord,
   type StyleDef,
@@ -20,6 +21,7 @@ import {
   type AudioStartOpts,
   type AudioRebuildOpts,
   type AudioEngine,
+  type LooperState,
 } from "./progression-core.js";
 
 interface Channels {
@@ -27,6 +29,7 @@ interface Channels {
   bass: Tone.Channel;
   drum: Tone.Channel;
   master: Tone.Channel;
+  loop: Tone.Channel;
 }
 
 // Single-lap event — shift is resolved at callback time via _currentShift
@@ -60,6 +63,81 @@ function safeCall(obj: unknown, method: "stop" | "dispose"): void {
     (obj as Record<string, () => void>)[method]?.();
   } catch (e) {
     console.warn(`Tone.${method} suppressed:`, e);
+  }
+}
+
+// ── Loop persistence (spike) ─────────────────────────────────────────────────
+// IndexedDB, not localStorage — the recorded blob is binary and can be a few
+// hundred KB, well past localStorage's string-only ~5-10MB practical limit.
+// Single fixed record: no loop library, just "the current loop," matching the
+// single-track scope of this spike. No auto-invalidation on restore — if the
+// current progression doesn't match what was recorded, that's left entirely
+// to the player to notice and manage (same graceful truncate/gap already
+// accepted for tempo changes covers a length mismatch too).
+
+interface StoredLoop {
+  blob: Blob;
+  capturedSongBars: number;
+}
+
+const LOOP_DB_NAME = "progression-looper";
+const LOOP_DB_VERSION = 1;
+const LOOP_STORE_NAME = "loop";
+const LOOP_RECORD_KEY = "current";
+
+function _openLoopDb(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(LOOP_DB_NAME, LOOP_DB_VERSION);
+    req.onupgradeneeded = () => req.result.createObjectStore(LOOP_STORE_NAME);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function _saveLoopToDb(blob: Blob, capturedSongBars: number): Promise<void> {
+  try {
+    const db = await _openLoopDb();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(LOOP_STORE_NAME, "readwrite");
+      tx.objectStore(LOOP_STORE_NAME).put({ blob, capturedSongBars }, LOOP_RECORD_KEY);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+  } catch (e) {
+    console.warn("Failed to persist loop:", e);
+  }
+}
+
+async function _loadLoopFromDb(): Promise<StoredLoop | null> {
+  try {
+    const db = await _openLoopDb();
+    const result = await new Promise<StoredLoop | null>((resolve, reject) => {
+      const tx = db.transaction(LOOP_STORE_NAME, "readonly");
+      const req = tx.objectStore(LOOP_STORE_NAME).get(LOOP_RECORD_KEY);
+      req.onsuccess = () => resolve((req.result as StoredLoop | undefined) ?? null);
+      req.onerror = () => reject(req.error);
+    });
+    db.close();
+    return result;
+  } catch (e) {
+    console.warn("Failed to load persisted loop:", e);
+    return null;
+  }
+}
+
+async function _deleteLoopFromDb(): Promise<void> {
+  try {
+    const db = await _openLoopDb();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(LOOP_STORE_NAME, "readwrite");
+      tx.objectStore(LOOP_STORE_NAME).delete(LOOP_RECORD_KEY);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+  } catch (e) {
+    console.warn("Failed to delete persisted loop:", e);
   }
 }
 
@@ -118,6 +196,20 @@ export function makeProgressionAudio(): AudioEngine {
   let _muteState = { chordsOn: true, bassOn: true, drumsOn: true };
   let _volState = { chords: 50, bass: 100, drums: 100, master: 100 };
 
+  // ── Looper state (spike — single fixed-length loop, no overdub) ───────────
+  let _looperState: LooperState = "idle";
+  let _muteDuringRecording = false;
+  let _muteOverrideActive = false;
+  let _capturedSongBars = 0;
+  let _loopOffsetMs = 0;
+  let _loopVolume = 100;
+  let _loopMuted = false;
+  let _rawLoopBuffer: AudioBuffer | null = null; // full decode, kept so the offset can be re-tweaked without re-recording
+  let _userMedia: Tone.UserMedia | null = null;
+  let _recorder: Tone.Recorder | null = null;
+  let _loopPlayer: Tone.Player | null = null;
+  let _onLooperStateChange: ((state: LooperState) => void) | null = null;
+
   // ── Cycle / key state ──────────────────────────────────────────────────────
   let _shifts: number[] = [0];
   let _currentShiftIndex = 0; // which key in the cycle we're on (reported as lapIndex)
@@ -160,8 +252,19 @@ export function makeProgressionAudio(): AudioEngine {
     const chord = new Tone.Channel().connect(master);
     const bass = new Tone.Channel().connect(master);
     const drum = new Tone.Channel().connect(master);
+    const loop = new Tone.Channel().connect(master);
     for (const player of Object.values(_sp)) player.connect(drum);
-    _channels = { chord, bass, drum, master };
+    _channels = { chord, bass, drum, master, loop };
+    _syncLoopMixToChannel();
+  }
+
+  // Applies the persisted loop volume/mute to the channel — called once when
+  // the channel is created, since it may not exist yet when setVolume/setMute
+  // "loop" calls happen at boot (before any playback has started).
+  function _syncLoopMixToChannel(): void {
+    if (!_channels) return;
+    _channels.loop.mute = _loopMuted;
+    if (!_loopMuted) _channels.loop.volume.value = _toDb(_loopVolume);
   }
 
   function _syncMixToChannels(mix: {
@@ -355,6 +458,8 @@ export function makeProgressionAudio(): AudioEngine {
           if (_voicingResetEachLap) _prevUpper = null;
         }
         // No transport seek, no return — chord plays immediately with updated shift
+
+        _advanceLooperAtBoundary(time);
       }
 
       // ── Manual mode: intercept section boundaries ────────────────────────────
@@ -459,6 +564,145 @@ export function makeProgressionAudio(): AudioEngine {
       });
     } else {
       _safe(fallback);
+    }
+  }
+
+  // ── Looper (spike) ──────────────────────────────────────────────────────────
+
+  function _setLooperState(state: LooperState, time?: number): void {
+    _looperState = state;
+    if (time === undefined) {
+      _onLooperStateChange?.(state);
+    } else {
+      Tone.Draw.schedule(() => _onLooperStateChange?.(state), time);
+    }
+  }
+
+  function _restoreMuteIfOverridden(): void {
+    if (!_muteOverrideActive || !_channels) return;
+    _muteOverrideActive = false;
+    _channels.chord.mute = !_muteState.chordsOn;
+    _channels.bass.mute = !_muteState.bassOn;
+    const drumMuted = !_muteState.drumsOn;
+    for (const s of [
+      _kickSeq,
+      _snareSeq,
+      _hatSeq,
+      _hatOpenSeq,
+      _crashSeq,
+      _rideSeq,
+      _rideBellSeq,
+      _tomSeq,
+      _tom2Seq,
+    ])
+      if (s) s.mute = drumMuted;
+  }
+
+  function _cancelLoopCapture(): void {
+    _safe(() => {
+      _recorder?.stop().catch(() => {});
+    });
+    _restoreMuteIfOverridden();
+  }
+
+  function _buildAlignedBuffer(
+    buffer: AudioBuffer,
+    targetSeconds: number,
+    offsetMs: number,
+  ): AudioBuffer {
+    const targetLength = Math.max(1, Math.round(targetSeconds * buffer.sampleRate));
+    const offsetSamples = Math.round((offsetMs / 1000) * buffer.sampleRate);
+    const ctx = Tone.getContext().rawContext as unknown as AudioContext;
+    const out = ctx.createBuffer(buffer.numberOfChannels, targetLength, buffer.sampleRate);
+    for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+      out.copyToChannel(
+        new Float32Array(
+          alignAndTrimSamples(buffer.getChannelData(ch), targetLength, offsetSamples),
+        ),
+        ch,
+      );
+    }
+    return out;
+  }
+
+  // Re-applies the current offset to the raw decoded recording. Called right
+  // after a fresh recording, and again whenever the user tweaks the offset
+  // setting — no need to re-record just to nudge the sync.
+  function _applyLoopOffsetAndTrim(): void {
+    if (!_rawLoopBuffer || !_channels) return;
+    const targetSeconds = Tone.Time(`${_songBars}m`).toSeconds() as number;
+    const trimmed = _buildAlignedBuffer(_rawLoopBuffer, targetSeconds, _loopOffsetMs);
+    if (!_loopPlayer) _loopPlayer = new Tone.Player().connect(_channels.loop);
+    _loopPlayer.buffer = new Tone.ToneAudioBuffer(trimmed);
+    _capturedSongBars = _songBars;
+  }
+
+  async function _processRecordedBlob(blob: Blob): Promise<void> {
+    try {
+      const arrayBuffer = await blob.arrayBuffer();
+      const ctx = Tone.getContext().rawContext as unknown as AudioContext;
+      _rawLoopBuffer = await ctx.decodeAudioData(arrayBuffer);
+      _applyLoopOffsetAndTrim();
+      await _saveLoopToDb(blob, _songBars);
+    } catch (e) {
+      console.warn("Loop decode failed:", e);
+      _setLooperState("idle");
+    }
+  }
+
+  function _restartLoopPlayer(time: number): void {
+    if (!_loopPlayer || !_loopPlayer.loaded) return;
+    _safe(() => {
+      _loopPlayer!.stop(time);
+      _loopPlayer!.start(time);
+    });
+  }
+
+  // Called once per lap boundary (from inside _buildPart's Part callback, the
+  // same transportLapIndex > _currentLap check that advances the key cycle) —
+  // NOT a fixed 1-bar pre-roll. Recording always starts exactly on the
+  // progression's own bar 1, however long that takes from the moment the user
+  // arms it, so the recorded loop's bar 1 always matches the chord grid's bar
+  // 1. Loop playback restart mirrors the "always force-restart" pattern
+  // already used for drum samples — no Player.loop, no .sync(), so drift
+  // can never accumulate.
+  function _advanceLooperAtBoundary(time: number): void {
+    if (_looperState === "arming") {
+      Tone.Draw.schedule(() => {
+        if (_muteDuringRecording && _channels) {
+          _muteOverrideActive = true;
+          _channels.chord.mute = true;
+          _channels.bass.mute = true;
+          for (const s of [
+            _kickSeq,
+            _snareSeq,
+            _hatSeq,
+            _hatOpenSeq,
+            _crashSeq,
+            _rideSeq,
+            _rideBellSeq,
+            _tomSeq,
+            _tom2Seq,
+          ])
+            if (s) s.mute = true;
+        }
+        _safe(() => {
+          _recorder?.start();
+        });
+      }, time);
+      _setLooperState("recording", time);
+    } else if (_looperState === "recording") {
+      Tone.Draw.schedule(() => {
+        _restoreMuteIfOverridden();
+        _recorder
+          ?.stop()
+          .then((blob) => _processRecordedBlob(blob))
+          .catch((e) => console.warn("Loop recording failed:", e));
+      }, time);
+      _setLooperState("looping", time);
+      _restartLoopPlayer(time); // no-op if the buffer isn't decoded yet — retried next lap
+    } else if (_looperState === "looping") {
+      _restartLoopPlayer(time);
     }
   }
 
@@ -717,6 +961,7 @@ export function makeProgressionAudio(): AudioEngine {
       onChordTick,
       onBeatTick,
       onBarTick,
+      onLooperStateChange,
     }: AudioStartOpts): Promise<void> {
       await Tone.start();
       if ("audioSession" in navigator)
@@ -729,6 +974,7 @@ export function makeProgressionAudio(): AudioEngine {
       _onChordTick = onChordTick;
       _onBeatTick = onBeatTick;
       _onBarTick = onBarTick;
+      _onLooperStateChange = onLooperStateChange;
       _pendingJump = null;
       _pendingKeyJump = null;
       _currentLap = 0;
@@ -758,6 +1004,18 @@ export function makeProgressionAudio(): AudioEngine {
         chipOffsets[startPosIndex]?.[startChipIndex] ?? posOffsets[startPosIndex] ?? 0;
       Tone.Transport.position = `${startBarOffset}:0:0`;
       Tone.Transport.start();
+
+      // A captured loop is already decoded and ready — don't wait for the
+      // per-lap boundary check below (it's suppressed on the very first lap
+      // of a fresh start, so it wouldn't fire until lap 2). The per-lap
+      // force-restart still runs on top of this for ongoing sync.
+      if (_looperState === "looping" && _rawLoopBuffer) {
+        // A loop restored via restoreLoop() has a raw buffer but no Player
+        // yet — _songBars/_channels weren't known until _buildPart() above
+        // just ran, so this is the first point it can actually be built.
+        if (!_loopPlayer) _applyLoopOffsetAndTrim();
+        _restartLoopPlayer(Tone.now());
+      }
     },
 
     stop(): void {
@@ -770,6 +1028,16 @@ export function makeProgressionAudio(): AudioEngine {
       _currentShiftIndex = 0;
       _currentShift = 0;
       _prevUpper = null;
+      if (_looperState === "arming" || _looperState === "recording") {
+        _cancelLoopCapture();
+        _setLooperState("idle");
+      } else if (_looperState === "looping") {
+        // Stopping the Transport doesn't stop an already-started Tone.Player —
+        // it just keeps playing to the end of its own buffer. State stays
+        // "looping" (the captured loop is still valid) so a future start()
+        // resumes it; only the audible playback is cut.
+        safeCall(_loopPlayer, "stop");
+      }
     },
 
     rebuild({
@@ -805,6 +1073,16 @@ export function makeProgressionAudio(): AudioEngine {
           _channels.chord.mute = !_muteState.chordsOn;
           _channels.bass.mute = !_muteState.bassOn;
         }
+        // A rebuild can happen mid-capture (e.g. style change) — spike keeps this
+        // simple by always discarding rather than trying to carry capture through.
+        // A completed loop (looping) is left alone here even if _songBars changed
+        // — no auto-invalidation on mismatch; the existing force-restart-every-lap
+        // mechanism already degrades gracefully (truncate/gap), same as a tempo
+        // change, and the player is trusted to manage this themselves.
+        if (_looperState === "arming" || _looperState === "recording") {
+          _cancelLoopCapture();
+          _setLooperState("idle");
+        }
       } catch (e) {
         console.warn("Audio rebuild failed:", e);
       }
@@ -814,7 +1092,12 @@ export function makeProgressionAudio(): AudioEngine {
       Tone.Transport.bpm.value = bpm;
     },
 
-    setVolume(channel: "chords" | "bass" | "drums" | "master", value: number): void {
+    setVolume(channel: "chords" | "bass" | "drums" | "master" | "loop", value: number): void {
+      if (channel === "loop") {
+        _loopVolume = value;
+        if (_channels && !_loopMuted) _channels.loop.volume.value = _toDb(value);
+        return;
+      }
       if (!_channels) return;
       _volState[
         channel === "chords"
@@ -836,7 +1119,15 @@ export function makeProgressionAudio(): AudioEngine {
       else if (channel === "master") _channels.master.volume.value = db;
     },
 
-    setMute(channel: "chords" | "bass" | "drums", muted: boolean): void {
+    setMute(channel: "chords" | "bass" | "drums" | "loop", muted: boolean): void {
+      if (channel === "loop") {
+        _loopMuted = muted;
+        if (_channels) {
+          _channels.loop.mute = muted;
+          if (!muted) _channels.loop.volume.value = _toDb(_loopVolume);
+        }
+        return;
+      }
       _muteState[channel === "chords" ? "chordsOn" : channel === "bass" ? "bassOn" : "drumsOn"] =
         !muted;
       if (channel === "chords" && _channels) {
@@ -884,5 +1175,60 @@ export function makeProgressionAudio(): AudioEngine {
 
     getPendingJump: (): number | null => _pendingJump,
     getPendingKeyJump: (): number | null => _pendingKeyJump,
+
+    async armLoopRecording(muteDuringRecording: boolean): Promise<void> {
+      if (_looperState !== "idle") return;
+      if (Tone.Transport.state !== "started" || !_channels) {
+        throw new Error("Start playback before recording a loop.");
+      }
+      _muteDuringRecording = muteDuringRecording;
+      if (!_userMedia) _userMedia = new Tone.UserMedia();
+      await _userMedia.open();
+      if (!_recorder) {
+        _recorder = new Tone.Recorder();
+        _userMedia.connect(_recorder);
+      }
+      _setLooperState("arming");
+    },
+
+    cancelLoopRecording(): void {
+      if (_looperState === "idle" || _looperState === "looping") return;
+      if (_looperState === "recording") _cancelLoopCapture();
+      _setLooperState("idle");
+    },
+
+    deleteLoop(): void {
+      safeCall(_loopPlayer, "stop");
+      safeCall(_loopPlayer, "dispose");
+      _loopPlayer = null;
+      _rawLoopBuffer = null;
+      _capturedSongBars = 0;
+      _setLooperState("idle");
+      void _deleteLoopFromDb();
+    },
+
+    getLooperState: (): LooperState => _looperState,
+
+    setLoopOffsetMs(ms: number): void {
+      _loopOffsetMs = ms;
+      if (_looperState === "looping" && _rawLoopBuffer && _channels) _applyLoopOffsetAndTrim();
+    },
+
+    async restoreLoop(): Promise<void> {
+      if (_looperState !== "idle") return;
+      const record = await _loadLoopFromDb();
+      if (!record) return;
+      try {
+        const arrayBuffer = await record.blob.arrayBuffer();
+        const ctx = Tone.getContext().rawContext as unknown as AudioContext;
+        _rawLoopBuffer = await ctx.decodeAudioData(arrayBuffer);
+        _capturedSongBars = record.capturedSongBars;
+        // _loopPlayer is intentionally not built yet — _songBars/_channels
+        // aren't known until the next start(), which finishes the job.
+        _setLooperState("looping");
+      } catch (e) {
+        console.warn("Failed to restore persisted loop:", e);
+      }
+    },
   };
 }

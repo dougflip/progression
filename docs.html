@@ -567,6 +567,7 @@
             <li><a href="#presets">Presets</a></li>
             <li><a href="#app-settings">App settings</a></li>
             <li><a href="#mix">Mix</a></li>
+            <li><a href="#looper">Looper (Experimental)</a></li>
           </ul>
         </nav>
         <div class="reference-content">
@@ -1226,6 +1227,53 @@
             Open from the <strong>Mix</strong> button in the action bar. Each instrument —
             <strong>Chords</strong>, <strong>Bass</strong>, <strong>Drums</strong> — has a mute
             toggle and volume slider, plus a master volume. All changes apply live during playback.
+          </p>
+
+          <hr />
+
+          <h2 id="looper">
+            Looper (Experimental)
+            <button class="anchor-copy" data-id="looper" title="Copy link to this section">
+              #
+            </button>
+          </h2>
+          <p>
+            <strong>Experimental</strong> — an early spike to learn what a polished looper should
+            look like, not a finished feature. Expect rough edges and changes.
+          </p>
+          <p>
+            Enable it with the <strong>Looper (Experimental)</strong> toggle in Setup. To record:
+          </p>
+          <ol>
+            <li>
+              Set up a single-section progression in <a href="#loop-mode-loop">Loop</a> mode (no key
+              changes).
+            </li>
+            <li>Press <strong>Play</strong> to start playback — this has to happen first.</li>
+            <li>
+              Press <strong>Record Loop</strong> next to Play — the button label changes to show
+              it's armed.
+            </li>
+            <li>
+              The progression plays through once in its entirety first, to establish the beat.
+            </li>
+            <li>The second time through, it records.</li>
+            <li>
+              Recording stops automatically once that pass completes, and the loop starts playing
+              back alongside the progression.
+            </li>
+          </ol>
+          <p>
+            Mic timing varies by device — sometimes by a lot (one laptop needed roughly 50ms, while
+            a phone needed closer to 350ms) — so the same Setup section has a
+            <strong>Loop sync offset</strong> field to nudge the recording earlier or later until it
+            lines up. A good way to dial it in: make your first recording just your voice counting
+            each bar out loud (e.g. "1, 2, 3, 4 — 2, 2, 3, 4 — 3, 2, 3, 4 — 4, 2, 3, 4"), then
+            adjust the offset until what you hear matches the beat.
+          </p>
+          <p>
+            The loop gets its own volume/mute controls in <a href="#mix">Mix</a> once enabled, and
+            survives reloading the page — delete and re-record any time from the same button.
           </p>
         </div>
       </section>

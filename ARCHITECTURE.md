@@ -47,12 +47,18 @@ tsconfig.json             — strict TypeScript config (noEmit; Vite handles tra
   cancelKeyJump(): void,
   getPendingJump(): number | null,
   getPendingKeyJump(): number | null,
+  armLoopRecording(muteDuringRecording: boolean): Promise<void>,
+  cancelLoopRecording(): void,
+  deleteLoop(): void,
+  getLooperState(): LooperState,
 }
 ```
 
 `startChipIndex` seeks to a specific chord within the starting section (used for pause/resume). `startLapIndex` seeks to a specific cycle lap. Both default to 0.
 
 Channels are created once on first `start()` and survive stop/rebuild cycles. Teardown disposes synths and sequences but never channels.
+
+**Looper (experimental, flag-gated spike).** `armLoopRecording`/`cancelLoopRecording`/`deleteLoop`/`getLooperState` add a single-track, no-overdub mic looper — `LooperState` cycles `idle → arming → counting-in → recording → looping`, driven from inside the existing lap-boundary check in `_buildPart` (the same block that advances the key cycle), and loop playback uses the same manual stop/start-at-`time` pattern as drum sample triggering (`_triggerDrum`) rather than `Player.loop`/`.sync()`, so it can never drift relative to the Transport. UI is behind a `looperEnabled` localStorage flag (off by default), hidden in the action bar when off or when `cycle !== 'none'`. This was deliberately built for "working software fast" over correct long-term architecture — design reasoning, deferred scope (configurable loop length, overdub, per-section loops), and a tradeoffs log live in `docs-internal/looper.html`.
 
 ## Cycle modes
 

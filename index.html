@@ -487,6 +487,9 @@
       #stop-btn {
         flex: 0 0 auto;
       }
+      #loop-btn[hidden] {
+        display: none;
+      }
       #play {
         flex: 0 0 auto;
         width: 64px;
@@ -662,6 +665,11 @@
         background: var(--surface-alt);
         padding: 0 0.25rem;
         border-radius: 0.25rem;
+      }
+      .setup-divider {
+        border: none;
+        border-top: 1px solid var(--border-faint);
+        margin: 1.75rem 0 0;
       }
       .app-version {
         font-size: 0.8rem;
@@ -884,6 +892,9 @@
         font-size: 0.85rem;
         min-width: 2.5rem;
         text-align: right;
+      }
+      #loop-mix-row[hidden] {
+        display: none;
       }
 
       /* ── Share button ── */
@@ -1284,6 +1295,9 @@
             <span class="bar-icon">■</span><span>Stop</span>
           </button>
           <button id="play" type="button" aria-label="Play">▶</button>
+          <button class="bar-btn" id="loop-btn" type="button" hidden>
+            <span class="bar-icon">⏺</span><span>Record Loop</span>
+          </button>
         </div>
         <button class="bar-btn" id="open-mix" type="button">
           <span class="bar-icon">🎚</span><span>Mix</span>
@@ -1331,8 +1345,26 @@
             ><input id="keep-awake" type="checkbox" /> Keep screen on while playing</label
           >
           <button id="copy-share" class="share-btn" type="button">Copy share link</button>
-          <div id="app-version" class="app-version"></div>
         </section>
+
+        <section class="setup-group">
+          <h3 class="setup-group-title">Looper (Experimental)</h3>
+          <label class="toggle"><input id="looper-enabled" type="checkbox" /> Enable looper</label>
+          <label class="toggle"
+            ><input id="loop-mute-recording" type="checkbox" /> Mute playback while recording a
+            loop</label
+          >
+          <label class="field-label" for="loop-offset-ms">Loop sync offset (ms)</label>
+          <input id="loop-offset-ms" type="number" step="5" value="0" />
+          <div class="hint">
+            If the loop sounds early or late, nudge this. Positive shifts the loop earlier; negative
+            shifts it later. Takes effect immediately on an existing loop — no need to re-record
+            while you experiment.
+          </div>
+        </section>
+
+        <hr class="setup-divider" />
+        <div id="app-version" class="app-version"></div>
       </div>
     </dialog>
 
@@ -1356,6 +1388,11 @@
           <label><input id="drums-on" type="checkbox" checked /> Drums</label>
           <input id="drum-vol" type="range" min="0" max="100" step="1" value="100" />
           <span class="val" id="drum-vol-val">100</span>
+        </div>
+        <div class="mix-row" id="loop-mix-row" hidden>
+          <label><input id="loop-on" type="checkbox" checked /> Loop</label>
+          <input id="loop-vol" type="range" min="0" max="100" step="1" value="100" />
+          <span class="val" id="loop-vol-val">100</span>
         </div>
         <div class="mix-row">
           <span class="mix-label">Master</span>
