@@ -621,12 +621,35 @@
       conversation; see <a href="#learning">learning questions 3-6</a>.
     </p>
     <div class="learn">
-      <strong>Loop-seam declick</strong>
+      <strong>Loop-seam declick — not currently prioritized, no reported clicking yet</strong>
       <div class="thoughts">
-        A few-ms fade in/out at the start/end of the loop buffer. The force-restart-every-lap
-        mechanism (see <a href="#sync">Sync mechanism</a>) means any tiny sample-0 discontinuity in
-        the recording repeats on every single lap — this could matter more audibly than any of the
-        effects in <a href="#loop-cleanup">loop cleanup effects</a>.
+        The force-restart-every-lap mechanism (see <a href="#sync">Sync mechanism</a>) means any
+        tiny sample-0 discontinuity in the recording repeats on every single lap, which could matter
+        more audibly than any of the effects in <a href="#loop-cleanup">loop cleanup effects</a> —
+        <em>if</em> it turns out to be audible in practice. Not prototyped: hasn't actually been
+        observed as a problem yet, and the naive fix (a plain amplitude fade) has a real failure
+        mode worth flagging before picking this back up. <br /><br />
+        <strong>Why a plain fade is risky:</strong> a fade-in touches the very attack a player cares
+        about most — beat 1 — and a fade-out risks sounding like the loop is audibly cutting in and
+        out if a note/beat 4 hit sits right at the boundary. <br /><br />
+        <strong>Better direction if revisited:</strong> snap the trim points to the nearest
+        zero-crossing in the waveform instead of fading amplitude — that removes the DC-offset
+        mismatch that causes an audible click without touching the envelope at all. Two safety rails
+        make this safe to try later:
+        <ul class="tight">
+          <li>
+            Bound the search to a small window (e.g. ±3-5ms) and fall back to today's plain hard cut
+            for that edge if nothing's found — never search unbounded, which is the only way this
+            could actually cause a large, unexpected shift.
+          </li>
+          <li>
+            Run it <em>after</em> the manual <a href="#sync-offset">sync offset</a> is applied, on
+            the final trimmed buffer — a bounded few-ms nudge on top of an already-tuned offset, not
+            a change to what the offset field means. It only ever touches the two edge samples, so a
+            loop with a long intentional silence before its first sound (nothing near either trim
+            point) is unaffected either way.
+          </li>
+        </ul>
       </div>
     </div>
     <div class="learn">
@@ -646,16 +669,6 @@
         <code>Tone.Recorder</code> accepts a <code>mimeType</code> option, currently unused (browser
         default). Worth checking whether codec/bitrate choice is audibly limiting quality on top of
         everything else being tuned.
-      </div>
-    </div>
-    <div class="learn">
-      <strong>Pause/resume desync fix</strong>
-      <div class="thoughts">
-        Already logged as a known, unfixed issue in the <a href="#tradeoffs">tradeoffs log</a> — the
-        loop restarts from sample 0 on resume while the progression resumes from the paused chord
-        chip, so they can be offset for the remainder of that lap. Worth actually fixing (or
-        confirming it doesn't matter enough to bother) rather than leaving it as a permanent known
-        gap.
       </div>
     </div>
     <div class="learn">
@@ -983,25 +996,30 @@
       nothing new needed, just less code.
     </div>
     <div class="tradeoff">
-      <strong>Pause/resume desyncs the loop from the progression — known, not fixed.</strong>
+      <strong>Fixed: pause/resume desynced the loop from the progression.</strong>
       <code>_pausedAt</code>/<code>_lastChordPos</code> (<code>progression-core.ts</code>) only
       track chord-chip granularity
       (<code>posIndex</code>/<code>chipIndex</code>/<code>lapIndex</code>), not bar-within-chord or
-      beat-within-bar — so resuming from pause always snaps the Transport to the top of whatever
-      chord chip was active. The loop, meanwhile, always restarts from sample 0 on resume (see
-      <a href="#sync">Sync mechanism</a>). Unless you happened to pause exactly at the top of the
-      lap, the two are now offset by however many bars into the lap that chip sits — audible desync
-      for the remainder of that lap. It's not permanent: the same force-restart-every-lap mechanism
-      re-syncs both to the true lap boundary the next time it's crossed, same as any other mismatch
-      this doc already accepts. <br /><br />
-      <strong>Possible fix, not attempted:</strong> compute how many bars into the lap the resume
-      point actually is (from the paused chip's bar offset, already available via
-      <code>chipOffsets</code>/<code>posOffsets</code> in <code>_buildPart</code>), and use it to
-      start loop playback from the equivalent point in its own buffer instead of sample 0 — an
-      immediate resync instead of waiting for the next lap. This would be a separate, additive
-      offset from the existing manual <a href="#sync-offset">sync offset</a> (which corrects mic
-      latency in the buffer itself, applied once at trim time) — the two don't conflict, they'd just
-      both apply.
+      beat-within-bar — so resuming from pause snaps the Transport to the top of whatever chord chip
+      was active, not the exact bar you paused on. That part is unchanged and still a known
+      limitation. What's fixed: the loop used to always restart from sample 0 on resume regardless
+      of where the Transport resumed to (see <a href="#sync">Sync mechanism</a>), so unless you
+      happened to pause exactly at the top of the lap, the two would be offset by however many bars
+      into the lap that chip sits — audible desync for the remainder of that lap, self-healing only
+      at the next lap boundary. <br /><br />
+      <strong>Fix:</strong> <code>start()</code> already computed <code>startBarOffset</code> — how
+      many bars into the lap the resume point is, from <code>chipOffsets</code>/<code
+        >posOffsets</code
+      >
+      in <code>_buildPart</code> — to position the Transport. The loop now converts that same bar
+      offset to seconds (<code>Tone.Time(`${startBarOffset}m`).toSeconds()</code>) and starts
+      playback from the equivalent point in its own buffer instead of sample 0 —
+      <code>_restartLoopPlayer(time, offsetSeconds)</code>. Wrapped by the loop buffer's actual
+      <code>.duration</code> (not <code>_songBars</code>), so a length mismatch since capture
+      degrades the same way a tempo mismatch already does — truncate/gap, not an out-of-range error.
+      This is a separate, additive offset from the existing manual
+      <a href="#sync-offset">sync offset</a> (which corrects mic latency in the buffer itself,
+      applied once at trim time) — the two don't conflict, they both just apply.
     </div>
 
     <h2 id="decisions-final">Final UI decision</h2>

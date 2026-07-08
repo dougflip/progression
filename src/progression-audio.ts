@@ -711,11 +711,11 @@ export function makeProgressionAudio(): AudioEngine {
     }
   }
 
-  function _restartLoopPlayer(time: number): void {
+  function _restartLoopPlayer(time: number, offsetSeconds = 0): void {
     if (!_loopPlayer || !_loopPlayer.loaded) return;
     _safe(() => {
       _loopPlayer!.stop(time);
-      _loopPlayer!.start(time);
+      _loopPlayer!.start(time, offsetSeconds);
     });
   }
 
@@ -1075,7 +1075,19 @@ export function makeProgressionAudio(): AudioEngine {
         // yet — _songBars/_channels weren't known until _buildPart() above
         // just ran, so this is the first point it can actually be built.
         if (!_loopPlayer) _applyLoopOffsetAndTrim();
-        _restartLoopPlayer(Tone.now());
+        // Resuming mid-lap (pause/resume, or starting from a chosen section)
+        // means the progression's own clock isn't starting at bar 1 — start
+        // the loop from the equivalent point in its own buffer instead of
+        // sample 0, so it's in sync immediately rather than waiting for the
+        // next lap boundary. Wrapped by the buffer's own duration (not
+        // _songBars) since a length mismatch since capture is handled the
+        // same way tempo mismatches already are — truncate/gap, not drift.
+        const loopLengthSeconds = _loopPlayer?.loaded ? _loopPlayer.buffer.duration : 0;
+        const resumeOffsetSeconds =
+          loopLengthSeconds > 0
+            ? (Tone.Time(`${startBarOffset}m`).toSeconds() as number) % loopLengthSeconds
+            : 0;
+        _restartLoopPlayer(Tone.now(), resumeOffsetSeconds);
       }
     },
 
