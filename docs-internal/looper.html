@@ -612,6 +612,68 @@
       loop volume/mute/offset, since these can be toggled before any loop has been recorded.
     </p>
 
+    <h2 id="next-experiments">Candidate phase 2 experiments</h2>
+    <p>
+      Candidates, not commitments — in the same spirit as
+      <a href="#loop-cleanup">loop cleanup effects</a>, each of these should be tried as something
+      you can toggle/A-B and judge, not assumed to be worth keeping. Excludes anything about the
+      data model (multiple loops, per-section loops/overrides) — that's a separate, bigger
+      conversation; see <a href="#learning">learning questions 3-6</a>.
+    </p>
+    <div class="learn">
+      <strong>Loop-seam declick</strong>
+      <div class="thoughts">
+        A few-ms fade in/out at the start/end of the loop buffer. The force-restart-every-lap
+        mechanism (see <a href="#sync">Sync mechanism</a>) means any tiny sample-0 discontinuity in
+        the recording repeats on every single lap — this could matter more audibly than any of the
+        effects in <a href="#loop-cleanup">loop cleanup effects</a>.
+      </div>
+    </div>
+    <div class="learn">
+      <strong>Raw mic constraints vs. our own cleanup effects</strong>
+      <div class="thoughts">
+        <code>getUserMedia</code>'s built-in
+        <code>echoCancellation</code>/<code>noiseSuppression</code>/<code>autoGainControl</code> are
+        on by default and may already be doing (or fighting with) what the hi-pass/compressor do.
+        Worth A/B'ing those browser-level constraints off vs. on before trusting our own effects'
+        verdicts — a "does hi-pass help" result could really be "does hi-pass help on top of
+        Chrome's noise suppression."
+      </div>
+    </div>
+    <div class="learn">
+      <strong>Recording quality/codec</strong>
+      <div class="thoughts">
+        <code>Tone.Recorder</code> accepts a <code>mimeType</code> option, currently unused (browser
+        default). Worth checking whether codec/bitrate choice is audibly limiting quality on top of
+        everything else being tuned.
+      </div>
+    </div>
+    <div class="learn">
+      <strong>Pause/resume desync fix</strong>
+      <div class="thoughts">
+        Already logged as a known, unfixed issue in the <a href="#tradeoffs">tradeoffs log</a> — the
+        loop restarts from sample 0 on resume while the progression resumes from the paused chord
+        chip, so they can be offset for the remainder of that lap. Worth actually fixing (or
+        confirming it doesn't matter enough to bother) rather than leaving it as a permanent known
+        gap.
+      </div>
+    </div>
+    <div class="learn">
+      <strong>Auto level-match</strong>
+      <div class="thoughts">
+        Normalize the recorded loop's peak/RMS to a target level automatically, so the loop volume
+        slider doesn't need manual re-riding every take. A different axis from the compressor (that
+        one's about dynamics <em>within</em> a take; this is about matching loudness
+        <em>across</em> takes).
+      </div>
+    </div>
+    <p>
+      <strong>Considered and dropped:</strong> a count-in audio click during the arming window. The
+      progression's own chords/bass/drums are already playing throughout arming, so there's already
+      a strong rhythmic reference to record against — a dedicated click would be redundant on top of
+      an actual beat.
+    </p>
+
     <h2 id="files">Files to touch</h2>
     <table>
       <tr>
