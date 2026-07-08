@@ -1057,5 +1057,155 @@
       <code>confirm()</code> browser dialog to guard against an accidental tap — cheap enough for a
       spike, revisit if it feels wrong.
     </div>
+
+    <h2 id="multi-loop-model">Multi-loop data model (design sketch)</h2>
+    <p class="status">not yet implemented — captured from a design conversation</p>
+    <p>
+      A first answer to <a href="#learning">Learning question 3</a> (multiple/independent loops):
+      what it would take to go from today's single fixed loop to
+      <strong>multiple loops per section</strong>, layered together. No code changes yet — this is
+      the shape agreed on before touching anything.
+    </p>
+
+    <pre><code>interface LoopRef {
+  id: string;            // uuid — IndexedDB key for the raw recorded blob
+  label?: string;        // optional; UI falls back to "Loop N" by array position
+  capturedBars: number;  // this section's bar length at capture time
+  volume: number;        // 0-100, per-loop
+  muted: boolean;
+  compression: number;   // 0-100, per-loop
+  highpass: boolean;
+  limiter: boolean;
+}
+
+interface Section {
+  progression: string;
+  loops: LoopRef[];      // 0+, ALL non-muted loops play together
+}</code></pre>
+
+    <div class="decided">
+      <strong>Layered, not single-active-loop.</strong> Every non-muted loop on a section plays at
+      once — a loop-pedal feel, not a track picker.
+    </div>
+    <div class="decided">
+      <strong>"Mute while I record" extends to sibling loops.</strong> Playback during recording is
+      otherwise exactly what the user has configured — if a layer is audible, it stays audible while
+      you record on top of it, and muting one before you arm is the way to keep it quiet. But the
+      existing mute-during-recording toggle (see <a href="#mute">Mute during recording</a>), which
+      today only silences chords/bass/drums, grows to cover loops too: checking it silences
+      <em>all</em> audio — chords, bass, drums, and every existing loop — for the recording window,
+      same transient-override-then-restore treatment already used for chords/bass/drums (never
+      touches each loop's own <code>muted</code> flag in <code>AppState</code>).
+    </div>
+    <div class="decided">
+      <strong>Sync boundary moves from whole-song lap to section entry.</strong> Today's loop
+      restarts on <code>transportLapIndex &gt; _currentLap</code> — once per full arrangement cycle
+      (see <a href="#sync">Sync mechanism</a>). Per-section loops need to restart every time
+      <em>that section</em> starts, which can happen more than once per lap (e.g. section 1 in
+      arrangement "1 2 1 2"). That signal already exists —
+      <code>ChordTickEvent.sectionChanged</code> /
+      <code>sectionIndex</code> (<code>progression-core.ts</code>) — so this reuses existing infra
+      rather than adding a new clock, same story as the original lap-boundary reuse. Side effect:
+      every occurrence of a repeated section replays the same loop by default, which naturally
+      answers the per-instance question from <a href="#learning">Learning question 3</a> without
+      having to solve it yet — a later per-instance override would layer on top of this, not replace
+      it.
+    </div>
+    <div class="decided">
+      <strong><code>LooperState</code> narrows to <code>idle | arming | recording</code>.</strong>
+      <code>"looping"</code> drops out as a global state — whether a loop exists is now per-section
+      and many-valued (<code>section.loops.length > 0</code>), not one app-wide boolean. "Something
+      is looping" becomes a derived read, not a state machine value; the state machine only needs to
+      describe the capture workflow itself.
+    </div>
+    <div class="decided">
+      <strong>Storage split is unchanged in principle, multiplied in practice.</strong>
+      <code>LoopRef</code> metadata (small, JSON) lives on <code>Section</code>, rides along in
+      presets/<code>AppState</code> for free. Audio blobs stay in IndexedDB, keyed by
+      <code>id</code> instead of today's fixed <code>"current"</code> record (see
+      <a href="#persistence">Persistence</a>). The manual <a href="#sync-offset">sync offset</a>
+      stays a single global, per-device setting rather than per-loop — it corrects mic/input-chain
+      latency, a device property, not a content property — and today's design already stores raw
+      blobs and derives trimmed buffers at load time, so this generalizes with no change needed.
+    </div>
+    <div class="decided">
+      <strong>Local-only, deliberately.</strong> Loops stay out of URL sharing — binary audio can't
+      travel in a URL — so a shared link carries chords/arrangement as it does today, silently
+      without loops. Presets can carry loop metadata, but become effectively device-local for loop
+      content: a preset's loop <code>id</code>s are meaningless without matching IndexedDB rows on
+      that browser. First time URL-shareable state and preset-saveable state diverge.
+    </div>
+    <div class="decided">
+      <strong>Garbage collection by periodic sweep, not cascade-on-delete.</strong> A saved preset
+      can still reference a loop <code>id</code> no longer in live state, so deleting from live
+      state can't blindly drop the IndexedDB row. Instead: collect every loop
+      <code>id</code> referenced by {live state} ∪ {every saved preset}, delete anything in
+      IndexedDB not in that set, run the sweep at safe checkpoints (after deleting a
+      loop/section/preset) rather than reference-counting on every mutation.
+    </div>
+    <div class="open-q">
+      <strong>Deferred: section duplication.</strong> Not a planned feature today, so the question
+      of what happens to a duplicated section's loops (start empty / deep-copy into new IndexedDB
+      rows / alias the same <code>id</code>s) is left open — it doesn't change the data structures
+      above either way, only how a future <code>duplicateSection()</code> would populate them.
+      Revisit only if that feature actually gets proposed.
+    </div>
+    <p>
+      Engine impact not yet scoped in detail: one shared <code>Tone.Player</code> + effects chain
+      becomes N players + N effects chains, created/torn down as sections activate. This likely tips
+      <a href="#learning">Learning question 2</a> (does the looper deserve its own module, e.g.
+      <code>progression-looper.ts</code>) from "maybe" to "probably yes."
+    </p>
+
+    <h3>What this enables</h3>
+    <ul class="tight">
+      <li>
+        Multiple independent loops stacked on one section — real loop-pedal-style layering, not a
+        single track
+      </li>
+      <li>
+        Per-loop volume/mute/compression/highpass/limiter, so each take can be tuned on its own
+      </li>
+      <li>
+        Loops saved and reloaded as part of a preset, alongside the progression they belong to
+      </li>
+      <li>
+        Every occurrence of a repeated section plays the same loop set automatically, no extra sync
+        work
+      </li>
+      <li>
+        A one-click "silence everything" option for recording without headphones, on top of per-loop
+        manual mute
+      </li>
+    </ul>
+
+    <h3>Limitations / tradeoffs</h3>
+    <ul class="tight">
+      <li>
+        No per-instance override — all occurrences of a repeated section share the same loops (see
+        <a href="#learning">Learning question 3</a>). Loops still belong to the section either way,
+        not to a specific occurrence — if this is ever needed, it's most likely an additive config
+        layer keyed by arrangement position (e.g. "mute loop X on the 2nd occurrence of section 1"),
+        not a change to <code>Section.loops</code> itself.
+      </li>
+      <li>
+        Loops don't travel through shared URLs — a shared link carries chords/arrangement only
+      </li>
+      <li>
+        Presets carrying loop metadata are effectively device-local — the audio doesn't move with
+        the preset across browsers/machines
+      </li>
+      <li>
+        Still one capture at a time — layering happens by recording sequentially, not simultaneous
+        multi-track capture
+      </li>
+      <li>
+        Deleted loops' IndexedDB rows aren't reclaimed immediately — cleanup happens on the next GC
+        sweep, not the instant you delete
+      </li>
+      <li>
+        Meaningfully more engine complexity — N players/effects chains to manage instead of one
+      </li>
+    </ul>
   </body>
 </html>
