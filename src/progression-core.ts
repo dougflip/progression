@@ -168,6 +168,9 @@ export interface AudioEngine {
   getLooperState(): LooperState;
   setLoopOffsetMs(ms: number): void;
   restoreLoop(): Promise<void>;
+  setLoopCompression(amount: number): void;
+  setLoopHighpass(enabled: boolean): void;
+  setLoopLimiter(enabled: boolean): void;
 }
 
 export interface PlaybackSettings {
@@ -1358,6 +1361,18 @@ export function makeProgressionPlayer(config: PlayerConfig) {
 
     setLoopMuted(muted: boolean): void {
       config.audio?.setMute("loop", muted);
+    },
+
+    setLoopCompression(amount: number): void {
+      config.audio?.setLoopCompression(amount);
+    },
+
+    setLoopHighpass(enabled: boolean): void {
+      config.audio?.setLoopHighpass(enabled);
+    },
+
+    setLoopLimiter(enabled: boolean): void {
+      config.audio?.setLoopLimiter(enabled);
     },
   };
 }

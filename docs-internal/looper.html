@@ -196,7 +196,7 @@
     </style>
   </head>
   <body>
-    <p class="status">spike notes — not yet built</p>
+    <p class="status">spike notes — built, behind experimental flag</p>
     <h1>Single-track looper — spike</h1>
     <p class="subtitle">
       Record mic input, loop it back with the existing progression. Optimized to ship something
@@ -225,6 +225,14 @@
     <p>
       Every shortcut taken to hit goal 1 should be named as it's made — see the
       <a href="#tradeoffs">Tradeoffs log</a>, which starts empty and fills in during implementation.
+    </p>
+    <p>
+      <strong>Update — entering phase 2:</strong> the spike is usable now, so the center of gravity
+      is shifting from goal 1 toward goal 2 above — less "ship more capability," more "learn what's
+      worth carrying into a real implementation." The
+      <a href="#loop-cleanup">loop cleanup effects</a> below are the first probe in that direction:
+      deliberately shaped so their audible effect can be judged, not features assumed to be worth
+      keeping as-is.
     </p>
 
     <h2 id="scope">Spike scope</h2>
@@ -463,6 +471,17 @@
       arming: "⏳ Get Ready…" (tap = cancel); recording: "● Recording…" (tap = cancel); looping: "🗑
       Delete Loop". Hidden when the feature flag is off, or when <code>cycle !== 'none'</code>.
     </p>
+    <p>
+      Tapping "⏺ Record Loop" from a full stop also starts playback — no separate "press Play, then
+      press Record" step. <code>startRecordingFromIdle()</code> (<code>app.ts</code>) calls
+      <code>app.togglePlay()</code> first if <code>audio.isPlaying()</code> is false, then
+      <code>armLoopRecording()</code> once playback has actually started. No change needed to the
+      arming mechanism itself: arming already rides out whatever's left of the <em>current</em> lap
+      before recording begins (see <a href="#sync">Sync mechanism</a>), and starting fresh from bar
+      1 means that "current lap" is the first pass — so arming-from-a-cold-start naturally waits for
+      the progression's second pass before recording starts, matching the once-manual two-click
+      sequence with one tap.
+    </p>
 
     <h2 id="state">Where the state lives</h2>
     <p>
@@ -548,6 +567,153 @@
       — a <code>_syncLoopMixToChannel()</code> call inside <code>_initChannels()</code> applies
       whatever was stored the moment the channel is actually created. Persisted via localStorage,
       same as the sync offset.
+    </p>
+
+    <h2 id="loop-cleanup">Loop cleanup effects</h2>
+    <p>
+      First concrete step into phase 2 (see <a href="#goals">Goals</a>) — the spike is usable now,
+      so this is about learning what's worth productionizing, not shipping more capability. Three
+      built-in Tone.js primitives, chosen because they target the specific problems a phone/laptop
+      mic recording has (rumble, inconsistent gain, occasional clipping) rather than being creative
+      effects:
+    </p>
+    <ul class="tight">
+      <li><code>Tone.Filter</code> (fixed 90Hz highpass) — cuts mic rumble/handling noise.</li>
+      <li><code>Tone.Compressor</code> — evens out inconsistent mic gain across a take.</li>
+      <li><code>Tone.Limiter</code> (fixed -3dB threshold) — catches occasional clipping.</li>
+    </ul>
+    <p>
+      Deliberately shaped as an experiment, not a mixing feature: highpass and limiter are plain
+      on/off checkboxes with no exposed parameters, and compression is a single 0-100 "amount"
+      slider mapping threshold+ratio together (0 → 0dB/1:1, fully transparent; 100 → -30dB/12:1)
+      rather than separate threshold/ratio controls. The point right now is hearing whether each one
+      helps at all, not tuning it — if one turns out to always help, it can just get baked in
+      permanently later; if none of them matter, that's useful data too.
+    </p>
+    <p>
+      Lives in the Mix sheet as a new <strong>Looper</strong> group (replacing the single Loop
+      volume row), containing Volume (unchanged), Compression, Hi-pass filter, and Limiter — same
+      <code>looperEnabled</code> visibility gating and localStorage persistence as everything else
+      in the looper.
+    </p>
+    <p>
+      Highpass/limiter are true bypasses — the node is physically removed from the audio graph when
+      off, not just set to neutral parameters — so toggling one is a clean A/B against "no
+      processing at all," not "processing tuned away." <code>_rewireLoopChain()</code>
+      (<code>progression-audio.ts</code>) disconnects and rebuilds
+      <code>_loopPlayer → [highpass?] → compressor → [limiter?] → loop channel</code>
+      whenever a toggle changes. The compressor stays in the chain unconditionally since its own 0%
+      setting is already transparent.
+    </p>
+    <p class="caption">
+      New <code>AudioEngine</code> methods: <code>setLoopCompression(amount)</code>,
+      <code>setLoopHighpass(enabled)</code>, <code>setLoopLimiter(enabled)</code> — same "store now,
+      apply once <code>_channels</code>/<code>_loopPlayer</code> exist" pattern already used for
+      loop volume/mute/offset, since these can be toggled before any loop has been recorded.
+    </p>
+
+    <h2 id="next-experiments">Candidate phase 2 experiments</h2>
+    <p>
+      Candidates, not commitments — in the same spirit as
+      <a href="#loop-cleanup">loop cleanup effects</a>, each of these should be tried as something
+      you can toggle/A-B and judge, not assumed to be worth keeping. Excludes anything about the
+      data model (multiple loops, per-section loops/overrides) — that's a separate, bigger
+      conversation; see <a href="#learning">learning questions 3-6</a>.
+    </p>
+    <div class="learn">
+      <strong>Loop-seam declick — not currently prioritized, no reported clicking yet</strong>
+      <div class="thoughts">
+        The force-restart-every-lap mechanism (see <a href="#sync">Sync mechanism</a>) means any
+        tiny sample-0 discontinuity in the recording repeats on every single lap, which could matter
+        more audibly than any of the effects in <a href="#loop-cleanup">loop cleanup effects</a> —
+        <em>if</em> it turns out to be audible in practice. Not prototyped: hasn't actually been
+        observed as a problem yet, and the naive fix (a plain amplitude fade) has a real failure
+        mode worth flagging before picking this back up. <br /><br />
+        <strong>Why a plain fade is risky:</strong> a fade-in touches the very attack a player cares
+        about most — beat 1 — and a fade-out risks sounding like the loop is audibly cutting in and
+        out if a note/beat 4 hit sits right at the boundary. <br /><br />
+        <strong>Better direction if revisited:</strong> snap the trim points to the nearest
+        zero-crossing in the waveform instead of fading amplitude — that removes the DC-offset
+        mismatch that causes an audible click without touching the envelope at all. Two safety rails
+        make this safe to try later:
+        <ul class="tight">
+          <li>
+            Bound the search to a small window (e.g. ±3-5ms) and fall back to today's plain hard cut
+            for that edge if nothing's found — never search unbounded, which is the only way this
+            could actually cause a large, unexpected shift.
+          </li>
+          <li>
+            Run it <em>after</em> the manual <a href="#sync-offset">sync offset</a> is applied, on
+            the final trimmed buffer — a bounded few-ms nudge on top of an already-tuned offset, not
+            a change to what the offset field means. It only ever touches the two edge samples, so a
+            loop with a long intentional silence before its first sound (nothing near either trim
+            point) is unaffected either way.
+          </li>
+        </ul>
+      </div>
+    </div>
+    <div class="learn">
+      <strong>Raw mic constraints vs. our own cleanup effects</strong>
+      <div class="thoughts">
+        <code>getUserMedia</code>'s built-in
+        <code>echoCancellation</code>/<code>noiseSuppression</code>/<code>autoGainControl</code> are
+        on by default and may already be doing (or fighting with) what the hi-pass/compressor do.
+        Worth A/B'ing those browser-level constraints off vs. on before trusting our own effects'
+        verdicts — a "does hi-pass help" result could really be "does hi-pass help on top of
+        Chrome's noise suppression."
+      </div>
+    </div>
+    <div class="learn">
+      <strong>Recording quality/codec</strong>
+      <div class="thoughts">
+        <code>Tone.Recorder</code> accepts a <code>mimeType</code> option, currently unused (browser
+        default). Worth checking whether codec/bitrate choice is audibly limiting quality on top of
+        everything else being tuned.
+      </div>
+    </div>
+    <div class="learn">
+      <strong>Auto level-match</strong>
+      <div class="thoughts">
+        Normalize the recorded loop's peak/RMS to a target level automatically, so the loop volume
+        slider doesn't need manual re-riding every take. A different axis from the compressor (that
+        one's about dynamics <em>within</em> a take; this is about matching loudness
+        <em>across</em> takes).
+      </div>
+    </div>
+    <div class="learn">
+      <strong>Tempo-following loop playback (time-stretch, no pitch shift)</strong>
+      <div class="thoughts">
+        Today, changing tempo after a loop is captured degrades gracefully but doesn't actually stay
+        bar-aligned — the buffer's real-time duration is fixed at capture, so a tempo change causes
+        the "truncate a little early or leave a trailing gap" behavior described in the
+        <a href="#tradeoffs">tradeoffs log</a>. <code>Tone.GrainPlayer</code> (granular synthesis)
+        exposes <code>playbackRate</code> (speed) and <code>detune</code> (pitch) as independent
+        controls — the standard way to time-stretch without the "chipmunk effect" a plain
+        <code>Tone.Player.playbackRate</code> would cause. Recording is unaffected either way: it
+        always captures live mic audio at whatever the real, current tempo/pitch is, so a future
+        overdub stays pitch/tempo-correct regardless of any stretching applied to older material.
+        <br /><br />
+        <strong>Shape of the change:</strong> swap <code>_loopPlayer</code> from
+        <code>Tone.Player</code> to <code>Tone.GrainPlayer</code> (API-compatible for our
+        <code>start(time, offset)</code>/<code>stop(time)</code> usage, so the resume-offset logic
+        carries over unchanged); track <code>_capturedTempo</code> (BPM at record time) alongside
+        <code>_capturedSongBars</code>; recompute
+        <code>playbackRate = currentTempo / _capturedTempo</code> whenever tempo changes, so the
+        loop stays bar-aligned instead of truncating/gapping. <br /><br />
+        <strong>Real risk:</strong> granular stretching isn't free — it can introduce audible
+        warble/graininess, especially on transient-heavy material (drums, plucked chords) or large
+        tempo swings. Small adjustments (a few BPM) should be close to transparent; doubling tempo
+        would probably sound rough. Same philosophy as the other cleanup effects: this should be
+        something to toggle and judge by ear (e.g. against today's truncate/gap behavior), not an
+        assumed win — and <code>grainSize</code>/<code>overlap</code> (defaults 200ms/100ms) would
+        need tuning by ear for musical content, not just accepted as-is.
+      </div>
+    </div>
+    <p>
+      <strong>Considered and dropped:</strong> a count-in audio click during the arming window. The
+      progression's own chords/bass/drums are already playing throughout arming, so there's already
+      a strong rhythmic reference to record against — a dedicated click would be redundant on top of
+      an actual beat.
     </p>
 
     <h2 id="files">Files to touch</h2>
@@ -639,7 +805,10 @@
             highlights still animate live, and prior manual mute state is restored correctly
             afterward
           </li>
-          <li>arming before playback has started</li>
+          <li>
+            tap "Record Loop" from a full stop (nothing playing) — confirm playback starts
+            automatically and recording begins on the progression's second pass
+          </li>
           <li>tempo change after a loop is captured (confirm graceful truncate/gap, not drift)</li>
           <li>stopping playback mid-recording (confirm clean cancel/discard)</li>
           <li>deleting a loop and recording a fresh one in its place</li>
@@ -653,8 +822,13 @@
             restores rather than being silently dropped
           </li>
           <li>
-            Mix sheet Loop row — mute/unmute and drag the volume slider while the loop is playing;
-            confirm the row only appears when the flag is on, and the value survives a reload
+            Mix sheet Looper group — mute/unmute and drag the volume slider while the loop is
+            playing; confirm the group only appears when the flag is on, and values survive a reload
+          </li>
+          <li>
+            toggle Hi-pass/Limiter on and off while a loop is playing — confirm an audible,
+            glitch-free change (no click/pop from the graph rewiring), and drag Compression from 0
+            to 100 to hear the range
           </li>
         </ul>
       </li>
@@ -851,25 +1025,30 @@
       nothing new needed, just less code.
     </div>
     <div class="tradeoff">
-      <strong>Pause/resume desyncs the loop from the progression — known, not fixed.</strong>
+      <strong>Fixed: pause/resume desynced the loop from the progression.</strong>
       <code>_pausedAt</code>/<code>_lastChordPos</code> (<code>progression-core.ts</code>) only
       track chord-chip granularity
       (<code>posIndex</code>/<code>chipIndex</code>/<code>lapIndex</code>), not bar-within-chord or
-      beat-within-bar — so resuming from pause always snaps the Transport to the top of whatever
-      chord chip was active. The loop, meanwhile, always restarts from sample 0 on resume (see
-      <a href="#sync">Sync mechanism</a>). Unless you happened to pause exactly at the top of the
-      lap, the two are now offset by however many bars into the lap that chip sits — audible desync
-      for the remainder of that lap. It's not permanent: the same force-restart-every-lap mechanism
-      re-syncs both to the true lap boundary the next time it's crossed, same as any other mismatch
-      this doc already accepts. <br /><br />
-      <strong>Possible fix, not attempted:</strong> compute how many bars into the lap the resume
-      point actually is (from the paused chip's bar offset, already available via
-      <code>chipOffsets</code>/<code>posOffsets</code> in <code>_buildPart</code>), and use it to
-      start loop playback from the equivalent point in its own buffer instead of sample 0 — an
-      immediate resync instead of waiting for the next lap. This would be a separate, additive
-      offset from the existing manual <a href="#sync-offset">sync offset</a> (which corrects mic
-      latency in the buffer itself, applied once at trim time) — the two don't conflict, they'd just
-      both apply.
+      beat-within-bar — so resuming from pause snaps the Transport to the top of whatever chord chip
+      was active, not the exact bar you paused on. That part is unchanged and still a known
+      limitation. What's fixed: the loop used to always restart from sample 0 on resume regardless
+      of where the Transport resumed to (see <a href="#sync">Sync mechanism</a>), so unless you
+      happened to pause exactly at the top of the lap, the two would be offset by however many bars
+      into the lap that chip sits — audible desync for the remainder of that lap, self-healing only
+      at the next lap boundary. <br /><br />
+      <strong>Fix:</strong> <code>start()</code> already computed <code>startBarOffset</code> — how
+      many bars into the lap the resume point is, from <code>chipOffsets</code>/<code
+        >posOffsets</code
+      >
+      in <code>_buildPart</code> — to position the Transport. The loop now converts that same bar
+      offset to seconds (<code>Tone.Time(`${startBarOffset}m`).toSeconds()</code>) and starts
+      playback from the equivalent point in its own buffer instead of sample 0 —
+      <code>_restartLoopPlayer(time, offsetSeconds)</code>. Wrapped by the loop buffer's actual
+      <code>.duration</code> (not <code>_songBars</code>), so a length mismatch since capture
+      degrades the same way a tempo mismatch already does — truncate/gap, not an out-of-range error.
+      This is a separate, additive offset from the existing manual
+      <a href="#sync-offset">sync offset</a> (which corrects mic latency in the buffer itself,
+      applied once at trim time) — the two don't conflict, they both just apply.
     </div>
 
     <h2 id="decisions-final">Final UI decision</h2>
@@ -878,5 +1057,155 @@
       <code>confirm()</code> browser dialog to guard against an accidental tap — cheap enough for a
       spike, revisit if it feels wrong.
     </div>
+
+    <h2 id="multi-loop-model">Multi-loop data model (design sketch)</h2>
+    <p class="status">not yet implemented — captured from a design conversation</p>
+    <p>
+      A first answer to <a href="#learning">Learning question 3</a> (multiple/independent loops):
+      what it would take to go from today's single fixed loop to
+      <strong>multiple loops per section</strong>, layered together. No code changes yet — this is
+      the shape agreed on before touching anything.
+    </p>
+
+    <pre><code>interface LoopRef {
+  id: string;            // uuid — IndexedDB key for the raw recorded blob
+  label?: string;        // optional; UI falls back to "Loop N" by array position
+  capturedBars: number;  // this section's bar length at capture time
+  volume: number;        // 0-100, per-loop
+  muted: boolean;
+  compression: number;   // 0-100, per-loop
+  highpass: boolean;
+  limiter: boolean;
+}
+
+interface Section {
+  progression: string;
+  loops: LoopRef[];      // 0+, ALL non-muted loops play together
+}</code></pre>
+
+    <div class="decided">
+      <strong>Layered, not single-active-loop.</strong> Every non-muted loop on a section plays at
+      once — a loop-pedal feel, not a track picker.
+    </div>
+    <div class="decided">
+      <strong>"Mute while I record" extends to sibling loops.</strong> Playback during recording is
+      otherwise exactly what the user has configured — if a layer is audible, it stays audible while
+      you record on top of it, and muting one before you arm is the way to keep it quiet. But the
+      existing mute-during-recording toggle (see <a href="#mute">Mute during recording</a>), which
+      today only silences chords/bass/drums, grows to cover loops too: checking it silences
+      <em>all</em> audio — chords, bass, drums, and every existing loop — for the recording window,
+      same transient-override-then-restore treatment already used for chords/bass/drums (never
+      touches each loop's own <code>muted</code> flag in <code>AppState</code>).
+    </div>
+    <div class="decided">
+      <strong>Sync boundary moves from whole-song lap to section entry.</strong> Today's loop
+      restarts on <code>transportLapIndex &gt; _currentLap</code> — once per full arrangement cycle
+      (see <a href="#sync">Sync mechanism</a>). Per-section loops need to restart every time
+      <em>that section</em> starts, which can happen more than once per lap (e.g. section 1 in
+      arrangement "1 2 1 2"). That signal already exists —
+      <code>ChordTickEvent.sectionChanged</code> /
+      <code>sectionIndex</code> (<code>progression-core.ts</code>) — so this reuses existing infra
+      rather than adding a new clock, same story as the original lap-boundary reuse. Side effect:
+      every occurrence of a repeated section replays the same loop by default, which naturally
+      answers the per-instance question from <a href="#learning">Learning question 3</a> without
+      having to solve it yet — a later per-instance override would layer on top of this, not replace
+      it.
+    </div>
+    <div class="decided">
+      <strong><code>LooperState</code> narrows to <code>idle | arming | recording</code>.</strong>
+      <code>"looping"</code> drops out as a global state — whether a loop exists is now per-section
+      and many-valued (<code>section.loops.length > 0</code>), not one app-wide boolean. "Something
+      is looping" becomes a derived read, not a state machine value; the state machine only needs to
+      describe the capture workflow itself.
+    </div>
+    <div class="decided">
+      <strong>Storage split is unchanged in principle, multiplied in practice.</strong>
+      <code>LoopRef</code> metadata (small, JSON) lives on <code>Section</code>, rides along in
+      presets/<code>AppState</code> for free. Audio blobs stay in IndexedDB, keyed by
+      <code>id</code> instead of today's fixed <code>"current"</code> record (see
+      <a href="#persistence">Persistence</a>). The manual <a href="#sync-offset">sync offset</a>
+      stays a single global, per-device setting rather than per-loop — it corrects mic/input-chain
+      latency, a device property, not a content property — and today's design already stores raw
+      blobs and derives trimmed buffers at load time, so this generalizes with no change needed.
+    </div>
+    <div class="decided">
+      <strong>Local-only, deliberately.</strong> Loops stay out of URL sharing — binary audio can't
+      travel in a URL — so a shared link carries chords/arrangement as it does today, silently
+      without loops. Presets can carry loop metadata, but become effectively device-local for loop
+      content: a preset's loop <code>id</code>s are meaningless without matching IndexedDB rows on
+      that browser. First time URL-shareable state and preset-saveable state diverge.
+    </div>
+    <div class="decided">
+      <strong>Garbage collection by periodic sweep, not cascade-on-delete.</strong> A saved preset
+      can still reference a loop <code>id</code> no longer in live state, so deleting from live
+      state can't blindly drop the IndexedDB row. Instead: collect every loop
+      <code>id</code> referenced by {live state} ∪ {every saved preset}, delete anything in
+      IndexedDB not in that set, run the sweep at safe checkpoints (after deleting a
+      loop/section/preset) rather than reference-counting on every mutation.
+    </div>
+    <div class="open-q">
+      <strong>Deferred: section duplication.</strong> Not a planned feature today, so the question
+      of what happens to a duplicated section's loops (start empty / deep-copy into new IndexedDB
+      rows / alias the same <code>id</code>s) is left open — it doesn't change the data structures
+      above either way, only how a future <code>duplicateSection()</code> would populate them.
+      Revisit only if that feature actually gets proposed.
+    </div>
+    <p>
+      Engine impact not yet scoped in detail: one shared <code>Tone.Player</code> + effects chain
+      becomes N players + N effects chains, created/torn down as sections activate. This likely tips
+      <a href="#learning">Learning question 2</a> (does the looper deserve its own module, e.g.
+      <code>progression-looper.ts</code>) from "maybe" to "probably yes."
+    </p>
+
+    <h3>What this enables</h3>
+    <ul class="tight">
+      <li>
+        Multiple independent loops stacked on one section — real loop-pedal-style layering, not a
+        single track
+      </li>
+      <li>
+        Per-loop volume/mute/compression/highpass/limiter, so each take can be tuned on its own
+      </li>
+      <li>
+        Loops saved and reloaded as part of a preset, alongside the progression they belong to
+      </li>
+      <li>
+        Every occurrence of a repeated section plays the same loop set automatically, no extra sync
+        work
+      </li>
+      <li>
+        A one-click "silence everything" option for recording without headphones, on top of per-loop
+        manual mute
+      </li>
+    </ul>
+
+    <h3>Limitations / tradeoffs</h3>
+    <ul class="tight">
+      <li>
+        No per-instance override — all occurrences of a repeated section share the same loops (see
+        <a href="#learning">Learning question 3</a>). Loops still belong to the section either way,
+        not to a specific occurrence — if this is ever needed, it's most likely an additive config
+        layer keyed by arrangement position (e.g. "mute loop X on the 2nd occurrence of section 1"),
+        not a change to <code>Section.loops</code> itself.
+      </li>
+      <li>
+        Loops don't travel through shared URLs — a shared link carries chords/arrangement only
+      </li>
+      <li>
+        Presets carrying loop metadata are effectively device-local — the audio doesn't move with
+        the preset across browsers/machines
+      </li>
+      <li>
+        Still one capture at a time — layering happens by recording sequentially, not simultaneous
+        multi-track capture
+      </li>
+      <li>
+        Deleted loops' IndexedDB rows aren't reclaimed immediately — cleanup happens on the next GC
+        sweep, not the instant you delete
+      </li>
+      <li>
+        Meaningfully more engine complexity — N players/effects chains to manage instead of one
+      </li>
+    </ul>
   </body>
 </html>

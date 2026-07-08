@@ -210,6 +210,15 @@ export function makeProgressionAudio(): AudioEngine {
   let _loopPlayer: Tone.Player | null = null;
   let _onLooperStateChange: ((state: LooperState) => void) | null = null;
 
+  // ── Loop cleanup effects (research phase — on/off toggles so their audible
+  // effect can be A/B'd, not tuned) ──────────────────────────────────────────
+  let _loopCompression = 0; // 0-100, always in the signal path — 0 is transparent
+  let _loopHighpassEnabled = false;
+  let _loopLimiterEnabled = false;
+  let _loopHighpassNode: Tone.Filter | null = null;
+  let _loopCompressorNode: Tone.Compressor | null = null;
+  let _loopLimiterNode: Tone.Limiter | null = null;
+
   // ── Cycle / key state ──────────────────────────────────────────────────────
   let _shifts: number[] = [0];
   let _currentShiftIndex = 0; // which key in the cycle we're on (reported as lapIndex)
@@ -625,6 +634,54 @@ export function makeProgressionAudio(): AudioEngine {
     return out;
   }
 
+  // Fixed-frequency highpass (rumble/handling-noise cut) and a fast/hard
+  // limiter — deliberately un-tunable for now. The goal this phase is
+  // learning whether these help at all, not dialing in "the right" values.
+  // Created once and left connected/disconnected as the toggles change,
+  // rather than disposed — mirrors how _channels survives across rebuilds.
+  function _ensureLoopEffects(): void {
+    if (_loopCompressorNode) return;
+    _loopHighpassNode = new Tone.Filter(90, "highpass");
+    _loopCompressorNode = new Tone.Compressor();
+    _loopLimiterNode = new Tone.Limiter(-3);
+    _applyLoopCompressionParams();
+  }
+
+  // Maps the 0-100 "amount" slider onto threshold/ratio together so a single
+  // knob goes from fully transparent (0) to an assertive squeeze (100) —
+  // simpler to A/B by ear than exposing threshold/ratio separately.
+  function _applyLoopCompressionParams(): void {
+    if (!_loopCompressorNode) return;
+    const amount = _loopCompression / 100;
+    _loopCompressorNode.threshold.value = -amount * 30;
+    _loopCompressorNode.ratio.value = 1 + amount * 11;
+  }
+
+  // Rebuilds the loop's effect chain from scratch based on the current
+  // highpass/limiter toggles — a physical bypass (node removed from the
+  // graph entirely) rather than neutral parameters, so an "off" toggle is a
+  // true A/B against no processing at all, not just "processing tuned away."
+  function _rewireLoopChain(): void {
+    if (
+      !_loopPlayer ||
+      !_channels ||
+      !_loopCompressorNode ||
+      !_loopHighpassNode ||
+      !_loopLimiterNode
+    )
+      return;
+    _loopPlayer.disconnect();
+    _loopHighpassNode.disconnect();
+    _loopCompressorNode.disconnect();
+    _loopLimiterNode.disconnect();
+    const chain: Tone.ToneAudioNode[] = [];
+    if (_loopHighpassEnabled) chain.push(_loopHighpassNode);
+    chain.push(_loopCompressorNode);
+    if (_loopLimiterEnabled) chain.push(_loopLimiterNode);
+    chain.push(_channels.loop);
+    _loopPlayer.chain(...chain);
+  }
+
   // Re-applies the current offset to the raw decoded recording. Called right
   // after a fresh recording, and again whenever the user tweaks the offset
   // setting — no need to re-record just to nudge the sync.
@@ -632,7 +689,11 @@ export function makeProgressionAudio(): AudioEngine {
     if (!_rawLoopBuffer || !_channels) return;
     const targetSeconds = Tone.Time(`${_songBars}m`).toSeconds() as number;
     const trimmed = _buildAlignedBuffer(_rawLoopBuffer, targetSeconds, _loopOffsetMs);
-    if (!_loopPlayer) _loopPlayer = new Tone.Player().connect(_channels.loop);
+    if (!_loopPlayer) {
+      _loopPlayer = new Tone.Player();
+      _ensureLoopEffects();
+      _rewireLoopChain();
+    }
     _loopPlayer.buffer = new Tone.ToneAudioBuffer(trimmed);
     _capturedSongBars = _songBars;
   }
@@ -650,11 +711,11 @@ export function makeProgressionAudio(): AudioEngine {
     }
   }
 
-  function _restartLoopPlayer(time: number): void {
+  function _restartLoopPlayer(time: number, offsetSeconds = 0): void {
     if (!_loopPlayer || !_loopPlayer.loaded) return;
     _safe(() => {
       _loopPlayer!.stop(time);
-      _loopPlayer!.start(time);
+      _loopPlayer!.start(time, offsetSeconds);
     });
   }
 
@@ -1014,7 +1075,19 @@ export function makeProgressionAudio(): AudioEngine {
         // yet — _songBars/_channels weren't known until _buildPart() above
         // just ran, so this is the first point it can actually be built.
         if (!_loopPlayer) _applyLoopOffsetAndTrim();
-        _restartLoopPlayer(Tone.now());
+        // Resuming mid-lap (pause/resume, or starting from a chosen section)
+        // means the progression's own clock isn't starting at bar 1 — start
+        // the loop from the equivalent point in its own buffer instead of
+        // sample 0, so it's in sync immediately rather than waiting for the
+        // next lap boundary. Wrapped by the buffer's own duration (not
+        // _songBars) since a length mismatch since capture is handled the
+        // same way tempo mismatches already are — truncate/gap, not drift.
+        const loopLengthSeconds = _loopPlayer?.loaded ? _loopPlayer.buffer.duration : 0;
+        const resumeOffsetSeconds =
+          loopLengthSeconds > 0
+            ? (Tone.Time(`${startBarOffset}m`).toSeconds() as number) % loopLengthSeconds
+            : 0;
+        _restartLoopPlayer(Tone.now(), resumeOffsetSeconds);
       }
     },
 
@@ -1212,6 +1285,21 @@ export function makeProgressionAudio(): AudioEngine {
     setLoopOffsetMs(ms: number): void {
       _loopOffsetMs = ms;
       if (_looperState === "looping" && _rawLoopBuffer && _channels) _applyLoopOffsetAndTrim();
+    },
+
+    setLoopCompression(amount: number): void {
+      _loopCompression = amount;
+      _applyLoopCompressionParams();
+    },
+
+    setLoopHighpass(enabled: boolean): void {
+      _loopHighpassEnabled = enabled;
+      _rewireLoopChain();
+    },
+
+    setLoopLimiter(enabled: boolean): void {
+      _loopLimiterEnabled = enabled;
+      _rewireLoopChain();
     },
 
     async restoreLoop(): Promise<void> {
