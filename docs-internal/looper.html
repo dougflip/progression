@@ -439,12 +439,63 @@ interface Section {
       above either way, only how a future <code>duplicateSection()</code> would populate them.
       Revisit only if that feature actually gets proposed.
     </div>
+    <h3 id="phases">Rollout phases</h3>
     <p>
-      Engine impact not yet scoped in detail: one shared <code>Tone.Player</code> + effects chain
-      becomes N players + N effects chains, created/torn down as sections activate — likely means
-      the looper deserves its own module (e.g. <code>progression-looper.ts</code>) rather than
-      staying folded into <code>progression-audio.ts</code>.
+      Sequenced so each phase — except the last — ships with no visible UX change, verified before
+      moving to the next.
     </p>
+    <div class="decided">
+      <strong>Phase 1 — arrayify, engine-only.</strong> Reshape the single loop's metadata into
+      <code>_loops: LoopRef[]</code>, capped at length 1 by today's existing state-machine gating
+      (arm still blocked once one exists). Still one shared <code>Tone.Player</code> + effects chain
+      — the array only changes how metadata is held/iterated. No <code>AppState</code>/<code
+        >Section</code
+      >
+      involvement yet, no UX change.
+    </div>
+    <div class="decided">
+      <strong>Phase 2 — attach to a section, fix the sync boundary.</strong>
+      <code>loops</code> moves onto <code>Section</code>/<code>AppState</code>; the restart trigger
+      switches from whole-song lap to section-entry
+      (<code>sectionChanged</code>/<code>sectionIndex</code>); <code>capturedBars</code> means the
+      owning section's bar length, not <code>_songBars</code>; <code>LooperState</code> narrows to
+      <code>idle | arming | recording</code>. Invisible for a single-section song (section-start ==
+      song-start); a real, accepted behavior change for a multi-section arrangement with an existing
+      loop — its restart cadence/length changes the moment this ships. Flagged, not mitigated, since
+      the feature is still experimental. <br /><br />
+      <strong>This is also what makes cross-song (preset) persistence work.</strong> "Song" here
+      means <code>preset</code> — the only named, switchable saved-song concept this app has.
+      Presets already serialize the full <code>sections</code> array (<code
+        >PresetState = Omit&lt;AppState, "activeSection"&gt;</code
+      >), so once loops live on <code>Section</code>, saving/loading a preset carries its loops for
+      free: record a loop in song 1, switch to song 2 and record a different one, switch back — both
+      are just preset loads, no new mechanism needed for the metadata half. Two things this phase
+      specifically needs to hold up:
+      <ul class="tight">
+        <li>
+          The GC sweep must consider loop <code>id</code>s referenced by
+          <em>every saved preset</em>, not just live state — otherwise switching away from a preset
+          would look like an orphan and get swept before you switch back to it.
+        </li>
+        <li>
+          A real gap, accepted for now: loops are deliberately excluded from the URL, but a plain
+          reload of an <em>unsaved</em> song currently survives via the URL for everything else
+          (sections/arrangement/playback/mix). Loops can't ride along, so an unsaved song's
+          loop-to-section link won't survive a bare reload — only a saved-and-reloaded preset will.
+          Logged as a known limitation rather than solved with a third persistence channel; revisit
+          only if it turns out to matter in practice.
+        </li>
+      </ul>
+    </div>
+    <div class="open-q">
+      <strong>Phase 3 — lift the one-loop-per-section cap.</strong> The actual multi-loop feature: N
+      players/effects chains per section (likely means the looper finally deserves its own module,
+      e.g. <code>progression-looper.ts</code>, rather than staying folded into
+      <code>progression-audio.ts</code>), real per-loop mix UI, mute-during-recording extended to
+      sibling loops, loops round-tripping through id-keyed IndexedDB rows for real, the GC sweep
+      actually implemented. Deliberately left underspecified — no sense detailing this before phases
+      1-2 land and inform it.
+    </div>
 
     <h3>What this enables</h3>
     <ul class="tight">
