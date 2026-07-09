@@ -462,15 +462,48 @@ interface Section {
       <code>idle | arming | recording</code>. Invisible for a single-section song (section-start ==
       song-start); a real, accepted behavior change for a multi-section arrangement with an existing
       loop — its restart cadence/length changes the moment this ships. Flagged, not mitigated, since
-      the feature is still experimental. <br /><br />
-      <strong>This is also what makes cross-song (preset) persistence work.</strong> "Song" here
-      means <code>preset</code> — the only named, switchable saved-song concept this app has.
-      Presets already serialize the full <code>sections</code> array (<code
+      the feature is still experimental.
+    </div>
+    <div class="decided">
+      <strong>Phase 2 also allows one loop per section, not one loop per song.</strong> A
+      multi-section song can carry a different loop on each section — recording while section 2 is
+      active attaches the loop to section 2, independent of whatever section 1 already has. Because
+      sections play sequentially, never simultaneously, at most one section's loop is ever audible
+      at a time, so this still needs only a single shared <code>Tone.Player</code> + effects chain,
+      reloaded with whichever section's buffer is active — not the N-concurrent-player setup Phase 3
+      needs for actual layering.
+    </div>
+    <div class="decided">
+      <strong>Phase 2 also confines playback to the target section while recording.</strong> Arming
+      a recording switches the transport to loop just that section — its own chords/bass/drums,
+      repeating — instead of continuing through the full arrangement. This holds through arm →
+      record → looping, so auditioning and re-recording a take happens against a tight loop of just
+      that section, not the whole song; pressing Stop returns to normal full-arrangement playback.
+      Implemented by treating the target section as the transport's loop target for the duration,
+      reusing the existing jump/seek machinery (<code>queueJump</code>/<code>seekToPos</code>)
+      rather than new Part-boundary logic.
+    </div>
+    <div class="decided">
+      <strong>Phase 2 also scopes the mixer to the selected section.</strong> The Looper group in
+      the Mix sheet reflects whichever section is currently active or selected in the song scrubber
+      — its own volume/mute/compression/highpass/limiter, read from and written to that section's
+      <code>LoopRef</code> rather than a single flat set of engine values. Selecting a different
+      section (the same scrubber tap already used for playback position) brings that section's loop
+      into the mixer; if the selected section has no loop, every control in the group is
+      disabled/dimmed rather than hidden. Per-loop setter methods (<code>setLoopVolume</code>,
+      <code>setLoopMuted</code>, etc.) take a section reference and route through the same
+      <code>updateSection</code>-style mutation as other section edits, rather than the engine-only
+      bypass the single-loop version used.
+    </div>
+    <div class="decided">
+      <strong>Phase 2 also makes cross-song persistence work for free.</strong> "Song" here means
+      <code>preset</code> — the only named, switchable saved-song concept this app has. Presets
+      already serialize the full <code>sections</code> array (<code
         >PresetState = Omit&lt;AppState, "activeSection"&gt;</code
-      >), so once loops live on <code>Section</code>, saving/loading a preset carries its loops for
-      free: record a loop in song 1, switch to song 2 and record a different one, switch back — both
-      are just preset loads, no new mechanism needed for the metadata half. Two things this phase
-      specifically needs to hold up:
+      >), so once loops live on <code>Section</code>, saving/loading a preset carries its loops
+      along: record a loop in song 1, switch to song 2 and record a different one, switch back —
+      both are just preset loads, no new mechanism needed for the metadata half. Two things this
+      depends on:
       <ul class="tight">
         <li>
           The GC sweep must consider loop <code>id</code>s referenced by
@@ -478,12 +511,10 @@ interface Section {
           would look like an orphan and get swept before you switch back to it.
         </li>
         <li>
-          A real gap, accepted for now: loops are deliberately excluded from the URL, but a plain
-          reload of an <em>unsaved</em> song currently survives via the URL for everything else
-          (sections/arrangement/playback/mix). Loops can't ride along, so an unsaved song's
-          loop-to-section link won't survive a bare reload — only a saved-and-reloaded preset will.
-          Logged as a known limitation rather than solved with a third persistence channel; revisit
-          only if it turns out to matter in practice.
+          Loops are deliberately excluded from the URL, so a plain reload of an
+          <em>unsaved</em> song won't carry its loop-to-section links the way it carries everything
+          else (sections/arrangement/playback/mix) — only a saved-and-reloaded preset does. Accepted
+          as a known limitation rather than a third persistence channel.
         </li>
       </ul>
     </div>
@@ -491,20 +522,26 @@ interface Section {
       <strong>Phase 3 — lift the one-loop-per-section cap.</strong> The actual multi-loop feature: N
       players/effects chains per section (likely means the looper finally deserves its own module,
       e.g. <code>progression-looper.ts</code>, rather than staying folded into
-      <code>progression-audio.ts</code>), real per-loop mix UI, mute-during-recording extended to
-      sibling loops, loops round-tripping through id-keyed IndexedDB rows for real, the GC sweep
-      actually implemented. Deliberately left underspecified — no sense detailing this before phases
-      1-2 land and inform it.
+      <code>progression-audio.ts</code>), the Looper mixer group becoming a list of rows — one per
+      loop on the selected section — instead of one, mute-during-recording extended to sibling
+      loops, loops round-tripping through id-keyed IndexedDB rows for real, the GC sweep actually
+      implemented. Deliberately left underspecified — no sense detailing this before phases 1-2 land
+      and inform it.
     </div>
 
     <h3>What this enables</h3>
     <ul class="tight">
       <li>
+        Different sections in the same song can each carry their own loop — no longer one loop for
+        the whole song
+      </li>
+      <li>
         Multiple independent loops stacked on one section — real loop-pedal-style layering, not a
         single track
       </li>
       <li>
-        Per-loop volume/mute/compression/highpass/limiter, so each take can be tuned on its own
+        Per-loop volume/mute/compression/highpass/limiter, tuned by selecting a section in the
+        scrubber and opening the Mix sheet
       </li>
       <li>
         Loops saved and reloaded as part of a preset, alongside the progression they belong to
@@ -512,6 +549,9 @@ interface Section {
       <li>
         Every occurrence of a repeated section plays the same loop set automatically, no extra sync
         work
+      </li>
+      <li>
+        Recording plays back just the section being worked on, not the whole song, until you stop
       </li>
       <li>
         A one-click "silence everything" option for recording without headphones, on top of per-loop
@@ -527,6 +567,10 @@ interface Section {
         needed, it's most likely an additive config layer keyed by arrangement position (e.g. "mute
         loop X on the 2nd occurrence of section 1"), not a change to
         <code>Section.loops</code> itself.
+      </li>
+      <li>
+        While recording, you only hear the section being worked on — no live preview against the
+        rest of the song until you stop and press play again
       </li>
       <li>
         Loops don't travel through shared URLs — a shared link carries chords/arrangement only
