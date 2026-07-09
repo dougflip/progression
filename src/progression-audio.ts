@@ -32,6 +32,20 @@ interface Channels {
   loop: Tone.Channel;
 }
 
+// Per-loop metadata — local to this module for now; moves to progression-core.ts
+// and attaches to Section once loops are per-section (Phase 2 of the multi-loop
+// data model, see docs-internal/looper.html). Capped at length 1 this phase.
+interface LoopRef {
+  id: string;
+  label?: string;
+  capturedBars: number;
+  volume: number;
+  muted: boolean;
+  compression: number;
+  highpass: boolean;
+  limiter: boolean;
+}
+
 // Single-lap event — shift is resolved at callback time via _currentShift
 interface PartEvent {
   time: string;
@@ -76,30 +90,37 @@ function safeCall(obj: unknown, method: "stop" | "dispose"): void {
 // accepted for tempo changes covers a length mismatch too).
 
 interface StoredLoop {
+  id: string;
   blob: Blob;
   capturedSongBars: number;
 }
 
 const LOOP_DB_NAME = "progression-looper";
-const LOOP_DB_VERSION = 1;
+// v2 added `id` to the stored record — experimental/unreleased feature, so the
+// upgrade wipes the old store rather than migrating it.
+const LOOP_DB_VERSION = 2;
 const LOOP_STORE_NAME = "loop";
 const LOOP_RECORD_KEY = "current";
 
 function _openLoopDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(LOOP_DB_NAME, LOOP_DB_VERSION);
-    req.onupgradeneeded = () => req.result.createObjectStore(LOOP_STORE_NAME);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (db.objectStoreNames.contains(LOOP_STORE_NAME)) db.deleteObjectStore(LOOP_STORE_NAME);
+      db.createObjectStore(LOOP_STORE_NAME);
+    };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
 }
 
-async function _saveLoopToDb(blob: Blob, capturedSongBars: number): Promise<void> {
+async function _saveLoopToDb(blob: Blob, capturedSongBars: number, id: string): Promise<void> {
   try {
     const db = await _openLoopDb();
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(LOOP_STORE_NAME, "readwrite");
-      tx.objectStore(LOOP_STORE_NAME).put({ blob, capturedSongBars }, LOOP_RECORD_KEY);
+      tx.objectStore(LOOP_STORE_NAME).put({ id, blob, capturedSongBars }, LOOP_RECORD_KEY);
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
@@ -200,21 +221,34 @@ export function makeProgressionAudio(): AudioEngine {
   let _looperState: LooperState = "idle";
   let _muteDuringRecording = false;
   let _muteOverrideActive = false;
-  let _capturedSongBars = 0;
   let _loopOffsetMs = 0;
-  let _loopVolume = 100;
-  let _loopMuted = false;
   let _rawLoopBuffer: AudioBuffer | null = null; // full decode, kept so the offset can be re-tweaked without re-recording
   let _userMedia: Tone.UserMedia | null = null;
   let _recorder: Tone.Recorder | null = null;
   let _loopPlayer: Tone.Player | null = null;
   let _onLooperStateChange: ((state: LooperState) => void) | null = null;
 
-  // ── Loop cleanup effects (research phase — on/off toggles so their audible
-  // effect can be A/B'd, not tuned) ──────────────────────────────────────────
-  let _loopCompression = 0; // 0-100, always in the signal path — 0 is transparent
-  let _loopHighpassEnabled = false;
-  let _loopLimiterEnabled = false;
+  // Metadata for the loop(s) actually captured — capped at length 1 this
+  // phase. Kept separate from _loopDefaults below: this is "what the current
+  // loop is configured as," not "what a new loop should start out as."
+  let _loops: LoopRef[] = [];
+
+  // Config a setter call applies to when no loop exists yet (e.g. persisted
+  // mixer values applied at boot, before restoreLoop() resolves) — and what a
+  // freshly captured or restored loop seeds its own settings from. Setters
+  // always write here in addition to _loops[0], so "record → delete →
+  // re-record" and "reload the page" both keep whatever was last configured.
+  let _loopDefaults = {
+    volume: 100,
+    muted: false,
+    compression: 0, // 0-100, always in the signal path — 0 is transparent
+    highpass: false,
+    limiter: false,
+  };
+
+  // ── Loop cleanup effect nodes (research phase — on/off toggles so their
+  // audible effect can be A/B'd, not tuned) — shared chain, one loop at a
+  // time this phase ───────────────────────────────────────────────────────
   let _loopHighpassNode: Tone.Filter | null = null;
   let _loopCompressorNode: Tone.Compressor | null = null;
   let _loopLimiterNode: Tone.Limiter | null = null;
@@ -272,8 +306,9 @@ export function makeProgressionAudio(): AudioEngine {
   // "loop" calls happen at boot (before any playback has started).
   function _syncLoopMixToChannel(): void {
     if (!_channels) return;
-    _channels.loop.mute = _loopMuted;
-    if (!_loopMuted) _channels.loop.volume.value = _toDb(_loopVolume);
+    const { volume, muted } = _loops[0] ?? _loopDefaults;
+    _channels.loop.mute = muted;
+    if (!muted) _channels.loop.volume.value = _toDb(volume);
   }
 
   function _syncMixToChannels(mix: {
@@ -652,7 +687,7 @@ export function makeProgressionAudio(): AudioEngine {
   // simpler to A/B by ear than exposing threshold/ratio separately.
   function _applyLoopCompressionParams(): void {
     if (!_loopCompressorNode) return;
-    const amount = _loopCompression / 100;
+    const amount = (_loops[0] ?? _loopDefaults).compression / 100;
     _loopCompressorNode.threshold.value = -amount * 30;
     _loopCompressorNode.ratio.value = 1 + amount * 11;
   }
@@ -670,14 +705,15 @@ export function makeProgressionAudio(): AudioEngine {
       !_loopLimiterNode
     )
       return;
+    const { highpass, limiter } = _loops[0] ?? _loopDefaults;
     _loopPlayer.disconnect();
     _loopHighpassNode.disconnect();
     _loopCompressorNode.disconnect();
     _loopLimiterNode.disconnect();
     const chain: Tone.ToneAudioNode[] = [];
-    if (_loopHighpassEnabled) chain.push(_loopHighpassNode);
+    if (highpass) chain.push(_loopHighpassNode);
     chain.push(_loopCompressorNode);
-    if (_loopLimiterEnabled) chain.push(_loopLimiterNode);
+    if (limiter) chain.push(_loopLimiterNode);
     chain.push(_channels.loop);
     _loopPlayer.chain(...chain);
   }
@@ -695,7 +731,7 @@ export function makeProgressionAudio(): AudioEngine {
       _rewireLoopChain();
     }
     _loopPlayer.buffer = new Tone.ToneAudioBuffer(trimmed);
-    _capturedSongBars = _songBars;
+    if (_loops[0]) _loops[0].capturedBars = _songBars;
   }
 
   async function _processRecordedBlob(blob: Blob): Promise<void> {
@@ -703,8 +739,9 @@ export function makeProgressionAudio(): AudioEngine {
       const arrayBuffer = await blob.arrayBuffer();
       const ctx = Tone.getContext().rawContext as unknown as AudioContext;
       _rawLoopBuffer = await ctx.decodeAudioData(arrayBuffer);
+      _loops = [{ id: crypto.randomUUID(), capturedBars: _songBars, ..._loopDefaults }];
       _applyLoopOffsetAndTrim();
-      await _saveLoopToDb(blob, _songBars);
+      await _saveLoopToDb(blob, _songBars, _loops[0]!.id);
     } catch (e) {
       console.warn("Loop decode failed:", e);
       _setLooperState("idle");
@@ -1167,8 +1204,10 @@ export function makeProgressionAudio(): AudioEngine {
 
     setVolume(channel: "chords" | "bass" | "drums" | "master" | "loop", value: number): void {
       if (channel === "loop") {
-        _loopVolume = value;
-        if (_channels && !_loopMuted) _channels.loop.volume.value = _toDb(value);
+        _loopDefaults.volume = value;
+        if (_loops[0]) _loops[0].volume = value;
+        const muted = _loops[0]?.muted ?? _loopDefaults.muted;
+        if (_channels && !muted) _channels.loop.volume.value = _toDb(value);
         return;
       }
       if (!_channels) return;
@@ -1194,10 +1233,12 @@ export function makeProgressionAudio(): AudioEngine {
 
     setMute(channel: "chords" | "bass" | "drums" | "loop", muted: boolean): void {
       if (channel === "loop") {
-        _loopMuted = muted;
+        _loopDefaults.muted = muted;
+        if (_loops[0]) _loops[0].muted = muted;
         if (_channels) {
           _channels.loop.mute = muted;
-          if (!muted) _channels.loop.volume.value = _toDb(_loopVolume);
+          if (!muted)
+            _channels.loop.volume.value = _toDb(_loops[0]?.volume ?? _loopDefaults.volume);
         }
         return;
       }
@@ -1275,7 +1316,7 @@ export function makeProgressionAudio(): AudioEngine {
       safeCall(_loopPlayer, "dispose");
       _loopPlayer = null;
       _rawLoopBuffer = null;
-      _capturedSongBars = 0;
+      _loops = []; // _loopDefaults deliberately untouched — next recording inherits it
       _setLooperState("idle");
       void _deleteLoopFromDb();
     },
@@ -1288,17 +1329,20 @@ export function makeProgressionAudio(): AudioEngine {
     },
 
     setLoopCompression(amount: number): void {
-      _loopCompression = amount;
+      _loopDefaults.compression = amount;
+      if (_loops[0]) _loops[0].compression = amount;
       _applyLoopCompressionParams();
     },
 
     setLoopHighpass(enabled: boolean): void {
-      _loopHighpassEnabled = enabled;
+      _loopDefaults.highpass = enabled;
+      if (_loops[0]) _loops[0].highpass = enabled;
       _rewireLoopChain();
     },
 
     setLoopLimiter(enabled: boolean): void {
-      _loopLimiterEnabled = enabled;
+      _loopDefaults.limiter = enabled;
+      if (_loops[0]) _loops[0].limiter = enabled;
       _rewireLoopChain();
     },
 
@@ -1310,7 +1354,7 @@ export function makeProgressionAudio(): AudioEngine {
         const arrayBuffer = await record.blob.arrayBuffer();
         const ctx = Tone.getContext().rawContext as unknown as AudioContext;
         _rawLoopBuffer = await ctx.decodeAudioData(arrayBuffer);
-        _capturedSongBars = record.capturedSongBars;
+        _loops = [{ id: record.id, capturedBars: record.capturedSongBars, ..._loopDefaults }];
         // _loopPlayer is intentionally not built yet — _songBars/_channels
         // aren't known until the next start(), which finishes the job.
         _setLooperState("looping");

@@ -351,6 +351,19 @@
     </table>
 
     <h2 id="multi-loop-model">Multi-loop data model</h2>
+
+    <div class="note">
+      <strong
+        >Unreleased — backward compatibility is not a goal, for any phase of this build.</strong
+      >
+      Only the developer is dogfooding this; nobody else has recorded loops that need to keep
+      working. If a cleaner shape for the current phase or a later one requires breaking the stored
+      data format, an existing setter signature, or in-progress recordings, just break it — bump the
+      IndexedDB version and wipe the store, change a method signature, whatever's cleanest. Don't
+      spend effort on migration code, optional/fallback fields, or preserving old behavior "just in
+      case." Optimize purely for the best shape to land on across Phases 1-3.
+    </div>
+
     <p class="status">where we're headed — designed, not built</p>
     <p>
       What it takes to go from today's single fixed loop to
@@ -452,6 +465,31 @@ interface Section {
         >Section</code
       >
       involvement yet, no UX change.
+    </div>
+    <div class="decided">
+      <strong>Phase 1 implementation.</strong> <code>LoopRef</code> stays local to
+      <code>progression-audio.ts</code> — it only moves to <code>progression-core.ts</code> when
+      <code>Section</code> needs it (Phase 2). <code>AudioEngine</code>'s public surface is
+      unchanged; setters keep today's flat signatures and target <code>_loops[0]</code> internally.
+      <code>id</code> (<code>crypto.randomUUID()</code>) is generated per loop and persisted in the
+      IndexedDB record now — not because Phase 1 needs it for anything, but it's free and gets Phase
+      3's id-keyed rows closer. Since the feature is unreleased/experimental, the schema change
+      bumps <code>LOOP_DB_VERSION</code> and wipes the old object store rather than writing
+      migration/fallback code for the old shape — no existing data is worth preserving compatibility
+      for.
+    </div>
+    <div class="decided">
+      <strong
+        >Volume/mute/compression/highpass/limiter default from a small
+        <code>_loopDefaults</code> bucket, not per-loop persistence.</strong
+      >
+      These settings still live in <code>app.ts</code>'s <code>localStorage</code> keys, applied via
+      the same setter calls as today. Those setters always write into
+      <code>_loopDefaults</code> (five fields, not a full <code>LoopRef</code>) and additionally
+      mirror into <code>_loops[0]</code> when a loop exists; a newly captured or restored loop seeds
+      from <code>_loopDefaults</code>. Not a compatibility shim — it's what keeps "record, delete,
+      re-record" and "reload the page" behaving sensibly while this is actively dogfooded through
+      the next few phases, with zero <code>app.ts</code> changes needed.
     </div>
     <div class="decided">
       <strong>Phase 2 — attach to a section, fix the sync boundary.</strong>
