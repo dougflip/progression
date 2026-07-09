@@ -67,14 +67,11 @@ function safeCall(obj: unknown, method: "stop" | "dispose"): void {
   }
 }
 
-// ── Loop persistence (spike) ─────────────────────────────────────────────────
-// IndexedDB, not localStorage — the recorded blob is binary and can be a few
-// hundred KB, well past localStorage's string-only ~5-10MB practical limit.
-// Single fixed record: no loop library, just "the current loop," matching the
-// single-track scope of this spike. No auto-invalidation on restore — if the
-// current progression doesn't match what was recorded, that's left entirely
-// to the player to notice and manage (same graceful truncate/gap already
-// accepted for tempo changes covers a length mismatch too).
+// ── Loop persistence ──────────────────────────────────────────────────────────
+// IndexedDB, not localStorage — recorded blobs are binary and can be a few
+// hundred KB each, well past localStorage's string-only ~5-10MB practical
+// limit. One row per loop id (keyPath: "id") — sections can each hold their
+// own loop simultaneously, even though only one is ever audible at a time.
 
 interface StoredLoop {
   id: string;
@@ -83,11 +80,11 @@ interface StoredLoop {
 }
 
 const LOOP_DB_NAME = "progression-looper";
-// v2 added `id` to the stored record — experimental/unreleased feature, so the
-// upgrade wipes the old store rather than migrating it.
-const LOOP_DB_VERSION = 2;
+// v3: real multi-row storage keyed by id (was a single fixed "current"
+// record) — experimental/unreleased feature, so the upgrade wipes the old
+// store rather than migrating it.
+const LOOP_DB_VERSION = 3;
 const LOOP_STORE_NAME = "loop";
-const LOOP_RECORD_KEY = "current";
 
 function _openLoopDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -95,7 +92,7 @@ function _openLoopDb(): Promise<IDBDatabase> {
     req.onupgradeneeded = () => {
       const db = req.result;
       if (db.objectStoreNames.contains(LOOP_STORE_NAME)) db.deleteObjectStore(LOOP_STORE_NAME);
-      db.createObjectStore(LOOP_STORE_NAME);
+      db.createObjectStore(LOOP_STORE_NAME, { keyPath: "id" });
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -107,7 +104,7 @@ async function _saveLoopToDb(blob: Blob, capturedSongBars: number, id: string): 
     const db = await _openLoopDb();
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(LOOP_STORE_NAME, "readwrite");
-      tx.objectStore(LOOP_STORE_NAME).put({ id, blob, capturedSongBars }, LOOP_RECORD_KEY);
+      tx.objectStore(LOOP_STORE_NAME).put({ id, blob, capturedSongBars });
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
@@ -117,12 +114,12 @@ async function _saveLoopToDb(blob: Blob, capturedSongBars: number, id: string): 
   }
 }
 
-async function _loadLoopFromDb(): Promise<StoredLoop | null> {
+async function _loadLoopFromDbById(id: string): Promise<StoredLoop | null> {
   try {
     const db = await _openLoopDb();
     const result = await new Promise<StoredLoop | null>((resolve, reject) => {
       const tx = db.transaction(LOOP_STORE_NAME, "readonly");
-      const req = tx.objectStore(LOOP_STORE_NAME).get(LOOP_RECORD_KEY);
+      const req = tx.objectStore(LOOP_STORE_NAME).get(id);
       req.onsuccess = () => resolve((req.result as StoredLoop | undefined) ?? null);
       req.onerror = () => reject(req.error);
     });
@@ -134,12 +131,12 @@ async function _loadLoopFromDb(): Promise<StoredLoop | null> {
   }
 }
 
-async function _deleteLoopFromDb(): Promise<void> {
+async function _deleteLoopFromDb(id: string): Promise<void> {
   try {
     const db = await _openLoopDb();
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(LOOP_STORE_NAME, "readwrite");
-      tx.objectStore(LOOP_STORE_NAME).delete(LOOP_RECORD_KEY);
+      tx.objectStore(LOOP_STORE_NAME).delete(id);
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
@@ -198,34 +195,41 @@ export function makeProgressionAudio(): AudioEngine {
   let _pendingJump: number | null = null;
   let _pendingKeyJump: number | null = null;
   let _currentPosIndex = 0;
+  let _currentSectionIndex = 0; // which Section (by array index) is currently sounding
   let _currentLap = 0; // transport-derived; used only for lap boundary detection
   let _songBars = 0;
+  let _sectionBars: Record<number, number> = {}; // each section's own bar length (its progression, not the whole arrangement)
   let _advance = "auto";
   let _muteState = { chordsOn: true, bassOn: true, drumsOn: true };
   let _volState = { chords: 50, bass: 100, drums: 100, master: 100 };
 
-  // ── Looper state (spike — single fixed-length loop, no overdub) ───────────
+  // ── Looper state — one loop per section, one shared player/effects chain
+  // swapped between sections as they become active ──────────────────────────
   let _looperState: LooperState = "idle";
   let _muteDuringRecording = false;
   let _muteOverrideActive = false;
   let _loopOffsetMs = 0;
-  let _rawLoopBuffer: AudioBuffer | null = null; // full decode, kept so the offset can be re-tweaked without re-recording
   let _userMedia: Tone.UserMedia | null = null;
   let _recorder: Tone.Recorder | null = null;
   let _loopPlayer: Tone.Player | null = null;
   let _onLooperStateChange: ((state: LooperState) => void) | null = null;
-  let _onLoopChanged: ((loop: LoopRef | null) => void) | null = null;
+  let _onSectionLoopChanged: ((sectionIndex: number, loop: LoopRef | null) => void) | null = null;
 
-  // Metadata for the loop(s) actually captured — capped at length 1 this
-  // phase. Kept separate from _loopDefaults below: this is "what the current
-  // loop is configured as," not "what a new loop should start out as."
-  let _loops: LoopRef[] = [];
+  // Which section a capture-in-progress targets, and which section owns
+  // whichever loop id each array slot names — the engine's only knowledge of
+  // "sections" (it never reads AppState directly; progression-core.ts keeps
+  // this in sync via setSectionLoopIds, see docs-internal/looper.html#phases).
+  let _recordingSectionIndex: number | null = null;
+  let _sectionLoopIds: (string | null)[] = [];
 
-  // Config a setter call applies to when no loop exists yet (e.g. persisted
-  // mixer values applied at boot, before restoreLoop() resolves) — and what a
-  // freshly captured or restored loop seeds its own settings from. Setters
-  // always write here in addition to _loops[0], so "record → delete →
-  // re-record" and "reload the page" both keep whatever was last configured.
+  // The shared player's current buffer, and a decode cache keyed by loop id
+  // so re-entering a section doesn't re-fetch/re-decode from IndexedDB.
+  let _loadedLoopId: string | null = null;
+  const _loopBufferCache = new Map<string, AudioBuffer>();
+
+  // Config applied to whichever loop is currently loaded — not yet per-section
+  // (that's Phase 2d); every loop shares these until the mixer becomes
+  // section-scoped.
   let _loopDefaults = {
     volume: 100,
     muted: false,
@@ -294,9 +298,8 @@ export function makeProgressionAudio(): AudioEngine {
   // "loop" calls happen at boot (before any playback has started).
   function _syncLoopMixToChannel(): void {
     if (!_channels) return;
-    const { volume, muted } = _loops[0] ?? _loopDefaults;
-    _channels.loop.mute = muted;
-    if (!muted) _channels.loop.volume.value = _toDb(volume);
+    _channels.loop.mute = _loopDefaults.muted;
+    if (!_loopDefaults.muted) _channels.loop.volume.value = _toDb(_loopDefaults.volume);
   }
 
   function _syncMixToChannels(mix: {
@@ -436,6 +439,15 @@ export function makeProgressionAudio(): AudioEngine {
       offsetAcc += c.bars;
     }
 
+    // Each section's own bar length (its progression, not the whole
+    // arrangement) — a section can occur at multiple posIndexes (e.g.
+    // arrangement "1 2 1 2"), so only the first occurrence sets it.
+    const posBars: Record<number, number> = {};
+    for (const c of chords) posBars[c.posIndex] = (posBars[c.posIndex] ?? 0) + c.bars;
+    const sectionBars: Record<number, number> = {};
+    for (const c of chords) sectionBars[c.sectionIndex] ??= posBars[c.posIndex]!;
+    _sectionBars = sectionBars;
+
     const posSectionNumerals: Record<number, string[]> = {};
     const posSectionTokens: Record<number, string[]> = {};
     for (const c of chords) {
@@ -490,8 +502,6 @@ export function makeProgressionAudio(): AudioEngine {
           if (_voicingResetEachLap) _prevUpper = null;
         }
         // No transport seek, no return — chord plays immediately with updated shift
-
-        _advanceLooperAtBoundary(time);
       }
 
       // ── Manual mode: intercept section boundaries ────────────────────────────
@@ -520,6 +530,11 @@ export function makeProgressionAudio(): AudioEngine {
         Tone.Transport.position = `${Math.round(posOffsets[target] ?? 0)}:0:0`;
         return;
       }
+
+      // ── Looper: section-entry sync — only for events that actually play,
+      // never one a manual-hold seek above redirects away from ────────────────
+      _currentSectionIndex = ev.sectionIndex;
+      if (ev.chipIndex === 0) _onSectionEntry(ev.sectionIndex, time);
 
       // ── Compute voiced notes from current shift ──────────────────────────────
       const audioShift = clampShift(_currentShift);
@@ -675,7 +690,7 @@ export function makeProgressionAudio(): AudioEngine {
   // simpler to A/B by ear than exposing threshold/ratio separately.
   function _applyLoopCompressionParams(): void {
     if (!_loopCompressorNode) return;
-    const amount = (_loops[0] ?? _loopDefaults).compression / 100;
+    const amount = _loopDefaults.compression / 100;
     _loopCompressorNode.threshold.value = -amount * 30;
     _loopCompressorNode.ratio.value = 1 + amount * 11;
   }
@@ -693,47 +708,30 @@ export function makeProgressionAudio(): AudioEngine {
       !_loopLimiterNode
     )
       return;
-    const { highpass, limiter } = _loops[0] ?? _loopDefaults;
     _loopPlayer.disconnect();
     _loopHighpassNode.disconnect();
     _loopCompressorNode.disconnect();
     _loopLimiterNode.disconnect();
     const chain: Tone.ToneAudioNode[] = [];
-    if (highpass) chain.push(_loopHighpassNode);
+    if (_loopDefaults.highpass) chain.push(_loopHighpassNode);
     chain.push(_loopCompressorNode);
-    if (limiter) chain.push(_loopLimiterNode);
+    if (_loopDefaults.limiter) chain.push(_loopLimiterNode);
     chain.push(_channels.loop);
     _loopPlayer.chain(...chain);
   }
 
-  // Re-applies the current offset to the raw decoded recording. Called right
-  // after a fresh recording, and again whenever the user tweaks the offset
-  // setting — no need to re-record just to nudge the sync.
-  function _applyLoopOffsetAndTrim(): void {
-    if (!_rawLoopBuffer || !_channels) return;
-    const targetSeconds = Tone.Time(`${_songBars}m`).toSeconds() as number;
-    const trimmed = _buildAlignedBuffer(_rawLoopBuffer, targetSeconds, _loopOffsetMs);
-    if (!_loopPlayer) {
-      _loopPlayer = new Tone.Player();
-      _ensureLoopEffects();
-      _rewireLoopChain();
-    }
-    _loopPlayer.buffer = new Tone.ToneAudioBuffer(trimmed);
-    if (_loops[0]) _loops[0].capturedBars = _songBars;
-  }
-
-  async function _processRecordedBlob(blob: Blob): Promise<void> {
+  async function _processRecordedBlob(blob: Blob, sectionIndex: number): Promise<void> {
     try {
       const arrayBuffer = await blob.arrayBuffer();
       const ctx = Tone.getContext().rawContext as unknown as AudioContext;
-      _rawLoopBuffer = await ctx.decodeAudioData(arrayBuffer);
-      _loops = [{ id: crypto.randomUUID(), capturedBars: _songBars, ..._loopDefaults }];
-      _applyLoopOffsetAndTrim();
-      await _saveLoopToDb(blob, _songBars, _loops[0]!.id);
-      _onLoopChanged?.({ ..._loops[0]! });
+      const raw = await ctx.decodeAudioData(arrayBuffer);
+      const id = crypto.randomUUID();
+      _loopBufferCache.set(id, raw); // avoids re-fetching what we just decoded on this section's next entry
+      const capturedBars = _sectionBars[sectionIndex] ?? 0;
+      await _saveLoopToDb(blob, capturedBars, id);
+      _onSectionLoopChanged?.(sectionIndex, { id, capturedBars, ..._loopDefaults });
     } catch (e) {
       console.warn("Loop decode failed:", e);
-      _setLooperState("idle");
     }
   }
 
@@ -745,16 +743,77 @@ export function makeProgressionAudio(): AudioEngine {
     });
   }
 
-  // Called once per lap boundary (from inside _buildPart's Part callback, the
-  // same transportLapIndex > _currentLap check that advances the key cycle) —
-  // NOT a fixed 1-bar pre-roll. Recording always starts exactly on the
-  // progression's own bar 1, however long that takes from the moment the user
-  // arms it, so the recorded loop's bar 1 always matches the chord grid's bar
-  // 1. Loop playback restart mirrors the "always force-restart" pattern
-  // already used for drum samples — no Player.loop, no .sync(), so drift
-  // can never accumulate.
-  function _advanceLooperAtBoundary(time: number): void {
+  // Loads whichever loop belongs to `sectionIndex` (per _sectionLoopIds) into
+  // the shared player and starts it, swapping the buffer if a different loop
+  // was previously loaded. Fetch-decode-cache is async, so a cache miss means
+  // an audible gap and a best-effort (not sample-accurate) restart — accepted
+  // for now, see docs-internal/looper.html#phases; a cache hit stays precise.
+  async function _swapToSectionLoop(
+    sectionIndex: number,
+    time: number,
+    offsetSeconds = 0,
+  ): Promise<void> {
+    const id = _sectionLoopIds[sectionIndex] ?? null;
+    if (!id) {
+      _loadedLoopId = null;
+      safeCall(_loopPlayer, "stop");
+      return;
+    }
+    if (id === _loadedLoopId) {
+      _restartLoopPlayer(time, offsetSeconds);
+      return;
+    }
+    let raw = _loopBufferCache.get(id);
+    let precise = true;
+    if (!raw) {
+      precise = false;
+      const record = await _loadLoopFromDbById(id);
+      if (!record) return; // orphaned reference — nothing to play, degrade silently
+      try {
+        const arrayBuffer = await record.blob.arrayBuffer();
+        const ctx = Tone.getContext().rawContext as unknown as AudioContext;
+        raw = await ctx.decodeAudioData(arrayBuffer);
+        _loopBufferCache.set(id, raw);
+      } catch (e) {
+        console.warn("Loop decode failed:", e);
+        return;
+      }
+    }
+    // Stale by the time an async fetch finished — playback already moved on.
+    if (_sectionLoopIds[sectionIndex] !== id) return;
+    if (!_channels) return;
+    const targetSeconds = Tone.Time(`${_sectionBars[sectionIndex] ?? 0}m`).toSeconds() as number;
+    const trimmed = _buildAlignedBuffer(raw, targetSeconds, _loopOffsetMs);
+    if (!_loopPlayer) {
+      _loopPlayer = new Tone.Player();
+      _ensureLoopEffects();
+      _rewireLoopChain();
+    }
+    _loopPlayer.buffer = new Tone.ToneAudioBuffer(trimmed);
+    _loadedLoopId = id;
+    _restartLoopPlayer(precise ? time : Tone.now(), offsetSeconds);
+  }
+
+  // Called once per section-entry — the first bar of whichever
+  // section-occurrence is now playing, whether that's a genuinely new section
+  // or a manual-hold repeat of the same one (see docs-internal/looper.html#phases
+  // for why chipIndex === 0 is the right signal, and why this must only be
+  // called from events that actually play, never one a manual-hold seek
+  // redirects away from). Two independent jobs: advance the capture state
+  // machine, and swap in whichever loop belongs to this section — a sibling
+  // loop keeps playing on its own schedule even mid-capture, since capture
+  // uses the mic input, not the shared loop player.
+  function _onSectionEntry(sectionIndex: number, time: number): void {
     if (_looperState === "arming") {
+      // The cap (armLoopRecording) only checked the section active at click
+      // time — the count-in can span multiple sections before the next
+      // chipIndex === 0, so re-check here: don't record over a section that
+      // already has a loop, just keep waiting for one that doesn't.
+      if (_sectionLoopIds[sectionIndex] != null) {
+        void _swapToSectionLoop(sectionIndex, time);
+        return;
+      }
+      _recordingSectionIndex = sectionIndex;
       Tone.Draw.schedule(() => {
         if (_muteDuringRecording && _channels) {
           _muteOverrideActive = true;
@@ -778,19 +837,19 @@ export function makeProgressionAudio(): AudioEngine {
         });
       }, time);
       _setLooperState("recording", time);
-    } else if (_looperState === "recording") {
+    } else if (_looperState === "recording" && sectionIndex === _recordingSectionIndex) {
       Tone.Draw.schedule(() => {
         _restoreMuteIfOverridden();
         _recorder
           ?.stop()
-          .then((blob) => _processRecordedBlob(blob))
+          .then((blob) => _processRecordedBlob(blob, sectionIndex))
           .catch((e) => console.warn("Loop recording failed:", e));
       }, time);
-      _setLooperState("looping", time);
-      _restartLoopPlayer(time); // no-op if the buffer isn't decoded yet — retried next lap
-    } else if (_looperState === "looping") {
-      _restartLoopPlayer(time);
+      _setLooperState("idle", time);
+      _recordingSectionIndex = null;
     }
+
+    void _swapToSectionLoop(sectionIndex, time);
   }
 
   function _buildDrums(style: StyleDef, drumVariant: string, drumsOn: boolean): void {
@@ -1045,11 +1104,12 @@ export function makeProgressionAudio(): AudioEngine {
       cycle,
       customCycleKeys = [],
       mix,
+      sectionLoopIds,
       onChordTick,
       onBeatTick,
       onBarTick,
       onLooperStateChange,
-      onLoopChanged,
+      onSectionLoopChanged,
     }: AudioStartOpts): Promise<void> {
       await Tone.start();
       if ("audioSession" in navigator)
@@ -1063,11 +1123,15 @@ export function makeProgressionAudio(): AudioEngine {
       _onBeatTick = onBeatTick;
       _onBarTick = onBarTick;
       _onLooperStateChange = onLooperStateChange;
-      _onLoopChanged = onLoopChanged;
+      _onSectionLoopChanged = onSectionLoopChanged;
+      _sectionLoopIds = sectionLoopIds;
       _pendingJump = null;
       _pendingKeyJump = null;
       _currentLap = 0;
       _currentPosIndex = startPosIndex;
+      _currentSectionIndex =
+        chordSequence.find((c) => c.posIndex === startPosIndex && c.chipIndex === startChipIndex)
+          ?.sectionIndex ?? 0;
       _muteState = { chordsOn: mix.chordsOn, bassOn: mix.bassOn, drumsOn: mix.drumsOn };
 
       // Cycle / key state
@@ -1094,28 +1158,14 @@ export function makeProgressionAudio(): AudioEngine {
       Tone.Transport.position = `${startBarOffset}:0:0`;
       Tone.Transport.start();
 
-      // A captured loop is already decoded and ready — don't wait for the
-      // per-lap boundary check below (it's suppressed on the very first lap
-      // of a fresh start, so it wouldn't fire until lap 2). The per-lap
-      // force-restart still runs on top of this for ongoing sync.
-      if (_looperState === "looping" && _rawLoopBuffer) {
-        // A loop restored via restoreLoop() has a raw buffer but no Player
-        // yet — _songBars/_channels weren't known until _buildPart() above
-        // just ran, so this is the first point it can actually be built.
-        if (!_loopPlayer) _applyLoopOffsetAndTrim();
-        // Resuming mid-lap (pause/resume, or starting from a chosen section)
-        // means the progression's own clock isn't starting at bar 1 — start
-        // the loop from the equivalent point in its own buffer instead of
-        // sample 0, so it's in sync immediately rather than waiting for the
-        // next lap boundary. Wrapped by the buffer's own duration (not
-        // _songBars) since a length mismatch since capture is handled the
-        // same way tempo mismatches already are — truncate/gap, not drift.
-        const loopLengthSeconds = _loopPlayer?.loaded ? _loopPlayer.buffer.duration : 0;
-        const resumeOffsetSeconds =
-          loopLengthSeconds > 0
-            ? (Tone.Time(`${startBarOffset}m`).toSeconds() as number) % loopLengthSeconds
-            : 0;
-        _restartLoopPlayer(Tone.now(), resumeOffsetSeconds);
+      // Proactively swap in whatever loop belongs to the starting section,
+      // rather than waiting for its next natural chipIndex === 0 entry (which
+      // may not come for a while if resuming mid-section) — resuming at the
+      // equivalent point in the loop's own bars, not always its start.
+      if (_sectionLoopIds[_currentSectionIndex]) {
+        const intoSectionBars = startBarOffset - (posOffsets[startPosIndex] ?? 0);
+        const resumeOffsetSeconds = Tone.Time(`${intoSectionBars}m`).toSeconds() as number;
+        void _swapToSectionLoop(_currentSectionIndex, Tone.now(), resumeOffsetSeconds);
       }
     },
 
@@ -1126,19 +1176,16 @@ export function makeProgressionAudio(): AudioEngine {
       _pendingKeyJump = null;
       _currentLap = 0;
       _currentPosIndex = 0;
+      _currentSectionIndex = 0;
       _currentShiftIndex = 0;
       _currentShift = 0;
       _prevUpper = null;
       if (_looperState === "arming" || _looperState === "recording") {
         _cancelLoopCapture();
+        _recordingSectionIndex = null;
         _setLooperState("idle");
-      } else if (_looperState === "looping") {
-        // Stopping the Transport doesn't stop an already-started Tone.Player —
-        // it just keeps playing to the end of its own buffer. State stays
-        // "looping" (the captured loop is still valid) so a future start()
-        // resumes it; only the audible playback is cut.
-        safeCall(_loopPlayer, "stop");
       }
+      safeCall(_loopPlayer, "stop");
     },
 
     rebuild({
@@ -1150,11 +1197,13 @@ export function makeProgressionAudio(): AudioEngine {
       key,
       cycle,
       customCycleKeys = [],
+      sectionLoopIds,
     }: AudioRebuildOpts): void {
       if (Tone.Transport.state !== "started") return;
       _key = key;
       _cycle = cycle;
       _customCycleKeys = customCycleKeys;
+      _sectionLoopIds = sectionLoopIds;
 
       // Update shift array and clamp index in case cycle length changed
       _shifts = getShiftsForCycle(cycle, customCycleKeys);
@@ -1164,7 +1213,7 @@ export function makeProgressionAudio(): AudioEngine {
 
       try {
         _teardown(false, true);
-        _buildPart(chordSequence, voicing); // sets _songBars
+        _buildPart(chordSequence, voicing); // sets _songBars/_sectionBars
         _buildDrums(style, drumVariant, _muteState.drumsOn);
         _buildBass(chordSequence, style, bassVariant);
         // Sync _currentLap to current transport position so the first callback
@@ -1176,12 +1225,14 @@ export function makeProgressionAudio(): AudioEngine {
         }
         // A rebuild can happen mid-capture (e.g. style change) — spike keeps this
         // simple by always discarding rather than trying to carry capture through.
-        // A completed loop (looping) is left alone here even if _songBars changed
-        // — no auto-invalidation on mismatch; the existing force-restart-every-lap
-        // mechanism already degrades gracefully (truncate/gap), same as a tempo
-        // change, and the player is trusted to manage this themselves.
+        // An already-captured loop is left alone here even if section bar
+        // lengths changed — no auto-invalidation on mismatch; the existing
+        // force-restart-on-section-entry mechanism already degrades gracefully
+        // (truncate/gap), same as a tempo change, and the player is trusted to
+        // manage this themselves.
         if (_looperState === "arming" || _looperState === "recording") {
           _cancelLoopCapture();
+          _recordingSectionIndex = null;
           _setLooperState("idle");
         }
       } catch (e) {
@@ -1196,9 +1247,7 @@ export function makeProgressionAudio(): AudioEngine {
     setVolume(channel: "chords" | "bass" | "drums" | "master" | "loop", value: number): void {
       if (channel === "loop") {
         _loopDefaults.volume = value;
-        if (_loops[0]) _loops[0].volume = value;
-        const muted = _loops[0]?.muted ?? _loopDefaults.muted;
-        if (_channels && !muted) _channels.loop.volume.value = _toDb(value);
+        if (_channels && !_loopDefaults.muted) _channels.loop.volume.value = _toDb(value);
         return;
       }
       if (!_channels) return;
@@ -1225,11 +1274,9 @@ export function makeProgressionAudio(): AudioEngine {
     setMute(channel: "chords" | "bass" | "drums" | "loop", muted: boolean): void {
       if (channel === "loop") {
         _loopDefaults.muted = muted;
-        if (_loops[0]) _loops[0].muted = muted;
         if (_channels) {
           _channels.loop.mute = muted;
-          if (!muted)
-            _channels.loop.volume.value = _toDb(_loops[0]?.volume ?? _loopDefaults.volume);
+          if (!muted) _channels.loop.volume.value = _toDb(_loopDefaults.volume);
         }
         return;
       }
@@ -1286,6 +1333,7 @@ export function makeProgressionAudio(): AudioEngine {
       if (Tone.Transport.state !== "started" || !_channels) {
         throw new Error("Start playback before recording a loop.");
       }
+      if (_sectionLoopIds[_currentSectionIndex] != null) return; // that section already has a loop
       _muteDuringRecording = muteDuringRecording;
       if (!_userMedia) _userMedia = new Tone.UserMedia();
       await _userMedia.open();
@@ -1297,64 +1345,86 @@ export function makeProgressionAudio(): AudioEngine {
     },
 
     cancelLoopRecording(): void {
-      if (_looperState === "idle" || _looperState === "looping") return;
+      if (_looperState === "idle") return;
       if (_looperState === "recording") _cancelLoopCapture();
+      _recordingSectionIndex = null;
       _setLooperState("idle");
     },
 
-    deleteLoop(): void {
-      safeCall(_loopPlayer, "stop");
-      safeCall(_loopPlayer, "dispose");
-      _loopPlayer = null;
-      _rawLoopBuffer = null;
-      _loops = []; // _loopDefaults deliberately untouched — next recording inherits it
-      _setLooperState("idle");
-      void _deleteLoopFromDb();
-      _onLoopChanged?.(null);
+    deleteLoop(sectionIndex: number): void {
+      const id = _sectionLoopIds[sectionIndex];
+      if (!id) return;
+      if (_loadedLoopId === id) {
+        safeCall(_loopPlayer, "stop");
+        _loadedLoopId = null;
+      }
+      _loopBufferCache.delete(id);
+      _sectionLoopIds[sectionIndex] = null;
+      void _deleteLoopFromDb(id);
     },
 
     getLooperState: (): LooperState => _looperState,
-    getActiveLoop: (): LoopRef | null => (_loops[0] ? { ..._loops[0] } : null),
+
+    setSectionLoopIds(ids: (string | null)[]): void {
+      _sectionLoopIds = ids;
+      // If a bulk update drops the currently-loaded loop (e.g. "Save As"
+      // swapping every section's loop id for a freshly-copied one), stop it
+      // immediately rather than waiting for the next section-entry to
+      // notice — matches deleteLoop's existing immediate-stop behavior.
+      if (_loadedLoopId && !ids.includes(_loadedLoopId)) {
+        safeCall(_loopPlayer, "stop");
+        _loadedLoopId = null;
+      }
+    },
+
+    // Duplicates a loop under a fresh id — used by "Save As" so a forked
+    // song gets its own independent copy instead of sharing the original's
+    // IndexedDB row (see docs-internal/looper.html#phases). Returns null if
+    // the source blob is gone (orphaned reference) rather than copying
+    // nothing into something.
+    async copyLoop(id: string): Promise<string | null> {
+      const record = await _loadLoopFromDbById(id);
+      if (!record) return null;
+      const newId = crypto.randomUUID();
+      await _saveLoopToDb(record.blob, record.capturedSongBars, newId);
+      const cached = _loopBufferCache.get(id);
+      if (cached) {
+        _loopBufferCache.set(newId, cached);
+      } else {
+        try {
+          const arrayBuffer = await record.blob.arrayBuffer();
+          const ctx = Tone.getContext().rawContext as unknown as AudioContext;
+          _loopBufferCache.set(newId, await ctx.decodeAudioData(arrayBuffer));
+        } catch (e) {
+          console.warn("Loop copy: decode failed, blob still saved:", e);
+        }
+      }
+      return newId;
+    },
 
     setLoopOffsetMs(ms: number): void {
       _loopOffsetMs = ms;
-      if (_looperState === "looping" && _rawLoopBuffer && _channels) _applyLoopOffsetAndTrim();
+      if (!_loadedLoopId || !_loopPlayer) return;
+      const raw = _loopBufferCache.get(_loadedLoopId);
+      const sectionIndex = _sectionLoopIds.findIndex((id) => id === _loadedLoopId);
+      if (!raw || sectionIndex < 0) return;
+      const targetSeconds = Tone.Time(`${_sectionBars[sectionIndex] ?? 0}m`).toSeconds() as number;
+      _loopPlayer.buffer = new Tone.ToneAudioBuffer(_buildAlignedBuffer(raw, targetSeconds, ms));
     },
 
     setLoopCompression(amount: number): void {
       _loopDefaults.compression = amount;
-      if (_loops[0]) _loops[0].compression = amount;
       _applyLoopCompressionParams();
     },
 
     setLoopHighpass(enabled: boolean): void {
       _loopDefaults.highpass = enabled;
-      if (_loops[0]) _loops[0].highpass = enabled;
       _rewireLoopChain();
     },
 
     setLoopLimiter(enabled: boolean): void {
       _loopDefaults.limiter = enabled;
-      if (_loops[0]) _loops[0].limiter = enabled;
       _rewireLoopChain();
-    },
-
-    async restoreLoop(): Promise<void> {
-      if (_looperState !== "idle") return;
-      const record = await _loadLoopFromDb();
-      if (!record) return;
-      try {
-        const arrayBuffer = await record.blob.arrayBuffer();
-        const ctx = Tone.getContext().rawContext as unknown as AudioContext;
-        _rawLoopBuffer = await ctx.decodeAudioData(arrayBuffer);
-        _loops = [{ id: record.id, capturedBars: record.capturedSongBars, ..._loopDefaults }];
-        // _loopPlayer is intentionally not built yet — _songBars/_channels
-        // aren't known until the next start(), which finishes the job.
-        _setLooperState("looping");
-        _onLoopChanged?.({ ..._loops[0]! });
-      } catch (e) {
-        console.warn("Failed to restore persisted loop:", e);
-      }
     },
   };
 }

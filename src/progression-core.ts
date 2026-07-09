@@ -127,7 +127,7 @@ export interface ChordTickEvent {
   lapIndex: number;
 }
 
-export type LooperState = "idle" | "arming" | "recording" | "looping";
+export type LooperState = "idle" | "arming" | "recording";
 
 export interface AudioStartOpts {
   chordSequence: SongChord[];
@@ -144,11 +144,12 @@ export interface AudioStartOpts {
   cycle: string;
   customCycleKeys: string[];
   mix: MixSettings;
+  sectionLoopIds: (string | null)[];
   onChordTick: (ev: ChordTickEvent) => void;
   onBeatTick: (beat: number) => void;
   onBarTick: (bar: number) => void;
   onLooperStateChange: (state: LooperState) => void;
-  onLoopChanged: (loop: LoopRef | null) => void;
+  onSectionLoopChanged: (sectionIndex: number, loop: LoopRef | null) => void;
 }
 
 export interface AudioRebuildOpts {
@@ -160,6 +161,7 @@ export interface AudioRebuildOpts {
   key: string;
   cycle: string;
   customCycleKeys: string[];
+  sectionLoopIds: (string | null)[];
 }
 
 export interface AudioEngine {
@@ -179,11 +181,11 @@ export interface AudioEngine {
   getPendingKeyJump(): number | null;
   armLoopRecording(muteDuringRecording: boolean): Promise<void>;
   cancelLoopRecording(): void;
-  deleteLoop(): void;
+  deleteLoop(sectionIndex: number): void;
   getLooperState(): LooperState;
-  getActiveLoop(): LoopRef | null;
+  setSectionLoopIds(ids: (string | null)[]): void;
+  copyLoop(id: string): Promise<string | null>;
   setLoopOffsetMs(ms: number): void;
-  restoreLoop(): Promise<void>;
   setLoopCompression(amount: number): void;
   setLoopHighpass(enabled: boolean): void;
   setLoopLimiter(enabled: boolean): void;
@@ -930,11 +932,6 @@ export function makeProgressionPlayer(config: PlayerConfig) {
   };
   let _lastChordPos: PausedAt = { posIndex: 0, chipIndex: 0, lapIndex: 0 };
   let _pausedAt: PausedAt | null = null;
-  // Which section a captured loop is attributed to — fixed at capture/restore
-  // time, not re-derived from activeSection on every render. Real per-section
-  // ownership lands in Phase 2b; this is the transitional single-loop mirror
-  // (see docs-internal/looper.html#phases).
-  let _loopSectionIndex: number | null = null;
   let _loadedPreset: UserPreset | null = null;
   let _loadedBuiltinPreset: { id: string; label: string; state: PresetState } | null = null;
 
@@ -1045,6 +1042,7 @@ export function makeProgressionPlayer(config: PlayerConfig) {
           key: _state.playback.key,
           cycle: _state.playback.cycle,
           customCycleKeys: _state.playback.customCycleKeys,
+          sectionLoopIds: _sectionLoopIds(),
         });
       } catch (e) {
         config.onError?.(`Rebuild error: ${(e as Error).message}`);
@@ -1052,19 +1050,23 @@ export function makeProgressionPlayer(config: PlayerConfig) {
     }, 250);
   }
 
-  // Mirrors the engine's single loop onto whichever section it's attributed
-  // to — no rebuild, no _setStructural (this never changes what's audible).
-  function _mirrorLoopOntoSection(loop: LoopRef | null): void {
-    const index = loop ? _state.activeSection - 1 : _loopSectionIndex;
-    if (index === null) return;
-    _loopSectionIndex = loop ? index : null;
+  function _sectionLoopIds(): (string | null)[] {
+    return _state.sections.map((s) => s.loops[0]?.id ?? null);
+  }
+
+  // Writes a loop directly onto a known section — the engine tells us exactly
+  // which one (it tracks section position itself), so unlike 2a there's no
+  // guessing via activeSection. No rebuild, no _setStructural (this never
+  // changes what's audible).
+  function _setSectionLoop(sectionIndex: number, loop: LoopRef | null): void {
     _state = {
       ..._state,
       sections: _state.sections.map((s, i) =>
-        i === index ? { ...s, loops: loop ? [loop] : [] } : s,
+        i === sectionIndex ? { ...s, loops: loop ? [loop] : [] } : s,
       ),
     };
     _notify();
+    config.audio?.setSectionLoopIds(_sectionLoopIds());
   }
 
   async function _startPlayback(): Promise<void> {
@@ -1103,6 +1105,7 @@ export function makeProgressionPlayer(config: PlayerConfig) {
       cycle: _state.playback.cycle,
       customCycleKeys: _state.playback.customCycleKeys,
       mix: { ..._state.mix },
+      sectionLoopIds: _sectionLoopIds(),
       onChordTick: (ev) => {
         _lastChordPos = { posIndex: ev.posIndex, chipIndex: ev.chipIndex, lapIndex: ev.lapIndex };
         if (ev.sectionChanged) _state.activeSection = ev.sectionIndex + 1;
@@ -1111,7 +1114,7 @@ export function makeProgressionPlayer(config: PlayerConfig) {
       onBeatTick: config.onBeatTick,
       onBarTick: config.onBarTick,
       onLooperStateChange: config.onLooperStateChange,
-      onLoopChanged: _mirrorLoopOntoSection,
+      onSectionLoopChanged: _setSectionLoop,
     });
 
     config.onPlaybackChange(true);
@@ -1245,6 +1248,21 @@ export function makeProgressionPlayer(config: PlayerConfig) {
       };
     },
 
+    // Backfills loops onto the current (URL-derived) sections, matching by
+    // index — loops never travel through the URL, so a boot that resolves
+    // presetId via setLoaded*PresetContext (context/dirty-check bookkeeping
+    // only, no state re-apply) would otherwise leave a saved preset's loops
+    // missing on a plain refresh. Only touches .loops; everything else
+    // (progression, and whatever the URL already resolved) is left alone.
+    mergeSectionLoops(sections: Section[]): void {
+      _state = {
+        ..._state,
+        sections: _state.sections.map((s, i) => ({ ...s, loops: sections[i]?.loops ?? s.loops })),
+      };
+      _notify();
+      config.audio?.setSectionLoopIds(_sectionLoopIds());
+    },
+
     getUserPresets: _getUserPresets,
 
     getLoadedPreset: (): UserPreset | null => _loadedPreset,
@@ -1259,7 +1277,23 @@ export function makeProgressionPlayer(config: PlayerConfig) {
       return JSON.stringify(_toPresetState(_state)) !== JSON.stringify(_toPresetState(baseline));
     },
 
-    saveUserPreset(name: string): string {
+    // "Save As" forks a new song — it should get its own independent copy of
+    // each loop, not share the original's IndexedDB row (deleting one would
+    // silently break the other). Copies before snapshotting, into both live
+    // state and the saved preset, so the session you land in after Save As
+    // is already using the new copies, not the old ids.
+    async saveUserPreset(name: string): Promise<string> {
+      const sections = await Promise.all(
+        _state.sections.map(async (s) => {
+          const loop = s.loops[0];
+          if (!loop) return s;
+          const newId = await config.audio?.copyLoop(loop.id);
+          return { ...s, loops: newId ? [{ ...loop, id: newId }] : [] };
+        }),
+      );
+      _state = { ..._state, sections };
+      _notify();
+      config.audio?.setSectionLoopIds(_sectionLoopIds());
       const id = Date.now().toString(36);
       const preset: UserPreset = { id, name, state: _toPresetState(_state) };
       config.persist(PRESETS_STORAGE_KEY, JSON.stringify([..._getUserPresets(), preset]));
@@ -1378,25 +1412,15 @@ export function makeProgressionPlayer(config: PlayerConfig) {
       config.audio?.cancelLoopRecording();
     },
 
-    deleteLoop(): void {
-      config.audio?.deleteLoop();
+    deleteLoop(sectionIndex: number): void {
+      config.audio?.deleteLoop(sectionIndex);
+      _setSectionLoop(sectionIndex, null);
     },
 
     getLooperState: (): LooperState => config.audio?.getLooperState() ?? "idle",
 
     setLoopOffsetMs(ms: number): void {
       config.audio?.setLoopOffsetMs(ms);
-    },
-
-    restoreLoop(): Promise<void> {
-      return config.audio?.restoreLoop() ?? Promise.resolve();
-    },
-
-    // Pulls whatever the engine restored and mirrors it onto a section — the
-    // push channel above (onLoopChanged) isn't wired yet at boot, since it's
-    // only registered inside start(). Call after restoreLoop() resolves.
-    syncLoopToActiveSection(): void {
-      _mirrorLoopOntoSection(config.audio?.getActiveLoop() ?? null);
     },
 
     setLoopVolume(value: number): void {

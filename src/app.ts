@@ -126,6 +126,7 @@ function render(state: AppState): void {
   syncUrl(state);
   renderPresetIndicator();
   syncLoopBtnVisibility(state);
+  renderLoopButton(state, app.getLooperState());
 }
 
 // ── Looper (spike) ─────────────────────────────────────────────────────────
@@ -138,21 +139,30 @@ function syncLoopMixRowVisibility(): void {
   loopMixGroupEl.hidden = !looperEnabledEl.checked;
 }
 
-function onLooperStateChange(state: LooperState): void {
-  switch (state) {
-    case "idle":
-      loopBtnEl.innerHTML = '<span class="bar-icon">⏺</span><span>Record Loop</span>';
-      break;
-    case "arming":
-      loopBtnEl.innerHTML = '<span class="bar-icon">⏳</span><span>Get Ready…</span>';
-      break;
-    case "recording":
-      loopBtnEl.innerHTML = '<span class="bar-icon">●</span><span>Recording…</span>';
-      break;
-    case "looping":
-      loopBtnEl.innerHTML = '<span class="bar-icon">🗑</span><span>Delete Loop</span>';
-      break;
+// "Is there a loop" is now derived from the active section's own metadata,
+// not a LooperState value (see docs-internal/looper.html#phases) — the
+// button label needs both the transient capture-workflow state and that
+// per-section fact.
+function renderLoopButton(state: AppState, looperState: LooperState): void {
+  if (looperState === "arming") {
+    loopBtnEl.innerHTML = '<span class="bar-icon">⏳</span><span>Get Ready…</span>';
+    return;
   }
+  if (looperState === "recording") {
+    loopBtnEl.innerHTML = '<span class="bar-icon">●</span><span>Recording…</span>';
+    return;
+  }
+  const hasLoop = (state.sections[state.activeSection - 1]?.loops.length ?? 0) > 0;
+  loopBtnEl.innerHTML = hasLoop
+    ? '<span class="bar-icon">🗑</span><span>Delete Loop</span>'
+    : '<span class="bar-icon">⏺</span><span>Record Loop</span>';
+}
+
+// Arming/recording transitions don't touch AppState, so render() alone won't
+// pick them up — this is the push side; render() is the pull side (handles
+// switching sections, e.g., while idle).
+function onLooperStateChange(looperState: LooperState): void {
+  renderLoopButton(app.getState(), looperState);
 }
 
 function renderChips(state: AppState): void {
@@ -1043,6 +1053,17 @@ presetSaveNewBtn.addEventListener("click", () => {
   openPresetNameSheet();
 });
 
+// Save As copies each section's loop into a fresh IndexedDB row (see
+// docs-internal/looper.html#phases), so it's async — split out from the
+// synchronous rename/overwrite branch below.
+async function saveNewPreset(name: string, makeDefault: boolean): Promise<void> {
+  const id = await app.saveUserPreset(name);
+  if (makeDefault) app.setDefaultPresetId(id);
+  presetNameSheetEl.close();
+  renderPresetIndicator();
+  renderPresetDropdownList();
+}
+
 presetNameSubmitEl.addEventListener("click", () => {
   const name = presetNameInputEl.value.trim();
   if (!name) return;
@@ -1054,13 +1075,12 @@ presetNameSubmitEl.addEventListener("click", () => {
     } else if (app.getDefaultPresetId() === _editingPreset.id) {
       app.setDefaultPresetId(null);
     }
+    presetNameSheetEl.close();
+    renderPresetIndicator();
+    renderPresetDropdownList();
   } else {
-    const id = app.saveUserPreset(name);
-    if (makeDefault) app.setDefaultPresetId(id);
+    void saveNewPreset(name, makeDefault);
   }
-  presetNameSheetEl.close();
-  renderPresetIndicator();
-  renderPresetDropdownList();
 });
 
 presetNameInputEl.addEventListener("keydown", (e: KeyboardEvent) => {
@@ -1109,13 +1129,16 @@ async function startRecordingFromIdle(): Promise<void> {
 }
 
 loopBtnEl.addEventListener("click", () => {
-  const state = app.getLooperState();
-  if (state === "idle") {
-    void startRecordingFromIdle();
-  } else if (state === "looping") {
-    if (confirm("Delete this loop?")) app.deleteLoop();
-  } else {
+  if (app.getLooperState() !== "idle") {
     app.cancelLoopRecording();
+    return;
+  }
+  const state = app.getState();
+  const hasLoop = (state.sections[state.activeSection - 1]?.loops.length ?? 0) > 0;
+  if (hasLoop) {
+    if (confirm("Delete this loop?")) app.deleteLoop(state.activeSection - 1);
+  } else {
+    void startRecordingFromIdle();
   }
 });
 document.addEventListener("keydown", (e: KeyboardEvent) => {
@@ -1197,11 +1220,6 @@ loopLimiterEl.addEventListener("change", () => {
   app.setLoopLimiter(loopLimiterEl.checked);
 });
 
-void app.restoreLoop().then(() => {
-  onLooperStateChange(app.getLooperState());
-  app.syncLoopToActiveSection();
-});
-
 // ── Sheets ────────────────────────────────────────────────────────────────
 
 ($("open-setup") as HTMLButtonElement).addEventListener("click", () =>
@@ -1278,9 +1296,13 @@ if (_initPresetId) {
   const _userPreset = app.getUserPresets().find((p) => p.id === _initPresetId);
   if (_userPreset) {
     app.setLoadedUserPresetContext(_userPreset);
+    app.mergeSectionLoops(_userPreset.state.sections);
   } else {
     const _builtin = PRESETS.find((p) => p.id === _initPresetId);
-    if (_builtin) app.setLoadedBuiltinPresetContext(_builtin.id, _builtin.label, _builtin.state);
+    if (_builtin) {
+      app.setLoadedBuiltinPresetContext(_builtin.id, _builtin.label, _builtin.state);
+      app.mergeSectionLoops(_builtin.state.sections ?? []);
+    }
   }
 }
 renderPresetIndicator();
