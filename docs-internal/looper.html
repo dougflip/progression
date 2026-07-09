@@ -556,6 +556,94 @@ interface Section {
         </li>
       </ul>
     </div>
+    <h4>Phase 2 sub-phases</h4>
+    <p>
+      Phase 2 is bigger than Phase 1 — it's split into stepping stones, each independently
+      shippable, rather than landed in one pass. 2a and 2b can't fully separate (the section-entry
+      sync boundary only makes sense once a loop actually belongs to a section), but 2c/2d are
+      additive on top of 2b and can land independently, in either order.
+    </p>
+    <div class="decided">
+      <strong>2a — relocate metadata, no behavior change.</strong> Move <code>LoopRef</code> from
+      <code>progression-audio.ts</code> into <code>progression-core.ts</code>; add
+      <code>loops: LoopRef[]</code> to <code>Section</code>. The engine still behaves exactly like
+      Phase 1 internally (one shared loop, lap-boundary sync, fixed <code>"current"</code> IndexedDB
+      key) — <code>app.ts</code> just mirrors that single <code>LoopRef</code> onto
+      <code>sections[activeSection - 1].loops</code> after capture/restore. Gets loop metadata
+      riding along in presets for free, with zero new storage or sync work yet.
+    </div>
+    <div class="decided">
+      <strong>2b — real per-section cap, section-entry sync, flat id-keyed storage.</strong> Lift "1
+      per song" to "1 per section"; sync boundary moves from lap to section-entry
+      (<code>sectionChanged</code>). Sequential sections can now each hold a saved loop
+      simultaneously, so IndexedDB needs real multi-row storage — keyed flatly by loop
+      <code>id</code>, <em>not</em> partitioned by song/preset id. Reasoning: the current working
+      state only has a stable id if it was loaded from (or saved as) a preset
+      (<code>getLoadedPresetId()</code>, <code>progression-core.ts</code>) — an unsaved song has
+      none, so song-keyed storage would have nowhere to put a freshly-recorded loop's blob until the
+      first save. A flat loop-id keyspace sidesteps this entirely: "which song owns which loop"
+      lives only in the JSON (<code>Section.loops[].id</code>), never in IndexedDB's structure. This
+      also matches the already-decided global GC sweep (collect every id referenced by live state ∪
+      every saved preset, delete anything else) and means "Save As" can share a loop blob across two
+      presets for free, with no duplication.
+    </div>
+    <div class="decided">
+      <strong
+        >2b tracks <code>_currentSectionIndex</code> engine-side — no section param on
+        <code>armLoopRecording</code>.</strong
+      >
+      The engine has no concept of <code>AppState.activeSection</code> today (that's an
+      <code>app.ts</code>/<code>progression-core.ts</code> idea) — but every chord event already
+      carries <code>PartEvent.sectionIndex</code>
+      (<code>_buildPart</code>), it's just not persisted anywhere the way
+      <code>_currentPosIndex</code> is. So <code>_currentSectionIndex</code> gets tracked the same
+      way, updated from <code>ev.sectionIndex</code> in the <code>Tone.Part</code> callback, and
+      <code>armLoopRecording()</code> takes no section argument — it reads
+      <code>_currentSectionIndex</code> live at the moment recording actually starts (inside
+      <code>_advanceLooperAtBoundary</code>), not whatever <code>app.ts</code> thought was active at
+      click-time. Arming rides out a count-in before recording starts, so a passed-in param could go
+      stale; deriving it live can't. <code>capturedBars</code> follows the same logic — needs a
+      per-section bar-length lookup (built in <code>_buildPart</code> alongside the existing
+      <code>posOffsets</code>/<code>chipOffsets</code> maps) instead of the whole-song
+      <code>_songBars</code>.
+    </div>
+    <div class="decided">
+      <strong>2b's IndexedDB store uses <code>keyPath: "id"</code>, in-line keys.</strong>
+      <code>createObjectStore(LOOP_STORE_NAME, &#123; keyPath: "id" &#125;)</code>, then
+      <code>store.put(record)</code> with no separate key argument, <code>store.get(id)</code> for
+      lookup. One canonical place a loop's identity lives — the record itself — rather than
+      id-as-value plus key-as-separate-bookkeeping. Scales cleanly toward "many loops per section,
+      many sections per song," and <code>store.getAll()</code>/<code>getAllKeys()</code> come along
+      for free for the GC sweep and the manual-cleanup path noted below.
+    </div>
+    <div class="decided">
+      <strong>2b also accepts orphan accumulation — no real sweep yet.</strong> Multi-row storage
+      means deleted/abandoned loops can leave orphaned IndexedDB rows before a real sweep exists
+      (that's Phase 3's job, see below). Accepted for this unreleased/dogfood-only feature — plan
+      for a manual cleanup path later (a console snippet or a hidden Setup button comparing
+      IndexedDB keys against the union of all saved presets' referenced ids), not an automatic sweep
+      now.
+    </div>
+    <div class="decided">
+      <strong>2c — confine playback to the target section while recording.</strong> Mostly already
+      exists: the manual-advance branch in <code>_buildPart</code>'s <code>Tone.Part</code> callback
+      (<code>progression-audio.ts:510-525</code>) already resets
+      <code>Tone.Transport.position</code> back to <code>_currentPosIndex</code>'s start on every
+      event whose <code>posIndex</code> differs — a "hold on this section forever" primitive,
+      independent of one-shot jumps. 2c reuses this: on arm, force that same hold onto the target
+      section regardless of the user's actual <code>_advance</code> setting; on cancel-arm, drop the
+      hold and resume normal <code>_advance</code> behavior from wherever the transport naturally
+      is; on Stop, no special-case needed — the existing unconditional reset of
+      <code>_currentPosIndex</code>/<code>_pendingJump</code> already undoes the hold as a side
+      effect. No new Part-boundary logic required.
+    </div>
+    <div class="decided">
+      <strong>2d — scope the Mix sheet to the selected section.</strong> Piggybacks on
+      <code>AppState.activeSection</code> (<code>progression-core.ts</code>), which already tracks
+      both "currently playing section" (updated on <code>sectionChanged</code>) and "section
+      selected via scrubber tap" — exactly the hook this needs, no new state required.
+    </div>
+
     <div class="open-q">
       <strong>Phase 3 — lift the one-loop-per-section cap.</strong> The actual multi-loop feature: N
       players/effects chains per section (likely means the looper finally deserves its own module,

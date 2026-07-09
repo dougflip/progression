@@ -7,8 +7,22 @@ import { STYLE_OPTIONS, BASS_OPTIONS, DRUM_OPTIONS, VOICING_OPTIONS, STYLES } fr
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+// Per-loop metadata — see docs-internal/looper.html#multi-loop-model. Capped at
+// length 1 on Section.loops until Phase 3 lifts it.
+export interface LoopRef {
+  id: string;
+  label?: string;
+  capturedBars: number;
+  volume: number;
+  muted: boolean;
+  compression: number;
+  highpass: boolean;
+  limiter: boolean;
+}
+
 export interface Section {
   progression: string;
+  loops: LoopRef[];
 }
 
 export type ChordQuality =
@@ -134,6 +148,7 @@ export interface AudioStartOpts {
   onBeatTick: (beat: number) => void;
   onBarTick: (bar: number) => void;
   onLooperStateChange: (state: LooperState) => void;
+  onLoopChanged: (loop: LoopRef | null) => void;
 }
 
 export interface AudioRebuildOpts {
@@ -166,6 +181,7 @@ export interface AudioEngine {
   cancelLoopRecording(): void;
   deleteLoop(): void;
   getLooperState(): LooperState;
+  getActiveLoop(): LoopRef | null;
   setLoopOffsetMs(ms: number): void;
   restoreLoop(): Promise<void>;
   setLoopCompression(amount: number): void;
@@ -776,7 +792,7 @@ export const DEFAULTS: AppState = {
     bassOn: true,
     drumsOn: true,
   },
-  sections: [{ progression: "I vi ii V" }],
+  sections: [{ progression: "I vi ii V", loops: [] }],
   arrangement: "",
   activeSection: 1,
 };
@@ -814,7 +830,7 @@ export function parseUrl(searchString: string): AppState {
     : [];
   const rawSections = p.getAll("section");
   const sections = rawSections.length
-    ? rawSections.map((prog) => ({ progression: prog }))
+    ? rawSections.map((prog) => ({ progression: prog, loops: [] }))
     : DEFAULTS.sections;
   const rawActive = num("activeSection", DEFAULTS.activeSection);
 
@@ -914,6 +930,11 @@ export function makeProgressionPlayer(config: PlayerConfig) {
   };
   let _lastChordPos: PausedAt = { posIndex: 0, chipIndex: 0, lapIndex: 0 };
   let _pausedAt: PausedAt | null = null;
+  // Which section a captured loop is attributed to — fixed at capture/restore
+  // time, not re-derived from activeSection on every render. Real per-section
+  // ownership lands in Phase 2b; this is the transitional single-loop mirror
+  // (see docs-internal/looper.html#phases).
+  let _loopSectionIndex: number | null = null;
   let _loadedPreset: UserPreset | null = null;
   let _loadedBuiltinPreset: { id: string; label: string; state: PresetState } | null = null;
 
@@ -1031,6 +1052,21 @@ export function makeProgressionPlayer(config: PlayerConfig) {
     }, 250);
   }
 
+  // Mirrors the engine's single loop onto whichever section it's attributed
+  // to — no rebuild, no _setStructural (this never changes what's audible).
+  function _mirrorLoopOntoSection(loop: LoopRef | null): void {
+    const index = loop ? _state.activeSection - 1 : _loopSectionIndex;
+    if (index === null) return;
+    _loopSectionIndex = loop ? index : null;
+    _state = {
+      ..._state,
+      sections: _state.sections.map((s, i) =>
+        i === index ? { ...s, loops: loop ? [loop] : [] } : s,
+      ),
+    };
+    _notify();
+  }
+
   async function _startPlayback(): Promise<void> {
     const order = resolvePlayOrder(_state.sections, _state.arrangement);
     const chords = buildSongChords(
@@ -1075,6 +1111,7 @@ export function makeProgressionPlayer(config: PlayerConfig) {
       onBeatTick: config.onBeatTick,
       onBarTick: config.onBarTick,
       onLooperStateChange: config.onLooperStateChange,
+      onLoopChanged: _mirrorLoopOntoSection,
     });
 
     config.onPlaybackChange(true);
@@ -1127,7 +1164,7 @@ export function makeProgressionPlayer(config: PlayerConfig) {
 
     addSection(): void {
       if (_state.sections.length >= 6) return;
-      _setStructural({ sections: [..._state.sections, { progression: "" }] });
+      _setStructural({ sections: [..._state.sections, { progression: "", loops: [] }] });
     },
 
     removeSection(index: number): void {
@@ -1353,6 +1390,13 @@ export function makeProgressionPlayer(config: PlayerConfig) {
 
     restoreLoop(): Promise<void> {
       return config.audio?.restoreLoop() ?? Promise.resolve();
+    },
+
+    // Pulls whatever the engine restored and mirrors it onto a section — the
+    // push channel above (onLoopChanged) isn't wired yet at boot, since it's
+    // only registered inside start(). Call after restoreLoop() resolves.
+    syncLoopToActiveSection(): void {
+      _mirrorLoopOntoSection(config.audio?.getActiveLoop() ?? null);
     },
 
     setLoopVolume(value: number): void {

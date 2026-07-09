@@ -1197,7 +1197,10 @@ loopLimiterEl.addEventListener("change", () => {
   app.setLoopLimiter(loopLimiterEl.checked);
 });
 
-void app.restoreLoop().then(() => onLooperStateChange(app.getLooperState()));
+void app.restoreLoop().then(() => {
+  onLooperStateChange(app.getLooperState());
+  app.syncLoopToActiveSection();
+});
 
 // ── Sheets ────────────────────────────────────────────────────────────────
 

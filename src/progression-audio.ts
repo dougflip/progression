@@ -22,6 +22,7 @@ import {
   type AudioRebuildOpts,
   type AudioEngine,
   type LooperState,
+  type LoopRef,
 } from "./progression-core.js";
 
 interface Channels {
@@ -30,20 +31,6 @@ interface Channels {
   drum: Tone.Channel;
   master: Tone.Channel;
   loop: Tone.Channel;
-}
-
-// Per-loop metadata — local to this module for now; moves to progression-core.ts
-// and attaches to Section once loops are per-section (Phase 2 of the multi-loop
-// data model, see docs-internal/looper.html). Capped at length 1 this phase.
-interface LoopRef {
-  id: string;
-  label?: string;
-  capturedBars: number;
-  volume: number;
-  muted: boolean;
-  compression: number;
-  highpass: boolean;
-  limiter: boolean;
 }
 
 // Single-lap event — shift is resolved at callback time via _currentShift
@@ -227,6 +214,7 @@ export function makeProgressionAudio(): AudioEngine {
   let _recorder: Tone.Recorder | null = null;
   let _loopPlayer: Tone.Player | null = null;
   let _onLooperStateChange: ((state: LooperState) => void) | null = null;
+  let _onLoopChanged: ((loop: LoopRef | null) => void) | null = null;
 
   // Metadata for the loop(s) actually captured — capped at length 1 this
   // phase. Kept separate from _loopDefaults below: this is "what the current
@@ -742,6 +730,7 @@ export function makeProgressionAudio(): AudioEngine {
       _loops = [{ id: crypto.randomUUID(), capturedBars: _songBars, ..._loopDefaults }];
       _applyLoopOffsetAndTrim();
       await _saveLoopToDb(blob, _songBars, _loops[0]!.id);
+      _onLoopChanged?.({ ..._loops[0]! });
     } catch (e) {
       console.warn("Loop decode failed:", e);
       _setLooperState("idle");
@@ -1060,6 +1049,7 @@ export function makeProgressionAudio(): AudioEngine {
       onBeatTick,
       onBarTick,
       onLooperStateChange,
+      onLoopChanged,
     }: AudioStartOpts): Promise<void> {
       await Tone.start();
       if ("audioSession" in navigator)
@@ -1073,6 +1063,7 @@ export function makeProgressionAudio(): AudioEngine {
       _onBeatTick = onBeatTick;
       _onBarTick = onBarTick;
       _onLooperStateChange = onLooperStateChange;
+      _onLoopChanged = onLoopChanged;
       _pendingJump = null;
       _pendingKeyJump = null;
       _currentLap = 0;
@@ -1319,9 +1310,11 @@ export function makeProgressionAudio(): AudioEngine {
       _loops = []; // _loopDefaults deliberately untouched — next recording inherits it
       _setLooperState("idle");
       void _deleteLoopFromDb();
+      _onLoopChanged?.(null);
     },
 
     getLooperState: (): LooperState => _looperState,
+    getActiveLoop: (): LoopRef | null => (_loops[0] ? { ..._loops[0] } : null),
 
     setLoopOffsetMs(ms: number): void {
       _loopOffsetMs = ms;
@@ -1358,6 +1351,7 @@ export function makeProgressionAudio(): AudioEngine {
         // _loopPlayer is intentionally not built yet — _songBars/_channels
         // aren't known until the next start(), which finishes the job.
         _setLooperState("looping");
+        _onLoopChanged?.({ ..._loops[0]! });
       } catch (e) {
         console.warn("Failed to restore persisted loop:", e);
       }
