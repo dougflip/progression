@@ -197,8 +197,8 @@
   </head>
   <body>
     <p class="status">
-      single loop — shipped, flag-gated · multi-loop data model — 2a/2b/2c implemented (pending
-      manual verification), 2d not started
+      single loop — shipped, flag-gated · multi-loop data model — Phase 2 (2a/2b/2c/2d) implemented,
+      pending manual verification
     </p>
     <h1>Looper</h1>
     <p class="subtitle">
@@ -388,11 +388,11 @@
       case." Optimize purely for the best shape to land on across Phases 1-3.
     </div>
 
-    <p class="status">where we're headed — 2a/2b/2c implemented, 2d designed but not built</p>
+    <p class="status">where we're headed — Phase 2 (2a/2b/2c/2d) implemented, Phase 3 open</p>
     <p>
       What it takes to go from today's single fixed loop to
-      <strong>multiple loops per section</strong>, layered together. 2a/2b/2c have landed; 2d is
-      still just the shape agreed on before touching anything.
+      <strong>multiple loops per section</strong>, layered together. 2a/2b/2c/2d have all landed —
+      see "Phase 2 sub-phases" below for what actually shipped in each.
     </p>
 
     <pre><code>interface LoopRef {
@@ -487,9 +487,8 @@ interface Section {
     </p>
     <p class="caption">
       The "Phase 2" bullets immediately below describe its target design as a whole, written before
-      it was split into stepping stones — some of what they describe has landed (2a/2b/2c, below),
-      some hasn't yet (2d: mixer scoping). See "Phase 2 sub-phases" further down for what's actually
-      built right now.
+      it was split into stepping stones. All four (2a/2b/2c/2d) have now landed — see "Phase 2
+      sub-phases" further down for what actually shipped in each.
     </p>
     <div class="decided">
       <strong>Phase 1 — arrayify, engine-only.</strong> Reshape the single loop's metadata into
@@ -850,10 +849,48 @@ interface Section {
       misrepresent what's actually happening.
     </div>
     <div class="decided">
-      <strong>2d — scope the Mix sheet to the selected section.</strong> Piggybacks on
+      <strong>2d — scope the Mix sheet to the selected section. Implemented.</strong> Piggybacks on
       <code>AppState.activeSection</code> (<code>progression-core.ts</code>), which already tracks
       both "currently playing section" (updated on <code>sectionChanged</code>) and "section
-      selected via scrubber tap" — exactly the hook this needs, no new state required.
+      selected via scrubber tap" — no new state required. <code>LoopRef</code>'s
+      <code>volume</code>/<code>muted</code>/<code>compression</code>/<code>highpass</code>/<code
+        >limiter</code
+      >
+      fields, previously write-only (seeded once at capture, never read back), are now the real
+      source of truth end to end: <code>app.ts</code>'s <code>renderLoopMix()</code> reads
+      <code>sections[activeSection - 1].loops[0]</code> straight into the Mix sheet's Looper group
+      (dimming every control via <code>disabled</code> when that section has no loop, per the
+      original design), and
+      <code>setLoopVolume</code
+      >/<code>setLoopMuted</code>/<code>setLoopCompression</code>/<code>setLoopHighpass</code>/<code
+        >setLoopLimiter</code
+      >
+      all now take a <code>sectionIndex</code> and route through a new
+      <code>_updateSectionLoop()</code> — <code>updateSection()</code>'s pattern applied to a single
+      <code>LoopRef</code> field — instead of the old direct engine-only bypass.
+    </div>
+    <div class="decided">
+      <strong
+        >2d's engine still has only one shared player/effects chain (Phase 3's job to change), so a
+        section's stored settings must be pulled in at swap time.</strong
+      >
+      The engine's <code>sectionLoopIds: (string | null)[]</code> boundary widened to
+      <code>sectionLoops: (LoopRef | null)[]</code> — the full record per section, not just enough
+      to fetch a buffer — threaded everywhere the id array used to be
+      (<code>start()</code>/<code>rebuild()</code>/the renamed <code>setSectionLoops()</code>).
+      <code>_swapToSectionLoop</code> now applies the newly-active section's own
+      volume/mute/compression/highpass/limiter to the chain the moment it swaps in
+      (<code>_applyLoopSettingsToChain</code>), and <code>setSectionLoops()</code> re-applies them
+      live whenever the <em>currently-loaded</em> section's own settings change (e.g. a mixer slider
+      drag) — a bulk push rather than five separate per-field engine methods, since the engine only
+      ever needs to know "what does the section I'm currently playing look like right now." The old
+      global <code>_loopDefaults</code> bucket is gone, replaced by <code>_loadedLoopSettings</code>
+      (what's presently applied to the chain, refreshed on every swap) plus a small
+      <code>NEW_LOOP_DEFAULTS</code> constant used only to seed a brand-new capture (<code
+        >volume: 100, muted: false, compression: 50, highpass: true, limiter: true</code
+      >
+      — fixed values, not carried over from whatever the mixer last showed, since a fresh recording
+      has no prior settings of its own).
     </div>
 
     <div class="open-q">

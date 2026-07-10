@@ -144,7 +144,7 @@ export interface AudioStartOpts {
   cycle: string;
   customCycleKeys: string[];
   mix: MixSettings;
-  sectionLoopIds: (string | null)[];
+  sectionLoops: (LoopRef | null)[];
   onChordTick: (ev: ChordTickEvent) => void;
   onBeatTick: (beat: number) => void;
   onBarTick: (bar: number) => void;
@@ -161,7 +161,7 @@ export interface AudioRebuildOpts {
   key: string;
   cycle: string;
   customCycleKeys: string[];
-  sectionLoopIds: (string | null)[];
+  sectionLoops: (LoopRef | null)[];
 }
 
 export interface AudioEngine {
@@ -170,8 +170,8 @@ export interface AudioEngine {
   stop(): void;
   rebuild(opts: AudioRebuildOpts): void;
   setTempo(bpm: number): void;
-  setVolume(channel: "chords" | "bass" | "drums" | "master" | "loop", value: number): void;
-  setMute(channel: "chords" | "bass" | "drums" | "loop", muted: boolean): void;
+  setVolume(channel: "chords" | "bass" | "drums" | "master", value: number): void;
+  setMute(channel: "chords" | "bass" | "drums", muted: boolean): void;
   setAdvance(mode: string): void;
   queueJump(posIndex: number): void;
   cancelJump(): void;
@@ -183,12 +183,12 @@ export interface AudioEngine {
   cancelLoopRecording(): void;
   deleteLoop(sectionIndex: number): void;
   getLooperState(): LooperState;
-  setSectionLoopIds(ids: (string | null)[]): void;
+  // 2d: full LoopRef per section (not just ids) — the engine needs each
+  // section's own mix settings to apply at swap time, since there's still
+  // only one shared player/effects chain (see docs-internal/looper.html#phases).
+  setSectionLoops(loops: (LoopRef | null)[]): void;
   copyLoop(id: string): Promise<string | null>;
   setLoopOffsetMs(ms: number): void;
-  setLoopCompression(amount: number): void;
-  setLoopHighpass(enabled: boolean): void;
-  setLoopLimiter(enabled: boolean): void;
 }
 
 export interface PlaybackSettings {
@@ -1042,7 +1042,7 @@ export function makeProgressionPlayer(config: PlayerConfig) {
           key: _state.playback.key,
           cycle: _state.playback.cycle,
           customCycleKeys: _state.playback.customCycleKeys,
-          sectionLoopIds: _sectionLoopIds(),
+          sectionLoops: _sectionLoops(),
         });
       } catch (e) {
         config.onError?.(`Rebuild error: ${(e as Error).message}`);
@@ -1050,8 +1050,8 @@ export function makeProgressionPlayer(config: PlayerConfig) {
     }, 250);
   }
 
-  function _sectionLoopIds(): (string | null)[] {
-    return _state.sections.map((s) => s.loops[0]?.id ?? null);
+  function _sectionLoops(): (LoopRef | null)[] {
+    return _state.sections.map((s) => s.loops[0] ?? null);
   }
 
   // Writes a loop directly onto a known section — the engine tells us exactly
@@ -1066,7 +1066,18 @@ export function makeProgressionPlayer(config: PlayerConfig) {
       ),
     };
     _notify();
-    config.audio?.setSectionLoopIds(_sectionLoopIds());
+    config.audio?.setSectionLoops(_sectionLoops());
+  }
+
+  // 2d: the Mix sheet's per-loop controls (volume/mute/compression/highpass/
+  // limiter) — route through this rather than the engine-only bypass the
+  // single-loop version used, so a mixer edit persists onto the section (and
+  // rides along in presets) the same way updateSection() does for progression
+  // text. No-ops if the section has no loop yet — there's nothing to edit.
+  function _updateSectionLoop(sectionIndex: number, partial: Partial<LoopRef>): void {
+    const loop = _state.sections[sectionIndex]?.loops[0];
+    if (!loop) return;
+    _setSectionLoop(sectionIndex, { ...loop, ...partial });
   }
 
   async function _startPlayback(): Promise<void> {
@@ -1105,7 +1116,7 @@ export function makeProgressionPlayer(config: PlayerConfig) {
       cycle: _state.playback.cycle,
       customCycleKeys: _state.playback.customCycleKeys,
       mix: { ..._state.mix },
-      sectionLoopIds: _sectionLoopIds(),
+      sectionLoops: _sectionLoops(),
       onChordTick: (ev) => {
         _lastChordPos = { posIndex: ev.posIndex, chipIndex: ev.chipIndex, lapIndex: ev.lapIndex };
         if (ev.sectionChanged) _state.activeSection = ev.sectionIndex + 1;
@@ -1260,7 +1271,7 @@ export function makeProgressionPlayer(config: PlayerConfig) {
         sections: _state.sections.map((s, i) => ({ ...s, loops: sections[i]?.loops ?? s.loops })),
       };
       _notify();
-      config.audio?.setSectionLoopIds(_sectionLoopIds());
+      config.audio?.setSectionLoops(_sectionLoops());
     },
 
     getUserPresets: _getUserPresets,
@@ -1293,7 +1304,7 @@ export function makeProgressionPlayer(config: PlayerConfig) {
       );
       _state = { ..._state, sections };
       _notify();
-      config.audio?.setSectionLoopIds(_sectionLoopIds());
+      config.audio?.setSectionLoops(_sectionLoops());
       const id = Date.now().toString(36);
       const preset: UserPreset = { id, name, state: _toPresetState(_state) };
       config.persist(PRESETS_STORAGE_KEY, JSON.stringify([..._getUserPresets(), preset]));
@@ -1423,24 +1434,24 @@ export function makeProgressionPlayer(config: PlayerConfig) {
       config.audio?.setLoopOffsetMs(ms);
     },
 
-    setLoopVolume(value: number): void {
-      config.audio?.setVolume("loop", value);
+    setLoopVolume(sectionIndex: number, value: number): void {
+      _updateSectionLoop(sectionIndex, { volume: value });
     },
 
-    setLoopMuted(muted: boolean): void {
-      config.audio?.setMute("loop", muted);
+    setLoopMuted(sectionIndex: number, muted: boolean): void {
+      _updateSectionLoop(sectionIndex, { muted });
     },
 
-    setLoopCompression(amount: number): void {
-      config.audio?.setLoopCompression(amount);
+    setLoopCompression(sectionIndex: number, amount: number): void {
+      _updateSectionLoop(sectionIndex, { compression: amount });
     },
 
-    setLoopHighpass(enabled: boolean): void {
-      config.audio?.setLoopHighpass(enabled);
+    setLoopHighpass(sectionIndex: number, enabled: boolean): void {
+      _updateSectionLoop(sectionIndex, { highpass: enabled });
     },
 
-    setLoopLimiter(enabled: boolean): void {
-      config.audio?.setLoopLimiter(enabled);
+    setLoopLimiter(sectionIndex: number, enabled: boolean): void {
+      _updateSectionLoop(sectionIndex, { limiter: enabled });
     },
   };
 }

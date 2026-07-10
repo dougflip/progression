@@ -124,6 +124,7 @@ function render(state: AppState): void {
   syncAdvancePill(state);
   syncScrubberLock();
   renderMix(state);
+  renderLoopMix(state);
   syncUrl(state);
   renderPresetIndicator();
   syncLoopBtnVisibility(state);
@@ -138,6 +139,27 @@ function syncLoopBtnVisibility(state: AppState): void {
 
 function syncLoopMixRowVisibility(): void {
   loopMixGroupEl.hidden = !looperEnabledEl.checked;
+}
+
+// 2d: the Looper mixer group reflects whichever section is active/selected
+// (see docs-internal/looper.html#phases) — reads straight from that section's
+// LoopRef rather than a flat global, and disables every control (rather than
+// hiding the group) when that section has no loop yet.
+function renderLoopMix(state: AppState): void {
+  const loop = state.sections[state.activeSection - 1]?.loops[0] ?? null;
+  ($("loop-mix-title") as HTMLElement).textContent = `Looper — Section ${state.activeSection}`;
+  for (const el of [loopOnEl, loopVolEl, loopCompressionEl, loopHighpassEl, loopLimiterEl]) {
+    el.disabled = !loop;
+  }
+  if (!loop) return;
+  const ae = document.activeElement;
+  loopOnEl.checked = !loop.muted;
+  if (ae !== loopVolEl) loopVolEl.value = String(loop.volume);
+  ($("loop-vol-val") as HTMLElement).textContent = String(loop.volume);
+  if (ae !== loopCompressionEl) loopCompressionEl.value = String(loop.compression);
+  ($("loop-compression-val") as HTMLElement).textContent = String(loop.compression);
+  loopHighpassEl.checked = loop.highpass;
+  loopLimiterEl.checked = loop.limiter;
 }
 
 // "Is there a loop" is now derived from the active section's own metadata,
@@ -1204,45 +1226,32 @@ loopOffsetMsEl.addEventListener("input", () => {
   app.setLoopOffsetMs(ms);
 });
 
-loopOnEl.checked = localStorage.getItem("loop-on") !== "0";
-app.setLoopMuted(!loopOnEl.checked);
+// 2d: these five now reflect the selected section's own LoopRef (see
+// renderLoopMix) rather than a localStorage-backed global — no init-from-
+// localStorage needed here, render() populates them from state on load.
 loopOnEl.addEventListener("change", () => {
-  localStorage.setItem("loop-on", loopOnEl.checked ? "1" : "0");
-  app.setLoopMuted(!loopOnEl.checked);
+  app.setLoopMuted(app.getState().activeSection - 1, !loopOnEl.checked);
 });
 
-loopVolEl.value = localStorage.getItem("loop-vol") ?? "100";
-($("loop-vol-val") as HTMLElement).textContent = loopVolEl.value;
-app.setLoopVolume(parseInt(loopVolEl.value, 10) || 0);
 loopVolEl.addEventListener("input", () => {
   ($("loop-vol-val") as HTMLElement).textContent = loopVolEl.value;
-  const v = parseInt(loopVolEl.value, 10) || 0;
-  localStorage.setItem("loop-vol", String(v));
-  app.setLoopVolume(v);
+  app.setLoopVolume(app.getState().activeSection - 1, parseInt(loopVolEl.value, 10) || 0);
 });
 
-loopCompressionEl.value = localStorage.getItem("loop-compression") ?? "0";
-($("loop-compression-val") as HTMLElement).textContent = loopCompressionEl.value;
-app.setLoopCompression(parseInt(loopCompressionEl.value, 10) || 0);
 loopCompressionEl.addEventListener("input", () => {
   ($("loop-compression-val") as HTMLElement).textContent = loopCompressionEl.value;
-  const v = parseInt(loopCompressionEl.value, 10) || 0;
-  localStorage.setItem("loop-compression", String(v));
-  app.setLoopCompression(v);
+  app.setLoopCompression(
+    app.getState().activeSection - 1,
+    parseInt(loopCompressionEl.value, 10) || 0,
+  );
 });
 
-loopHighpassEl.checked = localStorage.getItem("loop-highpass") === "1";
-app.setLoopHighpass(loopHighpassEl.checked);
 loopHighpassEl.addEventListener("change", () => {
-  localStorage.setItem("loop-highpass", loopHighpassEl.checked ? "1" : "0");
-  app.setLoopHighpass(loopHighpassEl.checked);
+  app.setLoopHighpass(app.getState().activeSection - 1, loopHighpassEl.checked);
 });
 
-loopLimiterEl.checked = localStorage.getItem("loop-limiter") === "1";
-app.setLoopLimiter(loopLimiterEl.checked);
 loopLimiterEl.addEventListener("change", () => {
-  localStorage.setItem("loop-limiter", loopLimiterEl.checked ? "1" : "0");
-  app.setLoopLimiter(loopLimiterEl.checked);
+  app.setLoopLimiter(app.getState().activeSection - 1, loopLimiterEl.checked);
 });
 
 // ── Sheets ────────────────────────────────────────────────────────────────
