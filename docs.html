@@ -1242,40 +1242,77 @@
             look like, not a finished feature. Expect rough edges and changes.
           </p>
           <p>
-            Enable it with the <strong>Looper (Experimental)</strong> toggle in Setup. To record:
+            Enable it with the <strong>Enable looper</strong> toggle in Setup. Works in
+            <a href="#loop-mode-loop">Loop</a> mode only (no key changes). Each
+            <a href="#sections">section</a> can hold one recorded loop, so a multi-section song can
+            carry a different loop per section.
+          </p>
+
+          <h3 id="looper-recording">
+            Recording a loop
+            <button
+              class="anchor-copy"
+              data-id="looper-recording"
+              title="Copy link to this section"
+            >
+              #
+            </button>
+          </h3>
+          <p>
+            Press <strong>Record Loop</strong> next to Play — if playback isn't already running,
+            this starts it for you. Recording always targets whichever section is currently playing.
           </p>
           <ol>
             <li>
-              Set up a single-section progression in <a href="#loop-mode-loop">Loop</a> mode (no key
-              changes).
+              The button shows <strong>Get Ready…</strong> while it counts in — playback holds on
+              the current section until it reaches the start of a fresh pass.
             </li>
             <li>
-              Press <strong>Record Loop</strong> next to Play — if playback isn't already running,
-              this starts it for you. The button label changes to show it's armed.
+              It then records one full pass of that section, showing <strong>Recording…</strong>.
             </li>
             <li>
-              The progression plays through once in its entirety first, to establish the beat.
-            </li>
-            <li>The second time through, it records.</li>
-            <li>
-              Recording stops automatically once that pass completes, and the loop starts playing
-              back alongside the progression.
+              Recording stops automatically once the pass completes, and the loop starts playing
+              back alongside that section.
             </li>
           </ol>
           <p>
-            Mic timing varies by device — sometimes by a lot (one laptop needed roughly 50ms, while
-            a phone needed closer to 350ms) — so the same Setup section has a
-            <strong>Loop sync offset</strong> field to nudge the recording earlier or later until it
-            lines up. A good way to dial it in: make your first recording just your voice counting
-            each bar out loud (e.g. "1, 2, 3, 4 — 2, 2, 3, 4 — 3, 2, 3, 4 — 4, 2, 3, 4"), then
-            adjust the offset until what you hear matches the beat.
+            Tap the button again during <strong>Get Ready…</strong> or
+            <strong>Recording…</strong> to cancel. Otherwise, playback stays confined to that one
+            section for as long as the loop is playing back — press <strong>Stop</strong> to return
+            to the full song. A section that already has a loop shows
+            <strong>Delete Loop</strong> instead; delete it before recording a replacement.
           </p>
           <p>
-            The loop gets its own <strong>Looper</strong> group in <a href="#mix">Mix</a> once
-            enabled, with volume/mute plus three optional cleanup controls for cleaning up mic noise
-            — a hi-pass filter, a compressor, and a limiter — each on/off (or, for the compressor,
-            an amount) so you can hear what each one is actually doing to your recording. The loop
-            survives reloading the page — delete and re-record any time from the same button.
+            Mic timing varies by device — sometimes by a lot (one laptop needed roughly 50ms, while
+            a phone needed closer to 350ms) — so Setup has a <strong>Loop sync offset</strong> field
+            to nudge the recording earlier or later until it lines up. A good way to dial it in:
+            make your first recording just your voice counting each bar out loud (e.g. "1, 2, 3, 4 —
+            2, 2, 3, 4 — 3, 2, 3, 4 — 4, 2, 3, 4"), then adjust the offset until what you hear
+            matches the beat. Setup also has a
+            <strong>Mute playback while recording a loop</strong> toggle, for recording without the
+            chords/bass/drums in your ears.
+          </p>
+
+          <h3 id="looper-mix">
+            Loop mixer
+            <button class="anchor-copy" data-id="looper-mix" title="Copy link to this section">
+              #
+            </button>
+          </h3>
+          <p>
+            Whichever section is active — or selected via the
+            <a href="#song-scrubber">SONG scrubber</a> — gets its own <strong>Looper</strong> group
+            in <a href="#mix">Mix</a>, showing that section's recorded loop; switch sections to
+            switch which loop you're adjusting. Alongside volume and mute, three optional cleanup
+            controls help clean up mic noise — a hi-pass filter, a compressor, and a limiter — each
+            on/off (or, for the compressor, an amount) so you can hear what each one is actually
+            doing to your recording. A section with no loop shows the group dimmed.
+          </p>
+          <p>
+            Loops are saved as part of a <a href="#presets">preset</a> — save your song before
+            refreshing the page, or an unsaved recording may not survive the reload. Loops don't
+            travel through <strong>Copy share link</strong>, since a shared link only carries the
+            song's structure, not recorded audio.
           </p>
         </div>
       </section>

@@ -122,10 +122,13 @@ function render(state: AppState): void {
   renderScrubber(state);
   renderKeyScrubber(state);
   syncAdvancePill(state);
+  syncScrubberLock();
   renderMix(state);
+  renderLoopMix(state);
   syncUrl(state);
   renderPresetIndicator();
   syncLoopBtnVisibility(state);
+  renderLoopButton(state, app.getLooperState());
 }
 
 // ── Looper (spike) ─────────────────────────────────────────────────────────
@@ -138,21 +141,64 @@ function syncLoopMixRowVisibility(): void {
   loopMixGroupEl.hidden = !looperEnabledEl.checked;
 }
 
-function onLooperStateChange(state: LooperState): void {
-  switch (state) {
-    case "idle":
-      loopBtnEl.innerHTML = '<span class="bar-icon">⏺</span><span>Record Loop</span>';
-      break;
-    case "arming":
-      loopBtnEl.innerHTML = '<span class="bar-icon">⏳</span><span>Get Ready…</span>';
-      break;
-    case "recording":
-      loopBtnEl.innerHTML = '<span class="bar-icon">●</span><span>Recording…</span>';
-      break;
-    case "looping":
-      loopBtnEl.innerHTML = '<span class="bar-icon">🗑</span><span>Delete Loop</span>';
-      break;
+// 2d: the Looper mixer group reflects whichever section is active/selected
+// (see docs-internal/looper.html#phases) — reads straight from that section's
+// LoopRef rather than a flat global, and disables every control (rather than
+// hiding the group) when that section has no loop yet.
+function renderLoopMix(state: AppState): void {
+  const loop = state.sections[state.activeSection - 1]?.loops[0] ?? null;
+  ($("loop-mix-title") as HTMLElement).textContent = `Looper — Section ${state.activeSection}`;
+  for (const el of [loopOnEl, loopVolEl, loopCompressionEl, loopHighpassEl, loopLimiterEl]) {
+    el.disabled = !loop;
   }
+  if (!loop) return;
+  const ae = document.activeElement;
+  loopOnEl.checked = !loop.muted;
+  if (ae !== loopVolEl) loopVolEl.value = String(loop.volume);
+  ($("loop-vol-val") as HTMLElement).textContent = String(loop.volume);
+  if (ae !== loopCompressionEl) loopCompressionEl.value = String(loop.compression);
+  ($("loop-compression-val") as HTMLElement).textContent = String(loop.compression);
+  loopHighpassEl.checked = loop.highpass;
+  loopLimiterEl.checked = loop.limiter;
+}
+
+// "Is there a loop" is now derived from the active section's own metadata,
+// not a LooperState value (see docs-internal/looper.html#phases) — the
+// button label needs both the transient capture-workflow state and that
+// per-section fact.
+function renderLoopButton(state: AppState, looperState: LooperState): void {
+  if (looperState === "arming") {
+    loopBtnEl.innerHTML = '<span class="bar-icon">⏳</span><span>Get Ready…</span>';
+    return;
+  }
+  if (looperState === "recording") {
+    loopBtnEl.innerHTML = '<span class="bar-icon">●</span><span>Recording…</span>';
+    return;
+  }
+  const hasLoop = (state.sections[state.activeSection - 1]?.loops.length ?? 0) > 0;
+  loopBtnEl.innerHTML = hasLoop
+    ? '<span class="bar-icon">🗑</span><span>Delete Loop</span>'
+    : '<span class="bar-icon">⏺</span><span>Record Loop</span>';
+}
+
+// Arming/recording transitions don't touch AppState, so render() alone won't
+// pick them up — this is the push side; render() is the pull side (handles
+// switching sections, e.g., while idle).
+function onLooperStateChange(looperState: LooperState): void {
+  renderLoopButton(app.getState(), looperState);
+  syncAdvancePill(app.getState());
+  syncScrubberLock();
+}
+
+// 2c: playback is confined to the recording section for the duration of a
+// loop capture (arming/recording) — lock both scrubbers so a tap can't queue
+// a jump that would break the hold. The KEY scrubber can't actually be visible
+// during a capture (recording requires cycle === "none"), but locking it too
+// costs nothing and avoids relying on that invariant here.
+function syncScrubberLock(): void {
+  const locked = app.getLooperState() !== "idle";
+  scrubberBar.classList.toggle("locked", locked);
+  keyScrubberBar.classList.toggle("locked", locked);
 }
 
 function renderChips(state: AppState): void {
@@ -368,6 +414,15 @@ function renderReadout(state: AppState): void {
 // value, since a stale "Manual" would read as if manual mode were quietly still in effect.
 function syncAdvancePill(state: AppState): void {
   const applies = !scrubberBar.hidden || !keyScrubberBar.hidden;
+  // 2c: the engine forces advance to "manual" internally while arming/recording,
+  // regardless of the real stored setting — show that truthfully instead of
+  // whatever's stored, rather than reusing the "not applicable" fallback.
+  if (app.getLooperState() !== "idle") {
+    readoutAdvanceEl.disabled = true;
+    readoutAdvanceEl.textContent = "🔒 Held";
+    readoutAdvanceEl.setAttribute("aria-label", "Advance: held on the loop's section");
+    return;
+  }
   readoutAdvanceEl.disabled = !applies;
   if (!applies) {
     readoutAdvanceEl.textContent = "⏭️ Auto";
@@ -466,6 +521,7 @@ function renderKeyScrubber(state: AppState): void {
 }
 
 function handleKeySegmentTap(lapIndex: number): void {
+  if (app.getLooperState() !== "idle") return; // 2c: confined to the recording section
   if (!audio.isPlaying()) {
     const state = app.getState();
     const shifts = getShiftsForCycle(state.playback.cycle, state.playback.customCycleKeys);
@@ -491,6 +547,7 @@ function handleKeySegmentTap(lapIndex: number): void {
 }
 
 function handleScrubberTap(posIndex: number): void {
+  if (app.getLooperState() !== "idle") return; // 2c: confined to the recording section
   if (!audio.isPlaying()) {
     _currentScrubPosIndex = posIndex;
     app.seekToPos(posIndex);
@@ -1043,6 +1100,17 @@ presetSaveNewBtn.addEventListener("click", () => {
   openPresetNameSheet();
 });
 
+// Save As copies each section's loop into a fresh IndexedDB row (see
+// docs-internal/looper.html#phases), so it's async — split out from the
+// synchronous rename/overwrite branch below.
+async function saveNewPreset(name: string, makeDefault: boolean): Promise<void> {
+  const id = await app.saveUserPreset(name);
+  if (makeDefault) app.setDefaultPresetId(id);
+  presetNameSheetEl.close();
+  renderPresetIndicator();
+  renderPresetDropdownList();
+}
+
 presetNameSubmitEl.addEventListener("click", () => {
   const name = presetNameInputEl.value.trim();
   if (!name) return;
@@ -1054,13 +1122,12 @@ presetNameSubmitEl.addEventListener("click", () => {
     } else if (app.getDefaultPresetId() === _editingPreset.id) {
       app.setDefaultPresetId(null);
     }
+    presetNameSheetEl.close();
+    renderPresetIndicator();
+    renderPresetDropdownList();
   } else {
-    const id = app.saveUserPreset(name);
-    if (makeDefault) app.setDefaultPresetId(id);
+    void saveNewPreset(name, makeDefault);
   }
-  presetNameSheetEl.close();
-  renderPresetIndicator();
-  renderPresetDropdownList();
 });
 
 presetNameInputEl.addEventListener("keydown", (e: KeyboardEvent) => {
@@ -1109,13 +1176,16 @@ async function startRecordingFromIdle(): Promise<void> {
 }
 
 loopBtnEl.addEventListener("click", () => {
-  const state = app.getLooperState();
-  if (state === "idle") {
-    void startRecordingFromIdle();
-  } else if (state === "looping") {
-    if (confirm("Delete this loop?")) app.deleteLoop();
-  } else {
+  if (app.getLooperState() !== "idle") {
     app.cancelLoopRecording();
+    return;
+  }
+  const state = app.getState();
+  const hasLoop = (state.sections[state.activeSection - 1]?.loops.length ?? 0) > 0;
+  if (hasLoop) {
+    if (confirm("Delete this loop?")) app.deleteLoop(state.activeSection - 1);
+  } else {
+    void startRecordingFromIdle();
   }
 });
 document.addEventListener("keydown", (e: KeyboardEvent) => {
@@ -1156,48 +1226,33 @@ loopOffsetMsEl.addEventListener("input", () => {
   app.setLoopOffsetMs(ms);
 });
 
-loopOnEl.checked = localStorage.getItem("loop-on") !== "0";
-app.setLoopMuted(!loopOnEl.checked);
+// 2d: these five now reflect the selected section's own LoopRef (see
+// renderLoopMix) rather than a localStorage-backed global — no init-from-
+// localStorage needed here, render() populates them from state on load.
 loopOnEl.addEventListener("change", () => {
-  localStorage.setItem("loop-on", loopOnEl.checked ? "1" : "0");
-  app.setLoopMuted(!loopOnEl.checked);
+  app.setLoopMuted(app.getState().activeSection - 1, !loopOnEl.checked);
 });
 
-loopVolEl.value = localStorage.getItem("loop-vol") ?? "100";
-($("loop-vol-val") as HTMLElement).textContent = loopVolEl.value;
-app.setLoopVolume(parseInt(loopVolEl.value, 10) || 0);
 loopVolEl.addEventListener("input", () => {
   ($("loop-vol-val") as HTMLElement).textContent = loopVolEl.value;
-  const v = parseInt(loopVolEl.value, 10) || 0;
-  localStorage.setItem("loop-vol", String(v));
-  app.setLoopVolume(v);
+  app.setLoopVolume(app.getState().activeSection - 1, parseInt(loopVolEl.value, 10) || 0);
 });
 
-loopCompressionEl.value = localStorage.getItem("loop-compression") ?? "0";
-($("loop-compression-val") as HTMLElement).textContent = loopCompressionEl.value;
-app.setLoopCompression(parseInt(loopCompressionEl.value, 10) || 0);
 loopCompressionEl.addEventListener("input", () => {
   ($("loop-compression-val") as HTMLElement).textContent = loopCompressionEl.value;
-  const v = parseInt(loopCompressionEl.value, 10) || 0;
-  localStorage.setItem("loop-compression", String(v));
-  app.setLoopCompression(v);
+  app.setLoopCompression(
+    app.getState().activeSection - 1,
+    parseInt(loopCompressionEl.value, 10) || 0,
+  );
 });
 
-loopHighpassEl.checked = localStorage.getItem("loop-highpass") === "1";
-app.setLoopHighpass(loopHighpassEl.checked);
 loopHighpassEl.addEventListener("change", () => {
-  localStorage.setItem("loop-highpass", loopHighpassEl.checked ? "1" : "0");
-  app.setLoopHighpass(loopHighpassEl.checked);
+  app.setLoopHighpass(app.getState().activeSection - 1, loopHighpassEl.checked);
 });
 
-loopLimiterEl.checked = localStorage.getItem("loop-limiter") === "1";
-app.setLoopLimiter(loopLimiterEl.checked);
 loopLimiterEl.addEventListener("change", () => {
-  localStorage.setItem("loop-limiter", loopLimiterEl.checked ? "1" : "0");
-  app.setLoopLimiter(loopLimiterEl.checked);
+  app.setLoopLimiter(app.getState().activeSection - 1, loopLimiterEl.checked);
 });
-
-void app.restoreLoop().then(() => onLooperStateChange(app.getLooperState()));
 
 // ── Sheets ────────────────────────────────────────────────────────────────
 
@@ -1275,9 +1330,13 @@ if (_initPresetId) {
   const _userPreset = app.getUserPresets().find((p) => p.id === _initPresetId);
   if (_userPreset) {
     app.setLoadedUserPresetContext(_userPreset);
+    app.mergeSectionLoops(_userPreset.state.sections);
   } else {
     const _builtin = PRESETS.find((p) => p.id === _initPresetId);
-    if (_builtin) app.setLoadedBuiltinPresetContext(_builtin.id, _builtin.label, _builtin.state);
+    if (_builtin) {
+      app.setLoadedBuiltinPresetContext(_builtin.id, _builtin.label, _builtin.state);
+      app.mergeSectionLoops(_builtin.state.sections ?? []);
+    }
   }
 }
 renderPresetIndicator();

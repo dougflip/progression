@@ -11,7 +11,7 @@ export const PRESETS: BuiltinPreset[] = [
     id: "builtin-i-vi-ii-v",
     label: "I vi ii V",
     state: {
-      sections: [{ progression: "I vi ii V" }],
+      sections: [{ progression: "I vi ii V", loops: [] }],
       arrangement: "",
       playback: { cycle: "none" },
     },
@@ -19,18 +19,26 @@ export const PRESETS: BuiltinPreset[] = [
   {
     id: "builtin-cycle-4ths",
     label: "Cycle 4ths",
-    state: { sections: [{ progression: "I" }], arrangement: "", playback: { cycle: "4ths" } },
+    state: {
+      sections: [{ progression: "I", loops: [] }],
+      arrangement: "",
+      playback: { cycle: "4ths" },
+    },
   },
   {
     id: "builtin-cycle-5ths",
     label: "Cycle 5ths",
-    state: { sections: [{ progression: "I" }], arrangement: "", playback: { cycle: "5ths" } },
+    state: {
+      sections: [{ progression: "I", loops: [] }],
+      arrangement: "",
+      playback: { cycle: "5ths" },
+    },
   },
   {
     id: "builtin-12-bar-blues",
     label: "12-bar blues",
     state: {
-      sections: [{ progression: "I7:4 IV7:2 I7:2 V7:1 IV7:1 I7:1 V7:1" }],
+      sections: [{ progression: "I7:4 IV7:2 I7:2 V7:1 IV7:1 I7:1 V7:1", loops: [] }],
       arrangement: "",
       playback: { cycle: "none", tempo: 120, style: "rock" },
     },
@@ -40,9 +48,9 @@ export const PRESETS: BuiltinPreset[] = [
     label: "♫ Otherside",
     state: {
       sections: [
-        { progression: "vi IV I V" },
-        { progression: "vi iii vi iii vi iii V vi:2" },
-        { progression: "iii:2 I:2" },
+        { progression: "vi IV I V", loops: [] },
+        { progression: "vi iii vi iii vi iii V vi:2", loops: [] },
+        { progression: "iii:2 I:2", loops: [] },
       ],
       arrangement: "1 1 2:2 1:2 3:2",
       playback: {

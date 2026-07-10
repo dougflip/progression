@@ -514,6 +514,11 @@
       #key-scrubber-bar {
         border-bottom: 1px solid var(--border);
       }
+      #scrubber-bar.locked,
+      #key-scrubber-bar.locked {
+        opacity: 0.5;
+        pointer-events: none;
+      }
       .scrubber-inner {
         display: flex;
         align-items: center;
@@ -1406,7 +1411,7 @@
           <span class="val" id="master-vol-val">100</span>
         </div>
         <div class="mix-group" id="loop-mix-group" hidden>
-          <h3 class="setup-group-title">Looper</h3>
+          <h3 class="setup-group-title" id="loop-mix-title">Looper</h3>
           <div class="mix-row">
             <label><input id="loop-on" type="checkbox" checked /> Loop</label>
             <input id="loop-vol" type="range" min="0" max="100" step="1" value="100" />

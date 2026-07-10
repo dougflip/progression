@@ -314,18 +314,18 @@ describe("default preset", () => {
     expect(app.getDefaultPresetId()).toBeNull();
   });
 
-  it("clears the default id when the default preset is deleted", () => {
+  it("clears the default id when the default preset is deleted", async () => {
     const app = makeProgressionPlayer(makeMockConfig());
-    const id = app.saveUserPreset("My Preset");
+    const id = await app.saveUserPreset("My Preset");
     app.setDefaultPresetId(id);
     app.deleteUserPreset(id);
     expect(app.getDefaultPresetId()).toBeNull();
   });
 
-  it("leaves the default id untouched when a different preset is deleted", () => {
+  it("leaves the default id untouched when a different preset is deleted", async () => {
     const app = makeProgressionPlayer(makeMockConfig());
     app.setDefaultPresetId("some-other-preset-id");
-    const otherId = app.saveUserPreset("Other Preset");
+    const otherId = await app.saveUserPreset("Other Preset");
     app.deleteUserPreset(otherId);
     expect(app.getDefaultPresetId()).toBe("some-other-preset-id");
   });
