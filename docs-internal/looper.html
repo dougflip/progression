@@ -197,8 +197,8 @@
   </head>
   <body>
     <p class="status">
-      single loop — shipped, flag-gated · multi-loop data model — 2a/2b implemented (pending manual
-      verification), 2c/2d not started
+      single loop — shipped, flag-gated · multi-loop data model — 2a/2b/2c implemented (pending
+      manual verification), 2d not started
     </p>
     <h1>Looper</h1>
     <p class="subtitle">
@@ -226,7 +226,7 @@
 
     <h3 id="sync">Record / play / delete</h3>
     <p class="caption">
-      Mechanics below reflect 2a/2b (see <a href="#multi-loop-model">Multi-loop data model</a>) —
+      Mechanics below reflect 2a/2b/2c (see <a href="#multi-loop-model">Multi-loop data model</a>) —
       the user-facing feature is unchanged for a single-section song, but the underlying sync
       boundary and state machine are not what they were pre-2b.
     </p>
@@ -236,10 +236,10 @@
         >sections[X].loops.length &gt; 0</code
       >), not a state value. Driven by section-entry (<code>ev.chipIndex === 0</code> in
       <code>_buildPart</code>'s <code>Tone.Part</code> callback) rather than the whole-song lap
-      boundary — arming rides out whatever's left of the current section as a variable-length
-      count-in (landing on whichever section's own bar 1 comes next, not necessarily the one active
-      when armed); recording finalizes on that same section's next entry, so the loop's bar 1 always
-      lines up with its owning section's bar 1.
+      boundary — arming confines playback to the currently-active section immediately (2c), so the
+      count-in always lands back on that same section's own bar 1, never a different one; recording
+      finalizes on that section's next entry, so the loop's bar 1 always lines up with its owning
+      section's bar 1.
     </p>
     <p>
       Playback force-restarts on every section-entry —
@@ -388,10 +388,10 @@
       case." Optimize purely for the best shape to land on across Phases 1-3.
     </div>
 
-    <p class="status">where we're headed — 2a/2b implemented, 2c/2d designed but not built</p>
+    <p class="status">where we're headed — 2a/2b/2c implemented, 2d designed but not built</p>
     <p>
       What it takes to go from today's single fixed loop to
-      <strong>multiple loops per section</strong>, layered together. 2a/2b have landed; 2c/2d are
+      <strong>multiple loops per section</strong>, layered together. 2a/2b/2c have landed; 2d is
       still just the shape agreed on before touching anything.
     </p>
 
@@ -487,9 +487,9 @@ interface Section {
     </p>
     <p class="caption">
       The "Phase 2" bullets immediately below describe its target design as a whole, written before
-      it was split into stepping stones — some of what they describe has landed (2a/2b, below), some
-      hasn't yet (2c: confining playback during recording; 2d: mixer scoping). See "Phase 2
-      sub-phases" further down for what's actually built right now.
+      it was split into stepping stones — some of what they describe has landed (2a/2b/2c, below),
+      some hasn't yet (2d: mixer scoping). See "Phase 2 sub-phases" further down for what's actually
+      built right now.
     </p>
     <div class="decided">
       <strong>Phase 1 — arrayify, engine-only.</strong> Reshape the single loop's metadata into
@@ -815,17 +815,39 @@ interface Section {
       than recording over it.
     </div>
     <div class="decided">
-      <strong>2c — confine playback to the target section while recording.</strong> Mostly already
-      exists: the manual-advance branch in <code>_buildPart</code>'s <code>Tone.Part</code> callback
-      (<code>progression-audio.ts:508-523</code>) already resets
-      <code>Tone.Transport.position</code> back to <code>_currentPosIndex</code>'s start on every
-      event whose <code>posIndex</code> differs — a "hold on this section forever" primitive,
-      independent of one-shot jumps. 2c reuses this: on arm, force that same hold onto the target
-      section regardless of the user's actual <code>_advance</code> setting; on cancel-arm, drop the
-      hold and resume normal <code>_advance</code> behavior from wherever the transport naturally
-      is; on Stop, no special-case needed — the existing unconditional reset of
-      <code>_currentPosIndex</code>/<code>_pendingJump</code> already undoes the hold as a side
-      effect. No new Part-boundary logic required.
+      <strong>2c — confine playback to the target section while recording. Implemented.</strong>
+      Built on the manual-advance branch already in <code>_buildPart</code>'s
+      <code>Tone.Part</code> callback, which resets <code>Tone.Transport.position</code> back to
+      <code>_currentPosIndex</code>'s start on every event whose <code>posIndex</code> differs — a
+      "hold on this section forever" primitive, independent of one-shot jumps, but only live when
+      the real <code>_advance</code> setting is already <code>"manual"</code>. 2c makes that hold
+      unconditional during a capture: <code>armLoopRecording()</code> stashes the real value in a
+      new <code>_preHoldAdvance</code> and forces <code>_advance = "manual"</code>;
+      <code>cancelLoopRecording()</code> restores it. The natural arming→recording→idle-with-a-loop
+      transition (<code>_onSectionEntry</code>) never touches <code>_preHoldAdvance</code>, so the
+      hold rides through record and into looping exactly as designed — only an explicit cancel or
+      <code>stop()</code> (via the next <code>start()</code>'s fresh reset) ends it.
+      <code>_currentPosIndex</code>, previously dead outside manual mode, now updates on every
+      played event regardless of mode so it's always live when arming needs to snapshot it.
+      <code>setAdvance()</code> stashes into <code>_preHoldAdvance</code> instead of clobbering the
+      override if the user flips the Advance toggle mid-hold. One simplification fell out for free:
+      2b's re-check in <code>_onSectionEntry</code> for "did the count-in land on a section that
+      already has a loop" is now unreachable — the hold guarantees the section can't change between
+      arm and the landing chipIndex 0 — so that branch was removed rather than left dead.
+    </div>
+    <div class="decided">
+      <strong>2c also locks both scrubbers and the Advance pill while armed/recording.</strong> Not
+      called out in the original design — found while implementing: a scrubber tap during a hold
+      would queue a jump that fires the moment the hold's own boundary-check runs, breaking
+      confinement out from under the capture. Chosen fix: <code>app.ts</code> disables tap-to-jump
+      on both scrubbers (<code>handleScrubberTap</code>/<code>handleKeySegmentTap</code> no-op) and
+      dims them via a <code>.locked</code> class whenever <code>getLooperState() !== "idle"</code>;
+      the KEY scrubber can't actually be visible during a capture (cycle is forced
+      <code>"none"</code> to arm), but locking it too costs nothing and doesn't rely on that
+      invariant holding forever. The Advance pill reads "🔒 Held" and disables itself the same way,
+      rather than falling into the existing "not applicable" fallback (which always displays "Auto")
+      — during a hold the effective mode truly is forced-manual, so showing "Auto" would
+      misrepresent what's actually happening.
     </div>
     <div class="decided">
       <strong>2d — scope the Mix sheet to the selected section.</strong> Piggybacks on

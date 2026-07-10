@@ -122,6 +122,7 @@ function render(state: AppState): void {
   renderScrubber(state);
   renderKeyScrubber(state);
   syncAdvancePill(state);
+  syncScrubberLock();
   renderMix(state);
   syncUrl(state);
   renderPresetIndicator();
@@ -163,6 +164,19 @@ function renderLoopButton(state: AppState, looperState: LooperState): void {
 // switching sections, e.g., while idle).
 function onLooperStateChange(looperState: LooperState): void {
   renderLoopButton(app.getState(), looperState);
+  syncAdvancePill(app.getState());
+  syncScrubberLock();
+}
+
+// 2c: playback is confined to the recording section for the duration of a
+// loop capture (arming/recording) — lock both scrubbers so a tap can't queue
+// a jump that would break the hold. The KEY scrubber can't actually be visible
+// during a capture (recording requires cycle === "none"), but locking it too
+// costs nothing and avoids relying on that invariant here.
+function syncScrubberLock(): void {
+  const locked = app.getLooperState() !== "idle";
+  scrubberBar.classList.toggle("locked", locked);
+  keyScrubberBar.classList.toggle("locked", locked);
 }
 
 function renderChips(state: AppState): void {
@@ -378,6 +392,15 @@ function renderReadout(state: AppState): void {
 // value, since a stale "Manual" would read as if manual mode were quietly still in effect.
 function syncAdvancePill(state: AppState): void {
   const applies = !scrubberBar.hidden || !keyScrubberBar.hidden;
+  // 2c: the engine forces advance to "manual" internally while arming/recording,
+  // regardless of the real stored setting — show that truthfully instead of
+  // whatever's stored, rather than reusing the "not applicable" fallback.
+  if (app.getLooperState() !== "idle") {
+    readoutAdvanceEl.disabled = true;
+    readoutAdvanceEl.textContent = "🔒 Held";
+    readoutAdvanceEl.setAttribute("aria-label", "Advance: held on the loop's section");
+    return;
+  }
   readoutAdvanceEl.disabled = !applies;
   if (!applies) {
     readoutAdvanceEl.textContent = "⏭️ Auto";
@@ -476,6 +499,7 @@ function renderKeyScrubber(state: AppState): void {
 }
 
 function handleKeySegmentTap(lapIndex: number): void {
+  if (app.getLooperState() !== "idle") return; // 2c: confined to the recording section
   if (!audio.isPlaying()) {
     const state = app.getState();
     const shifts = getShiftsForCycle(state.playback.cycle, state.playback.customCycleKeys);
@@ -501,6 +525,7 @@ function handleKeySegmentTap(lapIndex: number): void {
 }
 
 function handleScrubberTap(posIndex: number): void {
+  if (app.getLooperState() !== "idle") return; // 2c: confined to the recording section
   if (!audio.isPlaying()) {
     _currentScrubPosIndex = posIndex;
     app.seekToPos(posIndex);

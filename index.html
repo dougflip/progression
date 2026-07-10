@@ -514,6 +514,11 @@
       #key-scrubber-bar {
         border-bottom: 1px solid var(--border);
       }
+      #scrubber-bar.locked,
+      #key-scrubber-bar.locked {
+        opacity: 0.5;
+        pointer-events: none;
+      }
       .scrubber-inner {
         display: flex;
         align-items: center;

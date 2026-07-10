@@ -222,6 +222,14 @@ export function makeProgressionAudio(): AudioEngine {
   let _recordingSectionIndex: number | null = null;
   let _sectionLoopIds: (string | null)[] = [];
 
+  // 2c: confine playback to the target section while arming/recording, by
+  // forcing _advance to "manual" (reusing the existing hold branch in
+  // _buildPart's Tone.Part callback rather than new Part-boundary logic) —
+  // see docs-internal/looper.html#phases. Non-null exactly while a hold is
+  // in effect; holds the real setting so cancelLoopRecording() can restore
+  // it and setAdvance() knows to stash rather than clobber.
+  let _preHoldAdvance: string | null = null;
+
   // The shared player's current buffer, and a decode cache keyed by loop id
   // so re-entering a section doesn't re-fetch/re-decode from IndexedDB.
   let _loadedLoopId: string | null = null;
@@ -533,6 +541,11 @@ export function makeProgressionAudio(): AudioEngine {
 
       // ── Looper: section-entry sync — only for events that actually play,
       // never one a manual-hold seek above redirects away from ────────────────
+      // _currentPosIndex tracks the live position in every mode (a no-op in
+      // manual mode, where it's already pinned) so armLoopRecording() always
+      // has an accurate section to hold, even when the real advance mode is
+      // "auto" and this variable would otherwise go stale.
+      _currentPosIndex = ev.posIndex;
       _currentSectionIndex = ev.sectionIndex;
       if (ev.chipIndex === 0) _onSectionEntry(ev.sectionIndex, time);
 
@@ -805,14 +818,10 @@ export function makeProgressionAudio(): AudioEngine {
   // uses the mic input, not the shared loop player.
   function _onSectionEntry(sectionIndex: number, time: number): void {
     if (_looperState === "arming") {
-      // The cap (armLoopRecording) only checked the section active at click
-      // time — the count-in can span multiple sections before the next
-      // chipIndex === 0, so re-check here: don't record over a section that
-      // already has a loop, just keep waiting for one that doesn't.
-      if (_sectionLoopIds[sectionIndex] != null) {
-        void _swapToSectionLoop(sectionIndex, time);
-        return;
-      }
+      // No re-check needed here (unlike pre-2c): armLoopRecording() already
+      // validated the section active at click time, and the 2c hold (forcing
+      // _advance to "manual") keeps playback confined to that same section
+      // for the rest of the count-in, so sectionIndex can't have changed.
       _recordingSectionIndex = sectionIndex;
       Tone.Draw.schedule(() => {
         if (_muteDuringRecording && _channels) {
@@ -1127,6 +1136,7 @@ export function makeProgressionAudio(): AudioEngine {
       _sectionLoopIds = sectionLoopIds;
       _pendingJump = null;
       _pendingKeyJump = null;
+      _preHoldAdvance = null; // any hold from a prior session is meaningless against a fresh start
       _currentLap = 0;
       _currentPosIndex = startPosIndex;
       _currentSectionIndex =
@@ -1306,6 +1316,13 @@ export function makeProgressionAudio(): AudioEngine {
     },
 
     setAdvance(mode: string): void {
+      // A loop hold is forcing _advance to "manual" right now — stash the
+      // user's real choice instead of clobbering the override; cancelLoopRecording()
+      // applies it when the hold releases.
+      if (_preHoldAdvance !== null) {
+        _preHoldAdvance = mode;
+        return;
+      }
       _advance = mode;
     },
 
@@ -1341,6 +1358,12 @@ export function makeProgressionAudio(): AudioEngine {
         _recorder = new Tone.Recorder();
         _userMedia.connect(_recorder);
       }
+      // 2c: confine playback to the section active right now (_currentPosIndex
+      // tracks it live in every mode) by forcing the existing manual-mode hold
+      // branch on, regardless of the real advance setting. Persists through
+      // record and into looping — only cancelLoopRecording() below releases it.
+      _preHoldAdvance = _advance;
+      _advance = "manual";
       _setLooperState("arming");
     },
 
@@ -1349,6 +1372,10 @@ export function makeProgressionAudio(): AudioEngine {
       if (_looperState === "recording") _cancelLoopCapture();
       _recordingSectionIndex = null;
       _setLooperState("idle");
+      if (_preHoldAdvance !== null) {
+        _advance = _preHoldAdvance;
+        _preHoldAdvance = null;
+      }
     },
 
     deleteLoop(sectionIndex: number): void {
