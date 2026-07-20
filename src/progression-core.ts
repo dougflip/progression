@@ -1150,7 +1150,18 @@ export function makeProgressionPlayer(config: PlayerConfig) {
 
   function _getUserPresets(): UserPreset[] {
     try {
-      return JSON.parse(config.load(PRESETS_STORAGE_KEY) ?? "[]") as UserPreset[];
+      const presets = JSON.parse(config.load(PRESETS_STORAGE_KEY) ?? "[]") as UserPreset[];
+      // Presets saved before Section.loops existed (pre-2026-07-09) have no
+      // .loops key at all — backfill here, the one place stale localStorage
+      // JSON enters the typed state, so every consumer downstream can rely
+      // on it being an array.
+      return presets.map((p) => ({
+        ...p,
+        state: {
+          ...p.state,
+          sections: (p.state.sections ?? []).map((s) => ({ ...s, loops: s.loops ?? [] })),
+        },
+      }));
     } catch {
       return [];
     }
