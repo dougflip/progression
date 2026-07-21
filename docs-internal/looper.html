@@ -457,38 +457,46 @@ interface Section {
     </div>
 
     <h3 id="phase-3">Phase 3 — lift the one-loop-per-section cap</h3>
-    <p>The actual multi-loop feature. What it needs:</p>
-    <ul class="tight">
-      <li>
-        N players/effects chains per section instead of one shared chain — likely means the looper
-        deserves its own module (e.g. <code>progression-looper.ts</code>) rather than staying
-        folded into <code>progression-audio.ts</code>
-      </li>
-      <li>
-        Looper Mix-sheet group becomes a list of rows, one per loop on the selected section, instead
-        of one row
-      </li>
-      <li>
-        Mute-during-recording extends to sibling loops — today it only silences chords/bass/drums
-        (see <a href="#mute">Mute during recording</a>) since no loop has siblings yet
-      </li>
-      <li>The GC sweep design above, actually implemented</li>
-      <li>
-        Loops round-tripping through id-keyed IndexedDB rows for real multi-row use (today: at most
-        one row read/written per section at a time)
-      </li>
-    </ul>
-    <p>Known gaps inherited from Phase 2, worth resolving here (or explicitly deferring again):</p>
-    <ul class="tight">
-      <li>
-        <strong>Async section-swap has an audible gap on cache miss.</strong> Fetch → decode → swap
-        happens on section entry if the buffer isn't already cached. Proposed but never
-        implemented: prime every section's loop buffer up front (as soon as a song's loops are
-        known) instead of only the next one. Phase 3's N-player model may change how this should
-        work rather than just inheriting the fix as originally designed.
-      </li>
-      <li><strong>Orphan IndexedDB rows accumulate</strong> — no sweep exists yet, see above.</li>
-    </ul>
+    <p>
+      The actual multi-loop feature, split into stepping stones — sequenced so 3a-3c ship with no
+      visible UX change, verified before the cap actually lifts in 3d.
+    </p>
+    <div class="decided">
+      <strong>3a — implement the GC sweep for real.</strong> Independent of the N-loop work below —
+      pure IndexedDB hygiene: collect every loop <code>id</code> referenced by live state ∪ every
+      saved preset, delete anything else, run at existing checkpoints (after deleting a
+      loop/section/preset). Landing this first means the N-loop work that follows doesn't compound
+      an already-known gap.
+    </div>
+    <div class="decided">
+      <strong>3b — engine capacity: N players/effects chains per section.</strong> Widen the engine
+      from one shared player to a true array per section; likely where the looper gets its own
+      module (<code>progression-looper.ts</code>, out of <code>progression-audio.ts</code>). Also
+      where buffer priming lands — the inherited async-swap gap (see
+      <a href="#sync">Record, play, delete</a>) gets worse with N buffers instead of 1, so solve it
+      here rather than bolt it on later. State-machine cap stays at 1 — invisible, verified against
+      today's one-loop-per-section behavior. Prioritized to land early, since it's the biggest
+      re-architecture and most likely to surface issues worth knowing about before the rest is built
+      on top of it.
+    </div>
+    <div class="decided">
+      <strong>3c — mixer becomes a list of rows.</strong> UI renders N rows (today always 1, so
+      visually identical) — gets per-loop volume/mute/compression/highpass/limiter controls in place
+      before recording a second loop is even possible.
+    </div>
+    <div class="decided">
+      <strong
+        >3d — lift the record cap; mute-during-recording extends to siblings; delete gets a
+        flyout.</strong
+      >
+      The real visible feature: arming when a loop already exists on the section adds a new layer
+      instead of blocking. "Silence everything" (see <a href="#mute">Mute during recording</a>) now
+      also silences existing loops during a new capture. Delete UI: with exactly one loop, the
+      button behaves exactly as it does today (immediate <code>confirm()</code>); with more than
+      one, tapping it opens a flyout listing each loop (falling back to "Loop N" by array position,
+      per the existing label rule) so the player can pick which one to remove — each row still
+      behind its own confirm.
+    </div>
 
     <h3>What this enables today</h3>
     <ul class="tight">
