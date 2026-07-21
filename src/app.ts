@@ -673,6 +673,11 @@ function renderPresetDropdownList(): void {
         textContent: p.id === defaultId ? `${p.name} ★` : p.name,
       });
       nameBtn.addEventListener("click", () => {
+        if (
+          app.isDirty() &&
+          !window.confirm(`Unsaved changes will be lost. Switch to "${p.name}"?`)
+        )
+          return;
         app.loadUserPreset(p);
         presetDropdownEl.hidden = true;
       });
@@ -726,6 +731,8 @@ function renderPresetDropdownList(): void {
       textContent: p.id === defaultId ? `${p.label} ★` : p.label,
     });
     btn.addEventListener("click", () => {
+      if (app.isDirty() && !window.confirm(`Unsaved changes will be lost. Switch to "${p.label}"?`))
+        return;
       app.loadBuiltinPreset(p.id, p.label, p.state);
       presetDropdownEl.hidden = true;
     });
@@ -1091,6 +1098,9 @@ presetSaveBtn.addEventListener("click", () => {
 });
 
 presetRevertBtn.addEventListener("click", () => {
+  // Only enabled while dirty (see renderPresetIndicator), so every click here
+  // is discarding something real — no separate isDirty() check needed.
+  if (!window.confirm("Discard unsaved changes and revert to the last saved version?")) return;
   app.revertPreset();
   presetDropdownEl.hidden = true;
 });
