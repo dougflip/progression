@@ -146,6 +146,40 @@ async function _deleteLoopFromDb(id: string): Promise<void> {
   }
 }
 
+// Deletes every stored row whose id isn't in keepIds (live state ∪ every
+// saved preset — computed by the caller in progression-core.ts, which is the
+// only side that can see presets). Flat id-keyed storage means this is the
+// only way an abandoned blob (a deleted section, a deleted preset, a
+// recording in a song that was never saved) ever gets reclaimed — see
+// docs-internal/looper.html#phase-3. Returns the ids actually deleted so the
+// caller can evict them from the in-memory buffer cache too.
+async function _sweepOrphanedLoops(keepIds: Set<string>): Promise<string[]> {
+  try {
+    const db = await _openLoopDb();
+    const allIds = await new Promise<string[]>((resolve, reject) => {
+      const tx = db.transaction(LOOP_STORE_NAME, "readonly");
+      const req = tx.objectStore(LOOP_STORE_NAME).getAllKeys();
+      req.onsuccess = () => resolve(req.result as string[]);
+      req.onerror = () => reject(req.error);
+    });
+    const orphaned = allIds.filter((id) => !keepIds.has(id));
+    if (orphaned.length > 0) {
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(LOOP_STORE_NAME, "readwrite");
+        const store = tx.objectStore(LOOP_STORE_NAME);
+        for (const id of orphaned) store.delete(id);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+    db.close();
+    return orphaned;
+  } catch (e) {
+    console.warn("Failed to sweep orphaned loops:", e);
+    return [];
+  }
+}
+
 export function makeProgressionAudio(): AudioEngine {
   // ── Audio nodes ────────────────────────────────────────────────────────────
   let _channels: Channels | null = null; // created once, survives rebuild
@@ -1468,6 +1502,13 @@ export function makeProgressionAudio(): AudioEngine {
         }
       }
       return newId;
+    },
+
+    // 3a: GC sweep — see _sweepOrphanedLoops above. Evicts swept ids from the
+    // buffer cache too, since nothing will ever reference them again.
+    async sweepOrphanedLoops(keepIds: string[]): Promise<void> {
+      const deleted = await _sweepOrphanedLoops(new Set(keepIds));
+      for (const id of deleted) _loopBufferCache.delete(id);
     },
 
     setLoopOffsetMs(ms: number): void {

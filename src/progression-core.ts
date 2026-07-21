@@ -188,6 +188,7 @@ export interface AudioEngine {
   // only one shared player/effects chain (see docs-internal/looper.html#phases).
   setSectionLoops(loops: (LoopRef | null)[]): void;
   copyLoop(id: string): Promise<string | null>;
+  sweepOrphanedLoops(keepIds: string[]): Promise<void>;
   setLoopOffsetMs(ms: number): void;
 }
 
@@ -1054,6 +1055,23 @@ export function makeProgressionPlayer(config: PlayerConfig) {
     return _state.sections.map((s) => s.loops[0] ?? null);
   }
 
+  // 3a: everything a loop id must be reachable from to survive the sweep —
+  // live state plus every saved preset (builtin presets never carry loops,
+  // see presets.ts, so they're not part of the reachable set). The engine
+  // owns IndexedDB and does the actual deleting; only this side can see
+  // presets, so it computes what to keep.
+  function _referencedLoopIds(): Set<string> {
+    const ids = new Set<string>();
+    for (const s of _state.sections) for (const l of s.loops) ids.add(l.id);
+    for (const p of _getUserPresets())
+      for (const s of p.state.sections) for (const l of s.loops) ids.add(l.id);
+    return ids;
+  }
+
+  function _sweepLoopGc(): void {
+    void config.audio?.sweepOrphanedLoops([..._referencedLoopIds()]);
+  }
+
   // Writes a loop directly onto a known section — the engine tells us exactly
   // which one (it tracks section position itself), so unlike 2a there's no
   // guessing via activeSection. No rebuild, no _setStructural (this never
@@ -1201,6 +1219,7 @@ export function makeProgressionPlayer(config: PlayerConfig) {
         arrangement,
         activeSection: Math.min(_state.activeSection, sections.length),
       });
+      _sweepLoopGc();
     },
 
     moveSection(index: number, direction: "up" | "down"): void {
@@ -1328,6 +1347,7 @@ export function makeProgressionPlayer(config: PlayerConfig) {
       const presets = _getUserPresets().map((p) => (p.id === id ? { ...p, state } : p));
       config.persist(PRESETS_STORAGE_KEY, JSON.stringify(presets));
       _loadedPreset = presets.find((p) => p.id === id) ?? null;
+      _sweepLoopGc();
     },
 
     revertPreset(): void {
@@ -1354,6 +1374,7 @@ export function makeProgressionPlayer(config: PlayerConfig) {
       if (config.load(DEFAULT_PRESET_STORAGE_KEY) === id) {
         config.persist(DEFAULT_PRESET_STORAGE_KEY, "");
       }
+      _sweepLoopGc();
     },
 
     getDefaultPresetId: (): string | null => config.load(DEFAULT_PRESET_STORAGE_KEY) || null,
@@ -1437,6 +1458,7 @@ export function makeProgressionPlayer(config: PlayerConfig) {
     deleteLoop(sectionIndex: number): void {
       config.audio?.deleteLoop(sectionIndex);
       _setSectionLoop(sectionIndex, null);
+      _sweepLoopGc();
     },
 
     getLooperState: (): LooperState => config.audio?.getLooperState() ?? "idle",
