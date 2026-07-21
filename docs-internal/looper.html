@@ -584,6 +584,25 @@ interface Section {
         <code>playbackRate</code> on tempo change instead of truncating/gapping. Real risk: granular
         stretching can sound warbly on transient-heavy material or large tempo swings.
       </li>
+      <li>
+        <strong>Autosave draft slot</strong> — a recorded loop is now caught by
+        <code>isDirty()</code> (true even with no preset loaded) plus a
+        <code>beforeunload</code> guard, but both only help if the prompt is noticed and not
+        dismissed. Persisting live <code>AppState</code> (loops included) to its own localStorage
+        key, merged back in on boot the same way <code>mergeSectionLoops</code> does for a loaded
+        preset, would close the gap completely — but it's a second persistence channel with the same
+        boot-ordering trap <code>mergeSectionLoops</code> exists to fix, so it needs care.
+      </li>
+      <li>
+        <strong>Auto-overwrite the loaded preset after each capture</strong> — cheaper than an
+        autosave slot, but only helps when a preset is already loaded; does nothing for a brand-new
+        unsaved song, which is the riskier case the <code>beforeunload</code> guard above was
+        actually added for.
+      </li>
+      <li>
+        <strong>Stronger unsaved-changes indicator</strong> — more than the plain <code>*</code> on
+        the preset button, for visibility before you're at the point of navigating away at all.
+      </li>
     </ul>
   </body>
 </html>
