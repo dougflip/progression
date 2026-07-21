@@ -1314,7 +1314,11 @@ export function makeProgressionPlayer(config: PlayerConfig) {
 
     isDirty(): boolean {
       const baseline = _loadedPreset?.state ?? _loadedBuiltinPreset?.state ?? null;
-      if (!baseline) return false;
+      // No preset/builtin loaded at all — a brand-new song has nothing to diff
+      // against, but a recorded loop is still real, unrecoverable state (loops
+      // never ride the URL — see docs-internal/looper.html#persistence), so
+      // treat "has a loop nowhere else" as dirty rather than silently clean.
+      if (!baseline) return _state.sections.some((s) => s.loops.length > 0);
       return JSON.stringify(_toPresetState(_state)) !== JSON.stringify(_toPresetState(baseline));
     },
 

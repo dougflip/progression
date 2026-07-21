@@ -1292,6 +1292,17 @@ document.querySelectorAll<HTMLDialogElement>("dialog").forEach((d) =>
 
 window.addEventListener("resize", syncBodyPadding);
 
+// Recorded loops don't ride the URL (see docs-internal/looper.html#persistence),
+// so closing/refreshing/navigating away with an unsaved loop silently orphans
+// the recording — a passive UI indicator is easy to miss at exactly the moment
+// that matters. isDirty() covers this even with no preset loaded (see
+// progression-core.ts), so gating on it alone is enough.
+window.addEventListener("beforeunload", (e) => {
+  if (!app.isDirty()) return;
+  e.preventDefault();
+  e.returnValue = "";
+});
+
 // ── Welcome overlay ───────────────────────────────────────────────────────
 const WELCOMED = "cppWelcomed";
 if (!localStorage.getItem(WELCOMED)) ($("welcome-modal") as HTMLDialogElement).showModal();
