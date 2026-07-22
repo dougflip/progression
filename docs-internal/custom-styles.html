@@ -309,7 +309,8 @@
   </head>
   <body>
     <p class="status">
-      Phases 1–4 built and tested — feature complete, pending manual verification
+      Phases 1–4 built and tested, pending manual verification — Phase 5 (live preview loop)
+      planned, not built
     </p>
     <h1>Custom Styles</h1>
     <p class="subtitle">
@@ -886,6 +887,83 @@ previewInstrument(name: DrumInstrumentName): void</code></pre>
       isn't in this sheet's own action row — it's a per-row action on the Setup list (see above),
       opening this same editor with a copied, not-yet-saved draft.
     </p>
+
+    <h2 id="phase-5">Phase 5 — live preview loop while editing (planned, not built)</h2>
+    <p>
+      Editing today only gives you one-hit-at-a-time audition (<code>previewInstrument</code>). The
+      ask: a dedicated play/stop toggle in the editor that loops the current draft continuously, so
+      toggling cells is heard in the groove immediately, not one tap at a time.
+    </p>
+    <div class="decided">
+      <strong>Dedicated ▶/■ toggle button, not auto-play-on-open.</strong> Auto-starting the moment
+      the sheet opens would drone before you've even looked at the grid, and it collapses two
+      genuinely different modes (single-cell audition vs. continuous groove) into one. An explicit
+      button keeps both available.
+    </div>
+    <div class="decided">
+      <strong>Bass resolves against a fixed C major triad, not real song context.</strong> The
+      editor has no chord/key to voice against — there's no song playing, possibly no song loaded at
+      all. <code>R</code>/<code>3</code>/<code>5</code> map to fixed reference pitches (e.g.
+      C3/E3/G3) good enough for auditioning the <em>pattern</em>, not the harmony.
+    </div>
+    <div class="decided">
+      <strong>Tempo: reuse <code>playback.tempo</code> as-is.</strong> No separate preview-tempo
+      control — the groove should sound like it will at the actual song's speed.
+    </div>
+    <p>
+      The one genuinely elegant part: the grid already mutates the draft's arrays in place (<code
+        >pattern[i] = ...</code
+      >, never reassigned). If the preview's <code>Tone.Sequence</code>s are built referencing those
+      <em>same</em> array objects when the loop starts, every cell tap already shows up on the
+      sequence's next pass — no "rebuild on every tap" plumbing needed. Only a Simple/Busy tab
+      switch needs an explicit restart, since that points at different arrays entirely.
+    </p>
+    <pre><code>// New, standalone — deliberately NOT reusing _buildDrums/_buildBass, which are
+// shaped around a chord progression this feature doesn't have.
+previewStyleLoopStart(variant: StyleVariant, tempo: number): void {
+  this.stop();              // main song, if any, must not layer under the preview
+  previewStyleLoopStop();   // tear down any earlier preview loop first
+  Tone.Transport.bpm.value = tempo;
+  // one Tone.Sequence per instrument key present on `variant`, at "16n",
+  // referencing variant[inst] directly (same array the grid mutates) —
+  // bass sequence resolves R/3/5 against the fixed C3/E3/G3 triad.
+  Tone.Transport.start();
+}
+
+previewStyleLoopStop(): void {
+  // dispose every sequence built above, stop the transport
+}</code></pre>
+    <p>
+      Routed through the player
+      (<code>app.previewCustomStyleStart(variant)</code>/<code>previewCustomStyleStop()</code>), not
+      called raw on <code>audio</code> from <code>app.ts</code> — pausing the main song for preview
+      should go through the same <code>_pausePlayback()</code> path
+      <code>togglePlay()</code> already uses, so <code>_pausedAt</code> is set correctly and the
+      song is resumable afterward, exactly like pausing normally. A raw
+      <code>audio.stop()</code> call from <code>app.ts</code> would desync <code>_state</code> from
+      what's actually playing.
+    </p>
+    <h3>Mockup — editor action row with preview</h3>
+    <div class="mockup-bar">
+      <button class="mockup-btn primary">▶ Preview</button>
+      <div>
+        <button class="mockup-btn danger">Delete</button>
+        <button class="mockup-btn primary">Save</button>
+      </div>
+    </div>
+    <p class="caption">
+      Toggles to "■ Stop" while looping. Switching Simple/Busy tabs while active restarts the loop
+      against the newly active tab's arrays; closing the sheet (Save, Delete, or the × button)
+      always stops it — a stray loop must never keep playing after the sheet is gone.
+    </p>
+    <div class="open-q">
+      <strong>Not yet decided: single-tap preview vs. the running loop.</strong> While the loop is
+      playing, tapping a cell today would <em>also</em> fire <code>previewInstrument</code> for an
+      immediate one-off hit — likely audible as a doubled/flammed hit on top of the loop's own
+      scheduled one. Options: suppress the per-tap preview while the loop is active (the loop will
+      play it on its next pass anyway), or leave it — not worth deciding until it's actually heard
+      in testing.
+    </div>
 
     <h2 id="deferred">Deferred / future</h2>
     <p>Noted here so they're not forgotten, not designed in this doc:</p>
