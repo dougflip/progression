@@ -308,14 +308,17 @@
     </style>
   </head>
   <body>
-    <p class="status">planning only — no code written yet, four phases below</p>
+    <p class="status">
+      Phases 1–4 built and tested — feature complete, pending manual verification
+    </p>
     <h1>Custom Styles</h1>
     <p class="subtitle">
       Let players define their own drum beat + bass line — a <code>simple</code> and a
       <code>busy</code> variant, same shape as the four built-in styles — instead of being limited
-      to <code>pop</code>/<code>funk</code>/<code>ballad</code>/<code>rock</code>. This doc is the
-      plan, not the implementation: data structure, storage, playback wiring, and CRUD UI are staged
-      as four independent phases, each shippable and testable before the next begins.
+      to <code>pop</code>/<code>funk</code>/<code>ballad</code>/<code>rock</code>. Built as four
+      independent phases — data structure, storage, playback wiring, and CRUD UI — each shipped and
+      tested before the next began. This doc tracks the plan and now the as-built reality; wherever
+      they diverged, a note explains why.
     </p>
 
     <h2 id="background">Background</h2>
@@ -648,9 +651,19 @@ style: resolveStyleDef(_state.playback.style, _getCustomStyles(), STYLES, STYLES
 
     <h2 id="phase-4">Phase 4 — CRUD UI (sequencer/drum-machine editor)</h2>
     <p>
-      A new "Custom Styles" section in the Setup sheet (4th <code>setup-group</code>), modeled on
-      the existing user-preset list, plus an editor sheet for creating/editing one.
+      <strong>Built and tested.</strong> A new "Custom Styles" section in the Setup sheet (4th
+      <code>setup-group</code>), modeled on the existing user-preset list, plus an editor sheet for
+      creating/editing one.
     </p>
+    <div class="tradeoff">
+      <strong
+        >Scope trim: "Duplicate" only works from an existing custom style, not a built-in.</strong
+      >
+      The Setup list's rows are custom styles only — built-ins aren't listed there, so there's no
+      natural place to pick "duplicate Funk" from. Adding that would need its own source-picker UI
+      (built-ins + customs), which is real extra surface for a nice-to-have. Deferred (see below);
+      "New" (blank) and "Duplicate" (from an existing custom style) cover the core CRUD need today.
+    </div>
     <div class="decided">
       <strong
         >Not a separate page — another <code>&lt;dialog&gt;</code> sheet, same as Setup/Mix.</strong
@@ -671,22 +684,36 @@ style: resolveStyleDef(_state.playback.style, _getCustomStyles(), STYLES, STYLES
       edit affordance there, so there's one entry point for managing custom styles, not two.
     </div>
 
-    <p>Two small additions this phase needs, beyond the storage functions from Phase 2:</p>
-    <pre><code>function duplicateStyle(source: StyleDef, name: string): CustomStyleDef {
-  // source is a built-in STYLES[x] or an existing custom style already run through toStyleDef() —
-  // either way, by the time it gets here it's just a StyleDef, so one function covers both.
-  return saveCustomStyle({
-    stepsPerBar: 16,
-    bars: 1,
-    simple: structuredClone(source.simple),
-    busy: structuredClone(source.busy),
-    name,
-  });
-}</code></pre>
-    <pre><code>// New AudioEngine method — fires immediately for audition, independent of the
-// Transport/running sequences (same sample/synth trigger _triggerDrum already
-// uses internally, just not scheduled against a running song).
-previewInstrument(name: DrumInstrument, velocity?: number): void</code></pre>
+    <p>
+      No separate <code>duplicateStyle</code> function landed — "Duplicate" and "New" both just open
+      the editor with an in-memory draft; nothing is persisted until Save, so an abandoned duplicate
+      never touches storage (the original doc sketch had duplication call
+      <code>saveCustomStyle</code> immediately, which would've littered storage with never-renamed
+      copies for every "duplicate then close without editing" case):
+    </p>
+    <pre><code>interface StyleVariantDraft {
+  // one full 16-step DrumPattern per instrument (always present, blank = all-rest —
+  // unlike StyleVariant's sparse optional keys) plus a single BassPattern (not
+  // {major, minor} — see the bass decision above)
+}
+
+// "New":      { name: "", simple: makeBlankStyleVariantDraft(), busy: makeBlankStyleVariantDraft() }
+// "Edit":     { name: custom.name, simple: styleVariantToDraft(custom.simple), busy: styleVariantToDraft(custom.busy) }, editingId = custom.id
+// "Duplicate": same as Edit's draft, name suffixed " copy", editingId = null
+
+// on Save:
+const def = {
+  name, stepsPerBar: 16, bars: 1,
+  simple: draftToStyleVariant(draft.simple),
+  busy: draftToStyleVariant(draft.busy),
+};
+editingId ? app.updateCustomStyle(editingId, def) : app.saveCustomStyle(def);</code></pre>
+    <pre><code>// New AudioEngine method — fires immediately for audition (Tone.now()),
+// independent of the Transport/running sequences. No velocity param (the
+// original sketch had one) — samples are single fixed-volume players with no
+// velocity layers, and built-in playback doesn't vary hit velocity either, so
+// there was nothing for it to actually control.
+previewInstrument(name: DrumInstrumentName): void</code></pre>
 
     <h3>Mockup — Setup sheet section</h3>
     <div class="goal-box">
@@ -840,21 +867,24 @@ previewInstrument(name: DrumInstrument, velocity?: number): void</code></pre>
         playing (see Decisions).
       </p>
       <div class="mockup-bar" style="margin-top: 0.5rem">
-        <div>
-          <button class="mockup-btn">Duplicate</button>
-          <button class="mockup-btn danger">Delete</button>
-        </div>
+        <button class="mockup-btn danger">Delete</button>
         <button class="mockup-btn primary">Save</button>
       </div>
     </div>
     <p class="caption">
-      Grid reuses the <code>.key-grid</code>/<code>.key-chip.active</code> toggle pattern already in
-      the key-picker. Drum cells are a binary toggle (tap to add/remove a hit); bass cells cycle
-      through 4 states since a bass step isn't just on/off. Only instruments wired to samples get a
-      row (see the Phase 1 list) — one row set is shown per tab (Simple/Busy). Bass gets a single
-      row, not major/minor sub-tabs — see the note under the bass row above for what happens behind
-      the scenes. Tapping any cell plays that instrument immediately for audition, via a new
-      <code>AudioEngine.previewInstrument(name)</code> method.
+      A dedicated <code>.seq-grid</code>/<code>.seq-cell</code> CSS grid, not
+      <code>.key-grid</code>/<code>.key-chip</code> — the key-picker's grid is a fixed 4 columns,
+      too narrow for 16 steps. All 9 wired instruments (see the Phase 1 list) always get a row, in a
+      fixed order, defaulting to blank/all-rest — unlike <code>StyleVariant</code>'s sparse optional
+      keys, the editor draft always has a full 16-step array per instrument so the grid never needs
+      to conditionally materialize a row. Drum cells are a binary toggle (tap to add/remove a hit,
+      only firing preview audio when a hit is <em>added</em>, not removed); bass cells cycle through
+      4 states since a bass step isn't just on/off. Bass gets a single row, not major/minor sub-tabs
+      — see the note under the bass row above for what happens behind the scenes. Tapping a drum
+      cell plays that instrument immediately via <code>AudioEngine.previewInstrument(name)</code>;
+      bass cells don't preview (would need key context to pick a real pitch — deferred). "Duplicate"
+      isn't in this sheet's own action row — it's a per-row action on the Setup list (see above),
+      opening this same editor with a copied, not-yet-saved draft.
     </p>
 
     <h2 id="deferred">Deferred / future</h2>
@@ -870,37 +900,64 @@ previewInstrument(name: DrumInstrument, velocity?: number): void</code></pre>
         <code>tom4</code>, <code>crash-r</code>, <code>china</code>) as additional instrument rows.
       </li>
       <li>Sharing/exporting custom styles between devices (URL or file export/import).</li>
+      <li>
+        "Duplicate" starting from a built-in style, not just an existing custom one (see the Phase 4
+        scope-trim note above) — would need a source picker.
+      </li>
     </ul>
 
-    <h2 id="files">Where it will live</h2>
+    <h2 id="files">Where it lives</h2>
     <table>
       <tr>
         <th>File</th>
-        <th>Owns (planned)</th>
+        <th>Owns</th>
+      </tr>
+      <tr>
+        <td class="file">custom-styles.ts</td>
+        <td>
+          <code>CustomStyleDef</code>, <code>toStyleDef</code>, <code>resolveStyleDef</code>, the
+          <code>custom:</code>-ref id helpers, the four storage functions, and the Phase 4
+          editor-support functions (<code>CUSTOM_STYLE_INSTRUMENTS</code>,
+          <code>StyleVariantDraft</code>, <code>makeBlankStyleVariantDraft</code>,
+          <code>styleVariantToDraft</code>/<code>draftToStyleVariant</code>,
+          <code>cycleBassStep</code>). Zero runtime dependency on <code>progression-core.ts</code> —
+          its only import from core is <code>import type</code>, erased at compile time.
+        </td>
       </tr>
       <tr>
         <td class="file">progression-core.ts</td>
         <td>
-          <code>CustomStyleDef</code> type, <code>toStyleDef</code>, <code>resolveStyleDef</code>,
-          the four storage functions.
+          <code>DrumInstrumentName</code> type; the <code>previewInstrument</code> addition to
+          <code>AudioEngine</code>; thin wrappers
+          (<code>_getCustomStyles</code>/<code>_saveCustomStyle</code>/<code>_updateCustomStyle</code>/<code>_deleteCustomStyle</code>)
+          exposed on the public API, where the "reset playback.style on delete" and "rebuild if the
+          edited style is active" logic actually lives (needs
+          <code>_state</code>/<code>_setPlayback</code>/<code>_scheduleRebuild</code>, which only
+          exist inside <code>makeProgressionPlayer</code>'s closure); the <code>parseUrl</code> fix.
         </td>
       </tr>
       <tr>
         <td class="file">progression-audio.ts</td>
         <td>
-          No changes for Phase 1–3 (already only consumes <code>StyleDef</code>). Phase 4 adds
-          <code>previewInstrument(name)</code> to <code>AudioEngine</code> for tap-to-audition.
+          <code>previewInstrument</code> implementation and its <code>_previewFallback</code> helper
+          — the only <code>AudioEngine</code> method this whole feature needed.
         </td>
       </tr>
       <tr>
         <td class="file">app.ts</td>
         <td>
-          Custom Styles picker popup wiring (Phase 3); Setup section + grid editor wiring (Phase 4).
+          Style picker popup wiring (Phase 3); Custom Styles Setup-list rendering
+          (<code>renderCustomStyleRows</code>) and the style editor sheet's tabs/grid/save/delete
+          wiring (Phase 4).
         </td>
       </tr>
       <tr>
         <td class="file">index.html</td>
-        <td>Picker popup markup (Phase 3); Setup section + grid editor markup (Phase 4).</td>
+        <td>
+          Style picker markup/CSS (Phase 3); Custom Styles Setup section and the
+          <code>#style-editor-sheet</code> dialog markup/CSS, including the new
+          <code>.seq-grid</code>/<code>.seq-cell</code> rules (Phase 4).
+        </td>
       </tr>
       <tr>
         <td class="file">docs.html</td>

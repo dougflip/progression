@@ -1,13 +1,18 @@
 import { describe, expect, it } from "vitest";
 import type { StyleDef } from "./progression-core";
 import {
+  CUSTOM_STYLE_INSTRUMENTS,
   EXAMPLE_CUSTOM_STYLE,
+  cycleBassStep,
   customStyleIdFromRef,
   deleteCustomStyle,
+  draftToStyleVariant,
   getCustomStyles,
   isCustomStyleRef,
+  makeBlankStyleVariantDraft,
   resolveStyleDef,
   saveCustomStyle,
+  styleVariantToDraft,
   toCustomStyleId,
   toStyleDef,
   updateCustomStyle,
@@ -125,5 +130,61 @@ describe("resolveStyleDef", () => {
     // e.g. a shared URL from a device that doesn't have this custom style saved
     const ref = toCustomStyleId("does-not-exist");
     expect(resolveStyleDef(ref, [EXAMPLE_CUSTOM_STYLE], builtins, fallback)).toBe(fallback);
+  });
+});
+
+describe("makeBlankStyleVariantDraft", () => {
+  it("has all-zero 16-step patterns for every instrument and bass", () => {
+    const draft = makeBlankStyleVariantDraft();
+    CUSTOM_STYLE_INSTRUMENTS.forEach((inst) => {
+      expect(draft[inst]).toEqual(Array.from({ length: 16 }, () => 0));
+    });
+    expect(draft.bass).toEqual(Array.from({ length: 16 }, () => 0));
+  });
+});
+
+describe("styleVariantToDraft", () => {
+  it("fills in a blank pattern for an instrument missing from the variant", () => {
+    const draft = styleVariantToDraft({
+      kick: EXAMPLE_CUSTOM_STYLE.simple.kick!,
+      bass: EXAMPLE_CUSTOM_STYLE.simple.bass,
+    });
+    expect(draft.kick).toEqual(EXAMPLE_CUSTOM_STYLE.simple.kick);
+    expect(draft.snare).toEqual(Array.from({ length: 16 }, () => 0));
+  });
+
+  it("takes the major bass pattern, not minor", () => {
+    const major = ["R", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] as const;
+    const minor = ["3", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] as const;
+    const draft = styleVariantToDraft({
+      bass: { major: [...major], minor: [...minor] },
+    });
+    expect(draft.bass).toEqual(major);
+    expect(draft.bass).not.toEqual(minor);
+  });
+});
+
+describe("draftToStyleVariant", () => {
+  it("expands the single bass pattern into identical major/minor copies", () => {
+    const draft = styleVariantToDraft(EXAMPLE_CUSTOM_STYLE.simple);
+    const variant = draftToStyleVariant(draft);
+    expect(variant.bass.major).toEqual(draft.bass);
+    expect(variant.bass.minor).toEqual(draft.bass);
+    expect(variant.bass.major).not.toBe(variant.bass.minor); // independent copies, not aliased
+  });
+
+  it("round-trips drum patterns unchanged", () => {
+    const draft = styleVariantToDraft(EXAMPLE_CUSTOM_STYLE.simple);
+    const variant = draftToStyleVariant(draft);
+    expect(variant.kick).toEqual(EXAMPLE_CUSTOM_STYLE.simple.kick);
+  });
+});
+
+describe("cycleBassStep", () => {
+  it("cycles R -> 3 -> 5 -> rest -> R", () => {
+    expect(cycleBassStep("R")).toBe("3");
+    expect(cycleBassStep("3")).toBe("5");
+    expect(cycleBassStep("5")).toBe(0);
+    expect(cycleBassStep(0)).toBe("R");
   });
 });

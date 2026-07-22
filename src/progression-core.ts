@@ -6,8 +6,12 @@
 import { STYLE_OPTIONS, BASS_OPTIONS, DRUM_OPTIONS, VOICING_OPTIONS, STYLES } from "./styles.js";
 import {
   getCustomStyles as getStoredCustomStyles,
+  saveCustomStyle as saveStoredCustomStyle,
+  updateCustomStyle as updateStoredCustomStyle,
+  deleteCustomStyle as deleteStoredCustomStyle,
   resolveStyleDef,
   isCustomStyleRef,
+  toCustomStyleId,
   type CustomStyleDef,
 } from "./custom-styles.js";
 
@@ -111,6 +115,8 @@ export interface StyleDef {
   busy: StyleVariant;
 }
 
+export type DrumInstrumentName = keyof Omit<StyleVariant, "bass">;
+
 export interface MixSettings {
   chordVol: number;
   bassVol: number;
@@ -196,6 +202,9 @@ export interface AudioEngine {
   copyLoop(id: string): Promise<string | null>;
   sweepOrphanedLoops(keepIds: string[]): Promise<void>;
   setLoopOffsetMs(ms: number): void;
+  // Fires immediately for audition (Tone.now()), independent of the
+  // Transport/running sequences — used by the style editor's grid taps.
+  previewInstrument(name: DrumInstrumentName): void;
 }
 
 export interface PlaybackSettings {
@@ -446,6 +455,14 @@ export {
   toCustomStyleId,
   isCustomStyleRef,
   customStyleIdFromRef,
+  CUSTOM_STYLE_INSTRUMENTS,
+  type CustomStyleInstrument,
+  CUSTOM_STYLE_INSTRUMENT_LABELS,
+  type StyleVariantDraft,
+  makeBlankStyleVariantDraft,
+  styleVariantToDraft,
+  draftToStyleVariant,
+  cycleBassStep,
 } from "./custom-styles.js";
 
 // ─── Token utilities ─────────────────────────────────────────────────────────
@@ -1221,6 +1238,29 @@ export function makeProgressionPlayer(config: PlayerConfig) {
     return getStoredCustomStyles(config);
   }
 
+  function _saveCustomStyle(def: Omit<CustomStyleDef, "id">): CustomStyleDef {
+    return saveStoredCustomStyle(config, def);
+  }
+
+  function _updateCustomStyle(id: string, patch: Partial<Omit<CustomStyleDef, "id">>): void {
+    updateStoredCustomStyle(config, id, patch);
+    // The edited style's content changed, but playback.style (still
+    // "custom:<id>") didn't — resolveStyleDef needs a rebuild to pick up the
+    // new pattern data, the same way changing the style pill already does.
+    if (config.audio?.isPlaying() && _state.playback.style === toCustomStyleId(id)) {
+      _scheduleRebuild();
+    }
+  }
+
+  function _deleteCustomStyle(id: string): void {
+    deleteStoredCustomStyle(config, id);
+    // Mirrors deleteUserPreset's guard on DEFAULT_PRESET_STORAGE_KEY — don't
+    // leave playback pointed at a dangling id.
+    if (_state.playback.style === toCustomStyleId(id)) {
+      _setPlayback({ style: DEFAULTS.playback.style });
+    }
+  }
+
   return {
     getState: (): AppState => ({
       ..._state,
@@ -1342,6 +1382,9 @@ export function makeProgressionPlayer(config: PlayerConfig) {
 
     getUserPresets: _getUserPresets,
     getCustomStyles: _getCustomStyles,
+    saveCustomStyle: _saveCustomStyle,
+    updateCustomStyle: _updateCustomStyle,
+    deleteCustomStyle: _deleteCustomStyle,
 
     getLoadedPreset: (): UserPreset | null => _loadedPreset,
 

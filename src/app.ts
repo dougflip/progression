@@ -33,6 +33,16 @@ import {
   toCustomStyleId,
   isCustomStyleRef,
   customStyleIdFromRef,
+  CUSTOM_STYLE_INSTRUMENTS,
+  CUSTOM_STYLE_INSTRUMENT_LABELS,
+  type StyleVariantDraft,
+  makeBlankStyleVariantDraft,
+  styleVariantToDraft,
+  draftToStyleVariant,
+  cycleBassStep,
+  type DrumInstrumentName,
+  type DrumPattern,
+  type BassPattern,
 } from "./progression-core.js";
 import { PRESETS } from "./presets.js";
 import { makeProgressionAudio } from "./progression-audio.js";
@@ -116,6 +126,16 @@ const chordsOnEl = $("chords-on") as HTMLInputElement;
 const bassOnEl = $("bass-on") as HTMLInputElement;
 const drumsOnEl = $("drums-on") as HTMLInputElement;
 const keepAwakeEl = $("keep-awake") as HTMLInputElement;
+const customStyleRowsEl = $("custom-style-rows") as HTMLDivElement;
+const addCustomStyleEl = $("add-custom-style") as HTMLButtonElement;
+const styleEditorSheetEl = $("style-editor-sheet") as HTMLDialogElement;
+const styleEditorTitleEl = $("style-editor-title") as HTMLElement;
+const styleEditorNameEl = $("style-editor-name") as HTMLInputElement;
+const styleEditorTabSimpleEl = $("style-editor-tab-simple") as HTMLButtonElement;
+const styleEditorTabBusyEl = $("style-editor-tab-busy") as HTMLButtonElement;
+const styleEditorGridEl = $("style-editor-grid") as HTMLDivElement;
+const styleEditorSaveEl = $("style-editor-save") as HTMLButtonElement;
+const styleEditorDeleteEl = $("style-editor-delete") as HTMLButtonElement;
 
 $("app-version").textContent = `v${__APP_VERSION__} build-${__APP_SHA__}`;
 
@@ -135,6 +155,7 @@ function render(state: AppState): void {
   renderPresetIndicator();
   syncLoopBtnVisibility(state);
   renderLoopButton(state, app.getLooperState());
+  renderCustomStyleRows();
 }
 
 // ── Looper (spike) ─────────────────────────────────────────────────────────
@@ -971,6 +992,212 @@ document.addEventListener("click", (e: MouseEvent) => {
   if (stylePickerEl.hidden) return;
   if (readoutStyleEl.contains(e.target as Node) || stylePickerEl.contains(e.target as Node)) return;
   stylePickerEl.hidden = true;
+});
+
+// ── Custom Styles: Setup list ─────────────────────────────────────────────
+
+function renderCustomStyleRows(): void {
+  customStyleRowsEl.innerHTML = "";
+  const styles = app.getCustomStyles();
+
+  if (styles.length === 0) {
+    customStyleRowsEl.appendChild(
+      Object.assign(document.createElement("div"), {
+        className: "empty-presets",
+        textContent: "No custom styles yet.",
+      }),
+    );
+    return;
+  }
+
+  styles.forEach((custom: CustomStyleDef) => {
+    const row = document.createElement("div");
+    row.className = "section-row";
+
+    const nameEl = Object.assign(document.createElement("span"), {
+      className: "user-preset-name",
+      textContent: custom.name,
+    });
+
+    const editBtn = Object.assign(document.createElement("button"), {
+      type: "button",
+      className: "icon-btn",
+      textContent: "✎",
+    });
+    editBtn.setAttribute("aria-label", `Edit ${custom.name}`);
+    editBtn.addEventListener("click", () =>
+      openStyleEditor(
+        {
+          name: custom.name,
+          simple: styleVariantToDraft(custom.simple),
+          busy: styleVariantToDraft(custom.busy),
+        },
+        custom.id,
+      ),
+    );
+
+    const dupBtn = Object.assign(document.createElement("button"), {
+      type: "button",
+      className: "icon-btn",
+      textContent: "⧉",
+    });
+    dupBtn.setAttribute("aria-label", `Duplicate ${custom.name}`);
+    dupBtn.addEventListener("click", () =>
+      openStyleEditor(
+        {
+          name: `${custom.name} copy`,
+          simple: styleVariantToDraft(custom.simple),
+          busy: styleVariantToDraft(custom.busy),
+        },
+        null,
+      ),
+    );
+
+    const delBtn = Object.assign(document.createElement("button"), {
+      type: "button",
+      className: "icon-btn",
+      textContent: "×",
+    });
+    delBtn.setAttribute("aria-label", `Delete ${custom.name}`);
+    delBtn.addEventListener("click", () => {
+      if (!window.confirm(`Delete "${custom.name}"?`)) return;
+      app.deleteCustomStyle(custom.id);
+      renderCustomStyleRows();
+    });
+
+    row.append(nameEl, editBtn, dupBtn, delBtn);
+    customStyleRowsEl.appendChild(row);
+  });
+}
+
+addCustomStyleEl.addEventListener("click", () =>
+  openStyleEditor(
+    { name: "", simple: makeBlankStyleVariantDraft(), busy: makeBlankStyleVariantDraft() },
+    null,
+  ),
+);
+
+// ── Custom Styles: sequencer grid editor ──────────────────────────────────
+
+interface StyleEditorDraft {
+  name: string;
+  simple: StyleVariantDraft;
+  busy: StyleVariantDraft;
+}
+
+let _styleEditorDraft: StyleEditorDraft | null = null;
+let _styleEditorEditingId: string | null = null;
+let _styleEditorTab: "simple" | "busy" = "simple";
+
+function openStyleEditor(draft: StyleEditorDraft, editingId: string | null): void {
+  _styleEditorDraft = draft;
+  _styleEditorEditingId = editingId;
+  _styleEditorTab = "simple";
+  styleEditorTitleEl.textContent = editingId ? "Edit Custom Style" : "New Custom Style";
+  styleEditorNameEl.value = draft.name;
+  styleEditorDeleteEl.hidden = editingId === null;
+  renderStyleEditorTabs();
+  renderStyleEditorGrid();
+  styleEditorSheetEl.showModal();
+  setTimeout(() => {
+    styleEditorNameEl.focus();
+    styleEditorNameEl.select();
+  }, 50);
+}
+
+function renderStyleEditorTabs(): void {
+  styleEditorTabSimpleEl.classList.toggle("active", _styleEditorTab === "simple");
+  styleEditorTabBusyEl.classList.toggle("active", _styleEditorTab === "busy");
+}
+
+function appendDrumRow(instrument: DrumInstrumentName, pattern: DrumPattern): void {
+  styleEditorGridEl.appendChild(
+    Object.assign(document.createElement("div"), {
+      className: "seq-row-label",
+      textContent: CUSTOM_STYLE_INSTRUMENT_LABELS[instrument],
+    }),
+  );
+  pattern.forEach((step, i) => {
+    const cell = Object.assign(document.createElement("button"), {
+      type: "button",
+      className: "seq-cell",
+    });
+    cell.classList.toggle("on", step === 1);
+    cell.classList.toggle("beat-start", i % 4 === 0);
+    cell.addEventListener("click", () => {
+      const turningOn = pattern[i] === 0;
+      pattern[i] = turningOn ? 1 : 0;
+      cell.classList.toggle("on", turningOn);
+      if (turningOn) audio.previewInstrument(instrument);
+    });
+    styleEditorGridEl.appendChild(cell);
+  });
+}
+
+function appendBassRow(pattern: BassPattern): void {
+  styleEditorGridEl.appendChild(
+    Object.assign(document.createElement("div"), {
+      className: "seq-row-label",
+      textContent: "Bass",
+    }),
+  );
+  pattern.forEach((step, i) => {
+    const cell = Object.assign(document.createElement("button"), {
+      type: "button",
+      className: "seq-cell",
+      textContent: step === 0 ? "" : String(step),
+    });
+    cell.classList.toggle("on", step !== 0);
+    cell.classList.toggle("beat-start", i % 4 === 0);
+    cell.addEventListener("click", () => {
+      pattern[i] = cycleBassStep(pattern[i]!);
+      cell.textContent = pattern[i] === 0 ? "" : String(pattern[i]);
+      cell.classList.toggle("on", pattern[i] !== 0);
+    });
+    styleEditorGridEl.appendChild(cell);
+  });
+}
+
+function renderStyleEditorGrid(): void {
+  if (!_styleEditorDraft) return;
+  const variant = _styleEditorDraft[_styleEditorTab];
+  styleEditorGridEl.innerHTML = "";
+  CUSTOM_STYLE_INSTRUMENTS.forEach((inst) => appendDrumRow(inst, variant[inst]));
+  appendBassRow(variant.bass);
+}
+
+styleEditorTabSimpleEl.addEventListener("click", () => {
+  _styleEditorTab = "simple";
+  renderStyleEditorTabs();
+  renderStyleEditorGrid();
+});
+styleEditorTabBusyEl.addEventListener("click", () => {
+  _styleEditorTab = "busy";
+  renderStyleEditorTabs();
+  renderStyleEditorGrid();
+});
+
+styleEditorSaveEl.addEventListener("click", () => {
+  if (!_styleEditorDraft) return;
+  const def = {
+    name: styleEditorNameEl.value.trim() || "Untitled Style",
+    stepsPerBar: 16,
+    bars: 1,
+    simple: draftToStyleVariant(_styleEditorDraft.simple),
+    busy: draftToStyleVariant(_styleEditorDraft.busy),
+  };
+  if (_styleEditorEditingId) app.updateCustomStyle(_styleEditorEditingId, def);
+  else app.saveCustomStyle(def);
+  styleEditorSheetEl.close();
+  renderCustomStyleRows();
+});
+
+styleEditorDeleteEl.addEventListener("click", () => {
+  if (!_styleEditorEditingId) return;
+  if (!window.confirm(`Delete "${_styleEditorDraft?.name ?? "this style"}"?`)) return;
+  app.deleteCustomStyle(_styleEditorEditingId);
+  styleEditorSheetEl.close();
+  renderCustomStyleRows();
 });
 
 // ── Tempo picker ─────────────────────────────────────────────────────────

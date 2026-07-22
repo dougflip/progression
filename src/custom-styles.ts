@@ -5,7 +5,14 @@
  * metadata. See docs-internal/custom-styles.html for the full feature plan.
  */
 
-import type { PlayerConfig, StyleDef, StyleVariant } from "./progression-core.js";
+import type {
+  BassPattern,
+  BassStep,
+  DrumPattern,
+  PlayerConfig,
+  StyleDef,
+  StyleVariant,
+} from "./progression-core.js";
 
 export interface CustomStyleDef {
   id: string;
@@ -102,6 +109,86 @@ export function deleteCustomStyle(storage: StorageConfig, id: string): void {
     CUSTOM_STYLES_STORAGE_KEY,
     JSON.stringify(getCustomStyles(storage).filter((s) => s.id !== id)),
   );
+}
+
+// ─── Editor support ──────────────────────────────────────────────────────────
+// The grid editor (Phase 4) only shows ONE bass row per variant, not
+// major/minor sub-tabs (see the "Bass major/minor" decision in the design
+// doc) — so the in-editor draft shape carries a single BassPattern, expanded
+// to {major, minor} copies only when converted back to a real StyleVariant.
+
+export const CUSTOM_STYLE_INSTRUMENTS = [
+  "kick",
+  "snare",
+  "hat",
+  "hatOpen",
+  "crash",
+  "ride",
+  "rideBell",
+  "tom",
+  "tom2",
+] as const;
+
+export type CustomStyleInstrument = (typeof CUSTOM_STYLE_INSTRUMENTS)[number];
+
+export const CUSTOM_STYLE_INSTRUMENT_LABELS: Record<CustomStyleInstrument, string> = {
+  kick: "Kick",
+  snare: "Snare",
+  hat: "Hat",
+  hatOpen: "Hat (Open)",
+  crash: "Crash",
+  ride: "Ride",
+  rideBell: "Ride Bell",
+  tom: "Tom 1",
+  tom2: "Tom 2",
+};
+
+export type StyleVariantDraft = Record<CustomStyleInstrument, DrumPattern> & { bass: BassPattern };
+
+// prettier-ignore
+function blankDrumPattern(): DrumPattern {
+  return [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0];
+}
+
+// prettier-ignore
+function blankBassPattern(): BassPattern {
+  return [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0];
+}
+
+export function makeBlankStyleVariantDraft(): StyleVariantDraft {
+  const draft = {} as StyleVariantDraft;
+  CUSTOM_STYLE_INSTRUMENTS.forEach((inst) => {
+    draft[inst] = blankDrumPattern();
+  });
+  draft.bass = blankBassPattern();
+  return draft;
+}
+
+// Loading an existing style into the editor: missing instruments become
+// blank rows (matches how built-ins already omit unused instruments), and
+// only the major bass pattern is shown — if major/minor genuinely differ
+// (some built-ins do, e.g. a trailing note that resolves differently), the
+// minor-specific version is not recoverable through this single-row editor.
+export function styleVariantToDraft(variant: StyleVariant): StyleVariantDraft {
+  const draft = {} as StyleVariantDraft;
+  CUSTOM_STYLE_INSTRUMENTS.forEach((inst) => {
+    draft[inst] = variant[inst] ?? blankDrumPattern();
+  });
+  draft.bass = variant.bass.major;
+  return draft;
+}
+
+export function draftToStyleVariant(draft: StyleVariantDraft): StyleVariant {
+  const { bass, ...drums } = draft;
+  // Independent copies, not a shared reference — see the "Bass major/minor"
+  // decision in the design doc: a future "edit minor separately" feature
+  // needs a real, independently-mutable array here, not an alias of major.
+  return { ...drums, bass: { major: [...bass] as BassPattern, minor: [...bass] as BassPattern } };
+}
+
+export function cycleBassStep(step: BassStep): BassStep {
+  const order: BassStep[] = ["R", "3", "5", 0];
+  return order[(order.indexOf(step) + 1) % order.length]!;
 }
 
 // prettier-ignore

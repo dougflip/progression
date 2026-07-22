@@ -50,8 +50,13 @@ tsconfig.json             — strict TypeScript config (noEmit; Vite handles tra
   getPendingKeyJump(): number | null,
   armLoopRecording(muteDuringRecording: boolean): Promise<void>,
   cancelLoopRecording(): void,
-  deleteLoop(): void,
+  deleteLoop(sectionIndex: number): void,
   getLooperState(): LooperState,
+  setSectionLoops(loops: (LoopRef | null)[]): void,
+  copyLoop(id: string): Promise<string | null>,
+  sweepOrphanedLoops(keepIds: string[]): Promise<void>,
+  setLoopOffsetMs(ms: number): void,
+  previewInstrument(name: DrumInstrumentName): void,
 }
 ```
 
@@ -60,6 +65,8 @@ tsconfig.json             — strict TypeScript config (noEmit; Vite handles tra
 Channels are created once on first `start()` and survive stop/rebuild cycles. Teardown disposes synths and sequences but never channels.
 
 **Looper (experimental, flag-gated spike).** `armLoopRecording`/`cancelLoopRecording`/`deleteLoop`/`getLooperState` add a single-track, no-overdub mic looper — `LooperState` cycles `idle → arming → counting-in → recording → looping`, driven from inside the existing lap-boundary check in `_buildPart` (the same block that advances the key cycle), and loop playback uses the same manual stop/start-at-`time` pattern as drum sample triggering (`_triggerDrum`) rather than `Player.loop`/`.sync()`, so it can never drift relative to the Transport. UI is behind a `looperEnabled` localStorage flag (off by default), hidden in the action bar when off or when `cycle !== 'none'`. This was deliberately built for "working software fast" over correct long-term architecture — design reasoning, deferred scope (configurable loop length, overdub, per-section loops), and a tradeoffs log live in `docs-internal/looper.html`.
+
+**Custom styles.** Players can author their own drum/bass patterns in `src/custom-styles.ts` (`CustomStyleDef`, reusing `StyleVariant`/`StyleBassPhrase` as-is) stored in localStorage, selected via a `custom:<id>` prefix on `playback.style` resolved at playback time by `resolveStyleDef` — the engine only ever consumes a resolved `StyleDef`, so no `AudioEngine` methods beyond `previewInstrument` (tap-to-audition in the editor grid) were needed. Full design, phased build log, and mockups live in `docs-internal/custom-styles.html`.
 
 ## Cycle modes
 

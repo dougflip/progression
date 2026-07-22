@@ -23,6 +23,7 @@ import {
   type AudioEngine,
   type LooperState,
   type LoopRef,
+  type DrumInstrumentName,
 } from "./progression-core.js";
 
 interface Channels {
@@ -1169,6 +1170,41 @@ export function makeProgressionAudio(): AudioEngine {
     ).start(0);
   }
 
+  // Note/duration choices duplicate _buildDrums' sequence callbacks above —
+  // accepted duplication rather than refactoring _buildDrums to share a
+  // per-instrument descriptor table, since this only matters when a sample
+  // hasn't finished loading yet (the common case always hits the sample
+  // branch below).
+  function _previewFallback(name: DrumInstrumentName, time: number): void {
+    switch (name) {
+      case "kick":
+        _kick?.triggerAttackRelease("C1", "8n", time);
+        break;
+      case "snare":
+        _snare?.triggerAttackRelease("16n", time);
+        break;
+      case "hat":
+        _hat?.triggerAttackRelease("32n", time);
+        break;
+      case "hatOpen":
+        _hatOpen?.triggerAttackRelease("8n", time);
+        break;
+      case "crash":
+        _crash?.triggerAttackRelease("4n", time);
+        break;
+      case "ride":
+      case "rideBell":
+        _ride?.triggerAttackRelease("32n", time);
+        break;
+      case "tom":
+        _tom?.triggerAttackRelease("A1", "8n", time);
+        break;
+      case "tom2":
+        _tom2?.triggerAttackRelease("D2", "8n", time);
+        break;
+    }
+  }
+
   // ── Public interface ───────────────────────────────────────────────────────
 
   return {
@@ -1519,6 +1555,19 @@ export function makeProgressionAudio(): AudioEngine {
       if (!raw || sectionIndex < 0) return;
       const targetSeconds = Tone.Time(`${_sectionBars[sectionIndex] ?? 0}m`).toSeconds() as number;
       _loopPlayer.buffer = new Tone.ToneAudioBuffer(_buildAlignedBuffer(raw, targetSeconds, ms));
+    },
+
+    previewInstrument(name: DrumInstrumentName): void {
+      const player = _sp[name];
+      const time = Tone.now();
+      if (player.loaded) {
+        _safe(() => {
+          player.stop(time);
+          player.start(time);
+        });
+      } else {
+        _safe(() => _previewFallback(name, time));
+      }
     },
   };
 }
