@@ -8,6 +8,7 @@ src/app.ts                — host: DOM wiring, render callbacks, event handlers
 src/progression-core.ts   — pure logic: music theory, state, URL, presets, factory
 src/progression-audio.ts  — Tone.js engine: plays what core gives it
 src/styles.ts             — pure data: style/bass pattern definitions
+src/custom-styles.ts      — user-authored styles: CustomStyleDef, toStyleDef conversion (see docs-internal/custom-styles.html)
 public/favicon.svg        — static asset, copied to dist/ as-is
 vite.config.js            — build config: multi-page entry points, Tone vendor chunk, version/SHA injection
 src/vite-env.d.ts         — ambient types for build-time globals (__APP_VERSION__, __APP_SHA__)

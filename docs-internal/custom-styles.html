@@ -314,17 +314,17 @@
       Let players define their own drum beat + bass line — a <code>simple</code> and a
       <code>busy</code> variant, same shape as the four built-in styles — instead of being limited
       to <code>pop</code>/<code>funk</code>/<code>ballad</code>/<code>rock</code>. This doc is the
-      plan, not the implementation: data structure, storage, playback wiring, and CRUD UI are
-      staged as four independent phases, each shippable and testable before the next begins.
+      plan, not the implementation: data structure, storage, playback wiring, and CRUD UI are staged
+      as four independent phases, each shippable and testable before the next begins.
     </p>
 
     <h2 id="background">Background</h2>
     <p>
       Today's styles are hardcoded in <code>src/styles.ts</code> as <code>StyleDef</code> objects.
-      Each has a <code>simple</code> and <code>busy</code> variant; each variant is a set of
-      16-step drum arrays (one bar of 16th notes, <code>1</code> = hit / <code>0</code> = rest)
-      plus a <code>bass</code> phrase keyed by chord quality (<code>major</code>/<code>minor</code
-      >, each step <code>R</code>/<code>3</code>/<code>5</code>/rest):
+      Each has a <code>simple</code> and <code>busy</code> variant; each variant is a set of 16-step
+      drum arrays (one bar of 16th notes, <code>1</code> = hit / <code>0</code> = rest) plus a
+      <code>bass</code> phrase keyed by chord quality (<code>major</code>/<code>minor</code>, each
+      step <code>R</code>/<code>3</code>/<code>5</code>/rest):
     </p>
     <pre><code>pop: {
   simple: {
@@ -372,18 +372,18 @@
         >deleteCustomStyle</code
       >
       so nothing else ever touches storage directly — a later move to IndexedDB (if custom styles
-      start embedding real audio, or the list grows large) becomes a contained, single-module
-      change rather than a rewrite. The looper's <code>progression-looper</code> IndexedDB store is
-      the working precedent to copy if/when that day comes.
+      start embedding real audio, or the list grows large) becomes a contained, single-module change
+      rather than a rewrite. The looper's <code>progression-looper</code> IndexedDB store is the
+      working precedent to copy if/when that day comes.
     </div>
     <div class="decided">
       <strong>Selection UI: repurpose the existing style pill, don't add a new one.</strong>
       <code>#readout-style</code> is currently a plain button that cycles forward through
       <code>STYLE_OPTIONS</code> on tap (<code>src/app.ts:972-974</code>, the same
-      <code>cycleOpt</code> mechanism as the bass/drums/voicing/bars/cycle pills). Its click
-      handler changes from "cycle to next style" to "open the Custom Styles popup" — matching how
-      the key pill already opens <code>#key-picker</code> instead of cycling. Same slot in the
-      readout row, no new UI real estate; the other pills keep cycling exactly as today. See the
+      <code>cycleOpt</code> mechanism as the bass/drums/voicing/bars/cycle pills). Its click handler
+      changes from "cycle to next style" to "open the Custom Styles popup" — matching how the key
+      pill already opens <code>#key-picker</code> instead of cycling. Same slot in the readout row,
+      no new UI real estate; the other pills keep cycling exactly as today. See the
       <a href="#phase-3">Phase 3 mockup</a>.
     </div>
     <div class="decided">
@@ -396,8 +396,8 @@
     <div class="decided">
       <strong>Pattern length: design for multi-bar later, don't build it now.</strong> The data
       structure carries a <code>stepsPerBar</code>/bar-count field so a future "multi-bar grooves"
-      feature doesn't need a data migration, but Phase 1–4 only ever populate/consume 16-step,
-      1-bar patterns — the engine doesn't change.
+      feature doesn't need a data migration, but Phase 1–4 only ever populate/consume 16-step, 1-bar
+      patterns — the engine doesn't change.
     </div>
     <div class="decided">
       <strong
@@ -405,15 +405,15 @@
       >
       <code>_buildBass()</code> already resolves <code>"3"</code>/<code>"5"</code> tokens to
       <code>voiced.bassThird</code>/<code>voiced.bassFifth</code>, computed from the chord's actual
-      quality at callback time (<code>progression-audio.ts:1140,1158-1164</code>) — the
-      major/minor split isn't doing interval math, it's just which steps/degrees got hand-authored.
-      The Phase 4 editor exposes a single bass grid per variant (no major/minor sub-tabs); on save,
-      that one pattern is written as two independent copies into <code>bass.major</code> and
+      quality at callback time (<code>progression-audio.ts:1140,1158-1164</code>) — the major/minor
+      split isn't doing interval math, it's just which steps/degrees got hand-authored. The Phase 4
+      editor exposes a single bass grid per variant (no major/minor sub-tabs); on save, that one
+      pattern is written as two independent copies into <code>bass.major</code> and
       <code>bass.minor</code> — not a shared reference, and not a <code>null</code> fallback. This
       keeps <code>CustomStyleDef</code>'s bass shape byte-identical to the existing
       <code>StyleBassPhrase</code> type (no new nullable field, no fallback branch to remember at
-      playback time), while leaving the door open for a future "edit minor separately" feature —
-      the field already holds a real, independently-editable pattern the day that ships.
+      playback time), while leaving the door open for a future "edit minor separately" feature — the
+      field already holds a real, independently-editable pattern the day that ships.
     </div>
 
     <h2 id="phase-1">Phase 1 — data structure only</h2>
@@ -450,9 +450,7 @@ function toStyleDef(custom: CustomStyleDef): StyleDef {
 
     <h2 id="phase-2">Phase 2 — storage, no UI</h2>
     <p>
-      Mirrors <code>saveUserPreset</code>/<code>_getUserPresets</code>/<code
-        >deleteUserPreset</code
-      >
+      Mirrors <code>saveUserPreset</code>/<code>_getUserPresets</code>/<code>deleteUserPreset</code>
       in <code>progression-core.ts</code> almost exactly — same JSON-array-under-one-key shape via
       the existing <code>persist</code>/<code>load</code> callbacks, same id convention
       (<code>Date.now().toString(36)</code>, not a new uuid scheme), same defensive parse at the
@@ -513,10 +511,10 @@ function deleteCustomStyle(id: string): void {
   return STYLES[styleId] ?? STYLES[DEFAULTS.playback.style];
 }</code></pre>
     <p>
-      <code>bass</code>/<code>drums</code> (simple/busy) selectors keep working unchanged, since
-      the resolved <code>StyleDef</code> still has <code>simple</code>/<code>busy</code> keys. At
-      least one custom style has to exist to test this — since there's no editor yet, seed one via
-      a direct <code>saveCustomStyle()</code> call, then confirm it selects and actually plays.
+      <code>bass</code>/<code>drums</code> (simple/busy) selectors keep working unchanged, since the
+      resolved <code>StyleDef</code> still has <code>simple</code>/<code>busy</code> keys. At least
+      one custom style has to exist to test this — since there's no editor yet, seed one via a
+      direct <code>saveCustomStyle()</code> call, then confirm it selects and actually plays.
     </p>
 
     <h3>Mockup — the "Custom Styles" picker popup</h3>
@@ -565,18 +563,20 @@ function deleteCustomStyle(id: string): void {
       </div>
     </div>
     <p class="caption">
-      Same interaction model as the key-picker: tap the style pill to open, tap a row to select
-      and close. No create/edit affordances here — those live in Setup (Phase 4).
+      Same interaction model as the key-picker: tap the style pill to open, tap a row to select and
+      close. No create/edit affordances here — those live in Setup (Phase 4).
     </p>
 
     <h2 id="edge-cases">Edge cases worth deciding now</h2>
     <div class="decided">
-      <strong>Deleting the currently-selected custom style resets <code>playback.style</code> to
-      the default</strong>, exactly like <code>deleteUserPreset</code> already clears
-      <code>DEFAULT_PRESET_STORAGE_KEY</code> when the deleted preset was the stored default (<code
-        >progression-core.ts:1372-1382</code
-      >). Handled inside <code>deleteCustomStyle()</code> itself (see Phase 2 pseudocode) — no
-      separate check needed anywhere else.
+      <strong
+        >Deleting the currently-selected custom style resets <code>playback.style</code> to the
+        default</strong
+      >, exactly like <code>deleteUserPreset</code> already clears
+      <code>DEFAULT_PRESET_STORAGE_KEY</code> when the deleted preset was the stored default
+      (<code>progression-core.ts:1372-1382</code>). Handled inside
+      <code>deleteCustomStyle()</code> itself (see Phase 2 pseudocode) — no separate check needed
+      anywhere else.
     </div>
     <div class="decided">
       <strong>Saving an edit to the style currently playing rebuilds live</strong> — no
@@ -585,15 +585,15 @@ function deleteCustomStyle(id: string): void {
       the editor just needs to call that existing path if the edited id is the active one.
     </div>
     <div class="note">
-      <strong>Storage size is a non-issue.</strong> Each <code>CustomStyleDef</code> is a handful
-      of 16-element arrays — a few hundred bytes of JSON. Even a few hundred custom styles stay
-      well under any realistic localStorage quota; this is the inverse of the looper's reasoning
-      for using IndexedDB (blobs are binary, a few hundred KB <em>each</em>).
+      <strong>Storage size is a non-issue.</strong> Each <code>CustomStyleDef</code> is a handful of
+      16-element arrays — a few hundred bytes of JSON. Even a few hundred custom styles stay well
+      under any realistic localStorage quota; this is the inverse of the looper's reasoning for
+      using IndexedDB (blobs are binary, a few hundred KB <em>each</em>).
     </div>
     <div class="note">
       <strong>New instruments added later don't break old custom styles.</strong> A
-      <code>StyleVariant</code>'s instrument keys are already optional/sparse — some built-in
-      styles omit <code>tom</code>/<code>crash</code> today. If a future change wires up e.g.
+      <code>StyleVariant</code>'s instrument keys are already optional/sparse — some built-in styles
+      omit <code>tom</code>/<code>crash</code> today. If a future change wires up e.g.
       <code>china</code>, existing custom styles simply have no key for it (silent), same as any
       built-in style that predates an instrument would.
     </div>
@@ -610,17 +610,20 @@ function deleteCustomStyle(id: string): void {
       the existing user-preset list, plus an editor sheet for creating/editing one.
     </p>
     <div class="decided">
-      <strong>Not a separate page — another <code>&lt;dialog&gt;</code> sheet, same as Setup/Mix.</strong>
-      This app has no in-app routing or page concept at all — just two unrelated static Vite
-      entries (<code>index.html</code>, <code>docs.html</code>). Every overlay today
+      <strong
+        >Not a separate page — another <code>&lt;dialog&gt;</code> sheet, same as Setup/Mix.</strong
+      >
+      This app has no in-app routing or page concept at all — just two unrelated static Vite entries
+      (<code>index.html</code>, <code>docs.html</code>). Every overlay today
       (<code>#setup-sheet</code>, <code>#mix-sheet</code>, <code>#preset-name-sheet</code>) is a
       native <code>&lt;dialog&gt;</code> sharing one <code>.sheet-header</code>/<code
         >.sheet-body</code
       >
-      shell, capped at <code>max-width: 600px</code> / <code>max-height: 85dvh</code>
-      (<code>index.html:585-623</code>). A new <code>#style-editor-sheet</code> dialog reuses that
-      exact shell — the grid fits the 600px cap comfortably (16 columns at ~1.8rem ≈ 460px wide),
-      and rows scroll inside <code>.sheet-body</code> like any other sheet's overflow content.
+      shell, capped at <code>max-width: 600px</code> /
+      <code>max-height: 85dvh</code> (<code>index.html:585-623</code>). A new
+      <code>#style-editor-sheet</code> dialog reuses that exact shell — the grid fits the 600px cap
+      comfortably (16 columns at ~1.8rem ≈ 460px wide), and rows scroll inside
+      <code>.sheet-body</code> like any other sheet's overflow content.
       <strong>Access:</strong> only from Setup's "Custom Styles" section — tapping "+ New Custom
       Style" or "Edit" on a row opens this dialog. The Phase 3 picker popup stays selection-only, no
       edit affordance there, so there's one entry point for managing custom styles, not two.
@@ -803,12 +806,12 @@ previewInstrument(name: DrumInstrument, velocity?: number): void</code></pre>
       </div>
     </div>
     <p class="caption">
-      Grid reuses the <code>.key-grid</code>/<code>.key-chip.active</code> toggle pattern already
-      in the key-picker. Drum cells are a binary toggle (tap to add/remove a hit); bass cells cycle
+      Grid reuses the <code>.key-grid</code>/<code>.key-chip.active</code> toggle pattern already in
+      the key-picker. Drum cells are a binary toggle (tap to add/remove a hit); bass cells cycle
       through 4 states since a bass step isn't just on/off. Only instruments wired to samples get a
       row (see the Phase 1 list) — one row set is shown per tab (Simple/Busy). Bass gets a single
-      row, not major/minor sub-tabs — see the note under the bass row above for what happens
-      behind the scenes. Tapping any cell plays that instrument immediately for audition, via a new
+      row, not major/minor sub-tabs — see the note under the bass row above for what happens behind
+      the scenes. Tapping any cell plays that instrument immediately for audition, via a new
       <code>AudioEngine.previewInstrument(name)</code> method.
     </p>
 
@@ -850,8 +853,7 @@ previewInstrument(name: DrumInstrument, velocity?: number): void</code></pre>
       <tr>
         <td class="file">app.ts</td>
         <td>
-          Custom Styles picker popup wiring (Phase 3); Setup section + grid editor wiring
-          (Phase 4).
+          Custom Styles picker popup wiring (Phase 3); Setup section + grid editor wiring (Phase 4).
         </td>
       </tr>
       <tr>
