@@ -186,6 +186,44 @@ export function draftToStyleVariant(draft: StyleVariantDraft): StyleVariant {
   return { ...drums, bass: { major: [...bass] as BassPattern, minor: [...bass] as BassPattern } };
 }
 
+export function isBlankStyleVariantDraft(draft: StyleVariantDraft): boolean {
+  return (
+    CUSTOM_STYLE_INSTRUMENTS.every((inst) => draft[inst].every((step) => step === 0)) &&
+    draft.bass.every((step) => step === 0)
+  );
+}
+
+function cloneStyleVariantDraft(draft: StyleVariantDraft): StyleVariantDraft {
+  const cloned = {} as StyleVariantDraft;
+  CUSTOM_STYLE_INSTRUMENTS.forEach((inst) => {
+    cloned[inst] = [...draft[inst]] as DrumPattern;
+  });
+  cloned.bass = [...draft.bass] as BassPattern;
+  return cloned;
+}
+
+// Fixes the "silent variant" trap: a brand-new style starts both Simple and
+// Busy blank, and it's easy to only fill in whichever tab happened to be
+// open, leaving the other silent at playback — the more likely to bite since
+// DEFAULTS.playback.bass is "busy", not "simple". At save time, whichever
+// variant was never touched (still entirely blank) mirrors the other one
+// instead of saving silent. If both are blank, there's nothing to mirror —
+// genuinely nothing authored yet.
+export function fillBlankVariantFromOther(draft: {
+  simple: StyleVariantDraft;
+  busy: StyleVariantDraft;
+}): { simple: StyleVariantDraft; busy: StyleVariantDraft } {
+  const simpleBlank = isBlankStyleVariantDraft(draft.simple);
+  const busyBlank = isBlankStyleVariantDraft(draft.busy);
+  if (simpleBlank && !busyBlank) {
+    return { simple: cloneStyleVariantDraft(draft.busy), busy: draft.busy };
+  }
+  if (busyBlank && !simpleBlank) {
+    return { simple: draft.simple, busy: cloneStyleVariantDraft(draft.simple) };
+  }
+  return draft;
+}
+
 export function cycleBassStep(step: BassStep): BassStep {
   const order: BassStep[] = ["R", "3", "5", 0];
   return order[(order.indexOf(step) + 1) % order.length]!;

@@ -7,7 +7,9 @@ import {
   customStyleIdFromRef,
   deleteCustomStyle,
   draftToStyleVariant,
+  fillBlankVariantFromOther,
   getCustomStyles,
+  isBlankStyleVariantDraft,
   isCustomStyleRef,
   makeBlankStyleVariantDraft,
   resolveStyleDef,
@@ -186,5 +188,52 @@ describe("cycleBassStep", () => {
     expect(cycleBassStep("3")).toBe("5");
     expect(cycleBassStep("5")).toBe(0);
     expect(cycleBassStep(0)).toBe("R");
+  });
+});
+
+describe("isBlankStyleVariantDraft", () => {
+  it("is true for a fresh blank draft", () => {
+    expect(isBlankStyleVariantDraft(makeBlankStyleVariantDraft())).toBe(true);
+  });
+
+  it("is false once any single drum cell is set", () => {
+    const draft = makeBlankStyleVariantDraft();
+    draft.kick[0] = 1;
+    expect(isBlankStyleVariantDraft(draft)).toBe(false);
+  });
+
+  it("is false once any single bass cell is set", () => {
+    const draft = makeBlankStyleVariantDraft();
+    draft.bass[0] = "R";
+    expect(isBlankStyleVariantDraft(draft)).toBe(false);
+  });
+});
+
+describe("fillBlankVariantFromOther", () => {
+  it("mirrors busy into simple when simple was never touched", () => {
+    const busy = styleVariantToDraft(EXAMPLE_CUSTOM_STYLE.busy);
+    const result = fillBlankVariantFromOther({ simple: makeBlankStyleVariantDraft(), busy });
+    expect(result.simple).toEqual(busy);
+    expect(result.simple).not.toBe(busy); // independent copy, not aliased
+  });
+
+  it("mirrors simple into busy when busy was never touched", () => {
+    const simple = styleVariantToDraft(EXAMPLE_CUSTOM_STYLE.simple);
+    const result = fillBlankVariantFromOther({ simple, busy: makeBlankStyleVariantDraft() });
+    expect(result.busy).toEqual(simple);
+    expect(result.busy).not.toBe(simple);
+  });
+
+  it("leaves both untouched when both are blank", () => {
+    const draft = { simple: makeBlankStyleVariantDraft(), busy: makeBlankStyleVariantDraft() };
+    expect(fillBlankVariantFromOther(draft)).toBe(draft);
+  });
+
+  it("leaves both untouched when both already have content", () => {
+    const draft = {
+      simple: styleVariantToDraft(EXAMPLE_CUSTOM_STYLE.simple),
+      busy: styleVariantToDraft(EXAMPLE_CUSTOM_STYLE.busy),
+    };
+    expect(fillBlankVariantFromOther(draft)).toBe(draft);
   });
 });

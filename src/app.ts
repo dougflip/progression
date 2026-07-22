@@ -40,6 +40,8 @@ import {
   styleVariantToDraft,
   draftToStyleVariant,
   cycleBassStep,
+  isBlankStyleVariantDraft,
+  fillBlankVariantFromOther,
   type DrumInstrumentName,
   type DrumPattern,
   type BassPattern,
@@ -1108,6 +1110,13 @@ function openStyleEditor(draft: StyleEditorDraft, editingId: string | null): voi
 function renderStyleEditorTabs(): void {
   styleEditorTabSimpleEl.classList.toggle("active", _styleEditorTab === "simple");
   styleEditorTabBusyEl.classList.toggle("active", _styleEditorTab === "busy");
+  if (!_styleEditorDraft) return;
+  styleEditorTabSimpleEl.textContent = isBlankStyleVariantDraft(_styleEditorDraft.simple)
+    ? "Simple (empty)"
+    : "Simple";
+  styleEditorTabBusyEl.textContent = isBlankStyleVariantDraft(_styleEditorDraft.busy)
+    ? "Busy (empty)"
+    : "Busy";
 }
 
 function appendDrumRow(instrument: DrumInstrumentName, pattern: DrumPattern): void {
@@ -1129,6 +1138,7 @@ function appendDrumRow(instrument: DrumInstrumentName, pattern: DrumPattern): vo
       pattern[i] = turningOn ? 1 : 0;
       cell.classList.toggle("on", turningOn);
       if (turningOn) audio.previewInstrument(instrument);
+      renderStyleEditorTabs();
     });
     styleEditorGridEl.appendChild(cell);
   });
@@ -1153,6 +1163,7 @@ function appendBassRow(pattern: BassPattern): void {
       pattern[i] = cycleBassStep(pattern[i]!);
       cell.textContent = pattern[i] === 0 ? "" : String(pattern[i]);
       cell.classList.toggle("on", pattern[i] !== 0);
+      renderStyleEditorTabs();
     });
     styleEditorGridEl.appendChild(cell);
   });
@@ -1179,12 +1190,15 @@ styleEditorTabBusyEl.addEventListener("click", () => {
 
 styleEditorSaveEl.addEventListener("click", () => {
   if (!_styleEditorDraft) return;
+  // Whichever variant was never touched (still entirely blank) mirrors the
+  // other rather than saving silent — see docs-internal/custom-styles.html.
+  const { simple, busy } = fillBlankVariantFromOther(_styleEditorDraft);
   const def = {
     name: styleEditorNameEl.value.trim() || "Untitled Style",
     stepsPerBar: 16,
     bars: 1,
-    simple: draftToStyleVariant(_styleEditorDraft.simple),
-    busy: draftToStyleVariant(_styleEditorDraft.busy),
+    simple: draftToStyleVariant(simple),
+    busy: draftToStyleVariant(busy),
   };
   if (_styleEditorEditingId) app.updateCustomStyle(_styleEditorEditingId, def);
   else app.saveCustomStyle(def);

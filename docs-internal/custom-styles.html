@@ -630,6 +630,21 @@ style: resolveStyleDef(_state.playback.style, _getCustomStyles(), STYLES, STYLES
       rebuild, the same way changing the style pill already triggers a rebuild today; a save from
       the editor just needs to call that existing path if the edited id is the active one.
     </div>
+    <div class="decided">
+      <strong>Bug found in manual testing: a brand-new style can be silently half-blank.</strong>
+      Both Simple and Busy start entirely blank, and it's easy to only fill in whichever tab
+      happened to be open — the other stays all-rest at save time. This bit immediately in practice:
+      <code>DEFAULTS.playback.bass</code> is <code>"busy"</code>, not <code>"simple"</code>, so a
+      style edited only on the Simple tab plays with no bass at all unless the Bass pill happens to
+      be set to Simple. Fixed at save time, not by changing the editor's tab model:
+      <code>isBlankStyleVariantDraft()</code> checks whether a variant is still entirely all-rest,
+      and <code>fillBlankVariantFromOther()</code> mirrors the other variant into it (independent
+      copy, not aliased) if so — if both are blank, there's nothing to mirror. The Simple/Busy tab
+      labels also show "<code>(empty)</code>" live while editing, so the gap is visible before you
+      even reach Save. Known tradeoff: a deliberately all-silent variant (if anyone ever wants one)
+      gets overwritten by this same heuristic — accepted, since built-in styles never have a fully
+      blank variant either.
+    </div>
     <div class="note">
       <strong>Storage size is a non-issue.</strong> Each <code>CustomStyleDef</code> is a handful of
       16-element arrays — a few hundred bytes of JSON. Even a few hundred custom styles stay well
