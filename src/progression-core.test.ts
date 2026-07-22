@@ -1,4 +1,5 @@
 import {
+  DEFAULTS,
   MAX_CHORDS,
   alignAndTrimSamples,
   cycleUsesFlats,
@@ -111,6 +112,19 @@ describe("parseUrl", () => {
     const state = parseUrl("key=C&cycle=custom&customKeys=A,D,G");
     expect(state.playback.key).toBe("A");
     expect(state.playback.customCycleKeys).toEqual(["A", "D", "G"]);
+  });
+
+  it("preserves a custom style ref instead of resetting it to the default", () => {
+    // The URL is synced continuously during live play (see syncUrl in app.ts),
+    // not just on share — if this reset to the default on every parse, picking
+    // a custom style would silently revert on the next refresh.
+    const state = parseUrl("style=custom:abc123");
+    expect(state.playback.style).toBe("custom:abc123");
+  });
+
+  it("still falls back to the default for a genuinely invalid style value", () => {
+    const state = parseUrl("style=not-a-real-style");
+    expect(state.playback.style).toBe(DEFAULTS.playback.style);
   });
 });
 

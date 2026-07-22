@@ -2,9 +2,13 @@ import { describe, expect, it } from "vitest";
 import type { StyleDef } from "./progression-core";
 import {
   EXAMPLE_CUSTOM_STYLE,
+  customStyleIdFromRef,
   deleteCustomStyle,
   getCustomStyles,
+  isCustomStyleRef,
+  resolveStyleDef,
   saveCustomStyle,
+  toCustomStyleId,
   toStyleDef,
   updateCustomStyle,
 } from "./custom-styles";
@@ -80,5 +84,46 @@ describe("custom style storage", () => {
 
     const styles = getCustomStyles(storage);
     expect(styles.map((s) => s.id)).toEqual([b.id]);
+  });
+});
+
+describe("custom style id refs", () => {
+  it("round-trips an id through toCustomStyleId/customStyleIdFromRef", () => {
+    expect(customStyleIdFromRef(toCustomStyleId("abc123"))).toBe("abc123");
+  });
+
+  it("recognizes a custom ref vs. a plain built-in name", () => {
+    expect(isCustomStyleRef(toCustomStyleId("abc123"))).toBe(true);
+    expect(isCustomStyleRef("funk")).toBe(false);
+  });
+});
+
+describe("resolveStyleDef", () => {
+  const builtins = {
+    funk: { simple: EXAMPLE_CUSTOM_STYLE.simple, busy: EXAMPLE_CUSTOM_STYLE.busy },
+  };
+  const fallback: StyleDef = {
+    simple: EXAMPLE_CUSTOM_STYLE.busy,
+    busy: EXAMPLE_CUSTOM_STYLE.simple,
+  };
+
+  it("resolves a built-in name directly", () => {
+    expect(resolveStyleDef("funk", [], builtins, fallback)).toBe(builtins["funk"]);
+  });
+
+  it("falls back for an unknown built-in name", () => {
+    expect(resolveStyleDef("nonexistent", [], builtins, fallback)).toBe(fallback);
+  });
+
+  it("resolves a custom ref to the matching custom style", () => {
+    const ref = toCustomStyleId(EXAMPLE_CUSTOM_STYLE.id);
+    const resolved = resolveStyleDef(ref, [EXAMPLE_CUSTOM_STYLE], builtins, fallback);
+    expect(resolved).toEqual(toStyleDef(EXAMPLE_CUSTOM_STYLE));
+  });
+
+  it("falls back when a custom ref's id isn't found locally", () => {
+    // e.g. a shared URL from a device that doesn't have this custom style saved
+    const ref = toCustomStyleId("does-not-exist");
+    expect(resolveStyleDef(ref, [EXAMPLE_CUSTOM_STYLE], builtins, fallback)).toBe(fallback);
   });
 });

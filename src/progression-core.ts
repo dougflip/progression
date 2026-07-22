@@ -4,6 +4,12 @@
  */
 
 import { STYLE_OPTIONS, BASS_OPTIONS, DRUM_OPTIONS, VOICING_OPTIONS, STYLES } from "./styles.js";
+import {
+  getCustomStyles as getStoredCustomStyles,
+  resolveStyleDef,
+  isCustomStyleRef,
+  type CustomStyleDef,
+} from "./custom-styles.js";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -435,6 +441,13 @@ export {
   STYLES,
 } from "./styles.js";
 
+export {
+  type CustomStyleDef,
+  toCustomStyleId,
+  isCustomStyleRef,
+  customStyleIdFromRef,
+} from "./custom-styles.js";
+
 // ─── Token utilities ─────────────────────────────────────────────────────────
 
 export function tokenize(input: string): string[] {
@@ -844,7 +857,16 @@ export function parseUrl(searchString: string): AppState {
       bars: (BARS_OPTIONS as readonly number[]).includes(bars) ? bars : DEFAULTS.playback.bars,
       cycle: (CYCLE_OPTIONS as readonly string[]).includes(cycle) ? cycle : DEFAULTS.playback.cycle,
       customCycleKeys,
-      style: (STYLE_OPTIONS as readonly string[]).includes(style) ? style : DEFAULTS.playback.style,
+      // A custom style ref (e.g. "custom:abc123") must survive here even though
+      // it's not in STYLE_OPTIONS — the URL is synced continuously during live
+      // play (see syncUrl in app.ts), not just on share, so rejecting the format
+      // here would silently revert a custom selection on the next refresh.
+      // Whether the id actually exists locally is resolveStyleDef's job, not
+      // this one's.
+      style:
+        (STYLE_OPTIONS as readonly string[]).includes(style) || isCustomStyleRef(style)
+          ? style
+          : DEFAULTS.playback.style,
       bass: (BASS_OPTIONS as readonly string[]).includes(bass) ? bass : DEFAULTS.playback.bass,
       drums: (DRUM_OPTIONS as readonly string[]).includes(drums) ? drums : DEFAULTS.playback.drums,
       voicing: (VOICING_OPTIONS as readonly string[]).includes(voicing)
@@ -1036,7 +1058,12 @@ export function makeProgressionPlayer(config: PlayerConfig) {
         );
         config.audio!.rebuild({
           chordSequence: chords,
-          style: STYLES[_state.playback.style]!,
+          style: resolveStyleDef(
+            _state.playback.style,
+            _getCustomStyles(),
+            STYLES,
+            STYLES[DEFAULTS.playback.style]!,
+          ),
           bassVariant: _state.playback.bass,
           drumVariant: _state.playback.drums,
           voicing: _state.playback.voicing,
@@ -1122,7 +1149,12 @@ export function makeProgressionPlayer(config: PlayerConfig) {
     await config.audio!.start({
       chordSequence: chords,
       tempo: _state.playback.tempo,
-      style: STYLES[_state.playback.style]!,
+      style: resolveStyleDef(
+        _state.playback.style,
+        _getCustomStyles(),
+        STYLES,
+        STYLES[DEFAULTS.playback.style]!,
+      ),
       bassVariant: _state.playback.bass,
       drumVariant: _state.playback.drums,
       voicing: _state.playback.voicing,
@@ -1183,6 +1215,10 @@ export function makeProgressionPlayer(config: PlayerConfig) {
     } catch {
       return [];
     }
+  }
+
+  function _getCustomStyles(): CustomStyleDef[] {
+    return getStoredCustomStyles(config);
   }
 
   return {
@@ -1305,6 +1341,7 @@ export function makeProgressionPlayer(config: PlayerConfig) {
     },
 
     getUserPresets: _getUserPresets,
+    getCustomStyles: _getCustomStyles,
 
     getLoadedPreset: (): UserPreset | null => _loadedPreset,
 

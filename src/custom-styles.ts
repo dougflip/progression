@@ -20,6 +20,37 @@ export function toStyleDef(custom: CustomStyleDef): StyleDef {
   return { simple: custom.simple, busy: custom.busy };
 }
 
+// ─── Playback resolution ─────────────────────────────────────────────────────
+// playback.style stays a plain string (same field, no new AppState shape) —
+// a custom selection is disambiguated from a built-in name with this prefix.
+
+export const CUSTOM_STYLE_PREFIX = "custom:";
+
+export function toCustomStyleId(id: string): string {
+  return `${CUSTOM_STYLE_PREFIX}${id}`;
+}
+
+export function isCustomStyleRef(styleId: string): boolean {
+  return styleId.startsWith(CUSTOM_STYLE_PREFIX);
+}
+
+export function customStyleIdFromRef(styleId: string): string {
+  return styleId.slice(CUSTOM_STYLE_PREFIX.length);
+}
+
+export function resolveStyleDef(
+  styleId: string,
+  customStyles: CustomStyleDef[],
+  builtins: Record<string, StyleDef>,
+  fallback: StyleDef,
+): StyleDef {
+  if (isCustomStyleRef(styleId)) {
+    const found = customStyles.find((s) => s.id === customStyleIdFromRef(styleId));
+    return found ? toStyleDef(found) : fallback; // e.g. a shared URL from a device without it
+  }
+  return builtins[styleId] ?? fallback;
+}
+
 // ─── Storage ─────────────────────────────────────────────────────────────────
 // Mirrors saveUserPreset/_getUserPresets/deleteUserPreset in progression-core.ts:
 // same JSON-array-under-one-key shape, same persist/load callback pair (so this

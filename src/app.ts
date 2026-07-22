@@ -29,6 +29,10 @@ import {
   type UserPreset,
   type ChordTickEvent,
   type LooperState,
+  type CustomStyleDef,
+  toCustomStyleId,
+  isCustomStyleRef,
+  customStyleIdFromRef,
 } from "./progression-core.js";
 import { PRESETS } from "./presets.js";
 import { makeProgressionAudio } from "./progression-audio.js";
@@ -92,6 +96,8 @@ const scrubberBar = $("scrubber-bar") as HTMLDivElement;
 const scrubberTrack = $("scrubber-track") as HTMLDivElement;
 const readoutTempoEl = $("readout-tempo") as HTMLElement;
 const readoutStyleEl = $("readout-style") as HTMLButtonElement;
+const stylePickerEl = $("style-picker") as HTMLDivElement;
+const stylePickerRowsEl = $("style-picker-rows") as HTMLDivElement;
 const readoutBassEl = $("readout-bass") as HTMLButtonElement;
 const readoutDrumsEl = $("readout-drums") as HTMLButtonElement;
 const readoutVoicingEl = $("readout-voicing") as HTMLButtonElement;
@@ -387,8 +393,14 @@ function onChordTick({
 
 function renderReadout(state: AppState): void {
   readoutTempoEl.textContent = String(state.playback.tempo);
-  readoutStyleEl.textContent =
-    STYLE_LABELS[state.playback.style as StyleOption] ?? state.playback.style;
+  const activeCustomStyle = isCustomStyleRef(state.playback.style)
+    ? app.getCustomStyles().find((s) => s.id === customStyleIdFromRef(state.playback.style))
+    : undefined;
+  readoutStyleEl.textContent = activeCustomStyle
+    ? customStyleLabel(activeCustomStyle.name)
+    : isCustomStyleRef(state.playback.style)
+      ? state.playback.style
+      : (STYLE_LABELS[state.playback.style as StyleOption] ?? state.playback.style);
   readoutStyleEl.setAttribute("aria-label", `Style: ${state.playback.style}`);
   readoutBassEl.textContent = BASS_LABELS[state.playback.bass as BassOption] ?? state.playback.bass;
   readoutBassEl.setAttribute("aria-label", `Bass: ${state.playback.bass}`);
@@ -897,6 +909,70 @@ document.addEventListener(
   true,
 );
 
+// ── Style picker ─────────────────────────────────────────────────────────
+
+function customStyleLabel(name: string): string {
+  return `🎶 ${name}`;
+}
+
+function makeStylePickerHeading(text: string): void {
+  stylePickerRowsEl.appendChild(
+    Object.assign(document.createElement("div"), {
+      className: "style-picker-heading",
+      textContent: text,
+    }),
+  );
+}
+
+function makeStylePickerRow(label: string, isActive: boolean, onSelect: () => void): void {
+  const row = Object.assign(document.createElement("button"), {
+    type: "button",
+    className: "style-picker-row",
+    textContent: label,
+  });
+  row.classList.toggle("active", isActive);
+  row.addEventListener("click", () => {
+    onSelect();
+    stylePickerEl.hidden = true;
+  });
+  stylePickerRowsEl.appendChild(row);
+}
+
+function renderStylePicker(): void {
+  const state = app.getState();
+  stylePickerRowsEl.innerHTML = "";
+  const customStyles = app.getCustomStyles();
+
+  if (customStyles.length > 0) makeStylePickerHeading("Built-in");
+  (STYLE_OPTIONS as readonly string[]).forEach((opt) => {
+    makeStylePickerRow(STYLE_LABELS[opt as StyleOption], state.playback.style === opt, () =>
+      app.setPlayback({ style: opt }),
+    );
+  });
+
+  if (customStyles.length > 0) {
+    makeStylePickerHeading("Custom");
+    customStyles.forEach((custom: CustomStyleDef) => {
+      const ref = toCustomStyleId(custom.id);
+      makeStylePickerRow(customStyleLabel(custom.name), state.playback.style === ref, () =>
+        app.setPlayback({ style: ref }),
+      );
+    });
+  }
+}
+
+readoutStyleEl.addEventListener("click", () => {
+  if (stylePickerEl.hidden) {
+    renderStylePicker();
+    stylePickerEl.hidden = false;
+  } else stylePickerEl.hidden = true;
+});
+document.addEventListener("click", (e: MouseEvent) => {
+  if (stylePickerEl.hidden) return;
+  if (readoutStyleEl.contains(e.target as Node) || stylePickerEl.contains(e.target as Node)) return;
+  stylePickerEl.hidden = true;
+});
+
 // ── Tempo picker ─────────────────────────────────────────────────────────
 
 const tempoPickerEl = $("tempo-picker") as HTMLDivElement;
@@ -969,9 +1045,6 @@ document
 // ── Readout pill cycling ──────────────────────────────────────────────────
 
 const cycleOpt = <T>(opts: readonly T[], cur: T): T => opts[(opts.indexOf(cur) + 1) % opts.length]!;
-readoutStyleEl.addEventListener("click", () =>
-  app.setPlayback({ style: cycleOpt(STYLE_OPTIONS, app.getState().playback.style) }),
-);
 readoutBassEl.addEventListener("click", () =>
   app.setPlayback({ bass: cycleOpt(BASS_OPTIONS, app.getState().playback.bass) }),
 );
