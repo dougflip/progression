@@ -208,10 +208,17 @@ export interface AudioEngine {
   previewInstrument(name: DrumInstrumentName): void;
   // Loops the editor's current draft continuously against a fixed C major
   // triad (no real chord/key context exists in the editor) — takes the
-  // draft directly, not a converted StyleDef, so edits already made in place
-  // by the grid show up on the loop's next pass with no rebuild needed.
+  // draft directly, not a converted StyleDef, matching the shape
+  // previewUpdateDrumStep/previewUpdateBassStep patch live below.
   previewStyleLoopStart(draft: StyleVariantDraft, tempo: number): Promise<void>;
   previewStyleLoopStop(): void;
+  // Patches a single step of an already-running preview loop in place, via
+  // Tone.Sequence's proxied `events` array — mutating the draft's own arrays
+  // (what the grid already does) does NOT reach a running loop on its own,
+  // since Tone.Sequence captures event values once at construction, not on
+  // every pass. No-ops if no preview loop is currently running.
+  previewUpdateDrumStep(instrument: DrumInstrumentName, index: number, hit: number): void;
+  previewUpdateBassStep(index: number, step: BassStep): void;
 }
 
 export interface PlaybackSettings {

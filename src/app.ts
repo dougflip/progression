@@ -1163,6 +1163,7 @@ function appendDrumRow(instrument: DrumInstrumentName, pattern: DrumPattern): vo
       pattern[i] = turningOn ? 1 : 0;
       cell.classList.toggle("on", turningOn);
       if (turningOn) audio.previewInstrument(instrument);
+      audio.previewUpdateDrumStep(instrument, i, pattern[i]!);
       renderStyleEditorTabs();
     });
     styleEditorGridEl.appendChild(cell);
@@ -1188,6 +1189,7 @@ function appendBassRow(pattern: BassPattern): void {
       pattern[i] = cycleBassStep(pattern[i]!);
       cell.textContent = pattern[i] === 0 ? "" : String(pattern[i]);
       cell.classList.toggle("on", pattern[i] !== 0);
+      audio.previewUpdateBassStep(i, pattern[i]!);
       renderStyleEditorTabs();
     });
     styleEditorGridEl.appendChild(cell);

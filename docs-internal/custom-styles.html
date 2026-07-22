@@ -925,42 +925,63 @@ previewInstrument(name: DrumInstrumentName): void</code></pre>
       <strong>Tempo: reuse <code>playback.tempo</code> as-is.</strong> No separate preview-tempo
       control — the groove should sound like it will at the actual song's speed.
     </div>
-    <p>
-      The one genuinely elegant part, confirmed working as hoped: the grid already mutates the
-      draft's arrays in place (<code>pattern[i] = ...</code>, never reassigned). The preview's
-      <code>Tone.Sequence</code>s are built referencing those <em>same</em> array objects, so every
-      cell tap already shows up on the sequence's next pass — no "rebuild on every tap" plumbing
-      needed. Only a Simple/Busy tab switch needs an explicit restart, since that points at
-      different arrays entirely.
-    </p>
     <div class="tradeoff">
       <strong
-        >Delta from the original sketch: takes the draft directly, not a converted
-        <code>StyleDef</code>.</strong
+        >The "live array reference" assumption below turned out wrong — caught in manual
+        testing.</strong
       >
-      The plan assumed <code>previewStyleLoopStart(variant: StyleDef, ...)</code>, mirroring how
-      real playback resolves a <code>StyleDef</code> first. But
-      <code>draftToStyleVariant()</code> clones the bass pattern into fresh
-      <code>{major, minor}</code> arrays (correctly, for Save — see the bass decision above) — so a
-      <code>StyleDef</code> built that way would <em>break</em> the live-array trick for bass
-      specifically: edits to <code>draft.bass</code> wouldn't reach a cloned copy.
-      <code>previewStyleLoopStart</code> takes <code>StyleVariantDraft</code> directly instead (9
-      drum patterns, one bass pattern — the exact shape the grid mutates), so every array, bass
-      included, stays a live reference.
+      The original plan (and this doc, until this fix) assumed that building the preview's
+      <code>Tone.Sequence</code>s against the draft's own arrays would be enough — cell taps already
+      mutate those arrays in place, so surely the running loop would just see the new values on its
+      next pass. It doesn't: <code>Tone.Sequence</code> captures each event's value once at
+      construction time, not by continuing to read the source array. Manual testing confirmed the
+      single-tap preview sound still played, but the running loop kept playing the
+      <em>old</em> pattern — proof the loop wasn't seeing the mutation at all.
+    </div>
+    <p>
+      The actual mechanism: <code>Tone.Sequence</code>'s <code>.events</code> getter returns a
+      proxied array (Tone.js's own words: "private reference to all of the sequence proxies") —
+      <em>assigning</em> through it, e.g. <code>seq.events[i] = value</code>, triggers Tone's
+      internal reschedule and patches that one step of an already-running loop, with no restart.
+      Reading/mutating a plain array reference elsewhere never reaches it. So two new
+      <code>AudioEngine</code> methods patch a step explicitly, called right after the grid mutates
+      the draft (which still happens, and still matters for Save):
+    </p>
+    <pre><code>previewUpdateDrumStep(instrument: DrumInstrumentName, index: number, hit: number): void {
+  const seq = _previewSeqs[instrument]; // keyed by instrument, not a flat array — needs lookup
+  if (seq) seq.events[index] = hit;     // no-op if no preview loop is running
+}
+
+previewUpdateBassStep(index: number, step: BassStep): void {
+  if (_previewBassSeq) _previewBassSeq.events[index] = step;
+}</code></pre>
+    <p>
+      Called from the grid's existing cell handlers in <code>app.ts</code>, right after the existing
+      <code>pattern[i] = ...</code> mutation — unconditionally, not gated on whether preview is
+      currently running, since the methods above already no-op harmlessly when
+      <code>_previewSeqs</code>/<code>_previewBassSeq</code> are empty/null.
+    </p>
+    <div class="tradeoff">
+      <strong>Kept: takes the draft directly, not a converted <code>StyleDef</code>.</strong>
+      This decision survives even though the original reasoning for it (automatic live-array pickup)
+      didn't pan out — it's still necessary for a different reason now:
+      <code>previewUpdateDrumStep</code>/<code>previewUpdateBassStep</code> need
+      <code>_previewSeqs</code> keyed by the same 9 instrument names and a single bass sequence,
+      exactly the <code>StyleVariantDraft</code> shape — a converted <code>StyleDef</code> (with
+      bass split into cloned <code>{major, minor}</code> copies) wouldn't line up the same way.
     </div>
     <pre><code>// New, standalone in progression-audio.ts — deliberately NOT reusing
 // _buildDrums/_buildBass, which are shaped around a chord progression this
 // feature doesn't have. Separate state (_previewSeqs/_previewBassSeq/_previewBass),
-// never touching the main song's _kickSeq/_bassSeq/etc.
+// never touching the main song's _kickSeq/_bassSeq/etc. _previewSeqs is keyed
+// by instrument (not a flat array) so previewUpdateDrumStep can look one up.
 async previewStyleLoopStart(draft: StyleVariantDraft, tempo: number): Promise&lt;void&gt; {
   await Tone.start();          // in case this is the session's first audio interaction
   _teardownPreviewLoop();      // tear down any earlier preview loop first
   _initChannels();             // idempotent — channels may not exist yet this session
   Tone.Transport.bpm.value = tempo;
-  // one Tone.Sequence per instrument in CUSTOM_STYLE_INSTRUMENTS, at "16n",
-  // referencing draft[inst] directly (same array the grid mutates) — bass
-  // sequence resolves R/3/5 against a fixed C3/E3/G3 triad, referencing
-  // draft.bass directly.
+  // one Tone.Sequence per instrument in CUSTOM_STYLE_INSTRUMENTS, at "16n" —
+  // bass sequence resolves R/3/5 against a fixed C3/E3/G3 triad.
   Tone.Transport.start();
 }
 
@@ -973,10 +994,13 @@ previewStyleLoopStop(): void {
       called raw on <code>audio</code> from <code>app.ts</code> — pausing the main song for preview
       goes through the same <code>_pausePlayback()</code> path <code>togglePlay()</code> already
       uses, so <code>_pausedAt</code> is set correctly and the song is resumable afterward, exactly
-      like pausing normally. Stopping is centralized on the editor <code>&lt;dialog&gt;</code>'s
-      native <code>close</code> event — it fires for every dismissal path (Save, Delete, ×, Esc,
-      clicking outside), so there's one place that guarantees a stray loop never keeps playing after
-      the sheet is gone, instead of stopping it in each handler.
+      like pausing normally. <code>previewUpdateDrumStep</code>/<code>previewUpdateBassStep</code>
+      are called directly on <code>audio</code> from <code>app.ts</code>, same as
+      <code>previewInstrument</code> — no state mutation for the player to mediate, just an audio
+      action. Stopping is centralized on the editor <code>&lt;dialog&gt;</code>'s native
+      <code>close</code> event — it fires for every dismissal path (Save, Delete, ×, Esc, clicking
+      outside), so there's one place that guarantees a stray loop never keeps playing after the
+      sheet is gone, instead of stopping it in each handler.
     </p>
     <h3>Mockup — editor action row with preview</h3>
     <div class="mockup-bar">
@@ -1066,11 +1090,10 @@ previewStyleLoopStop(): void {
         <td>
           <code>previewInstrument</code> and its <code>_previewFallback</code> helper (Phase 4); the
           Phase 5 preview loop
-          (<code>previewStyleLoopStart</code>/<code>previewStyleLoopStop</code>/<code>_teardownPreviewLoop</code>)
-          with its own state
-          (<code>_previewSeqs</code>/<code>_previewBassSeq</code>/<code>_previewBass</code>),
-          deliberately separate from the main song's — the only <code>AudioEngine</code> methods
-          this whole feature needed.
+          (<code>previewStyleLoopStart</code>/<code>previewStyleLoopStop</code>/<code>_teardownPreviewLoop</code>/<code>previewUpdateDrumStep</code>/<code>previewUpdateBassStep</code>)
+          with its own state (<code>_previewSeqs</code> — keyed by instrument, not a flat array —
+          /<code>_previewBassSeq</code>/<code>_previewBass</code>), deliberately separate from the
+          main song's — the only <code>AudioEngine</code> methods this whole feature needed.
         </td>
       </tr>
       <tr>
@@ -1079,7 +1102,9 @@ previewStyleLoopStop(): void {
           Style picker popup wiring (Phase 3); Custom Styles Setup-list rendering
           (<code>renderCustomStyleRows</code>), the style editor sheet's tabs/grid/save/delete
           wiring, and the empty-tab-label logic (Phase 4); the Preview toggle, tab-switch restart,
-          and the editor <code>&lt;dialog&gt;</code>'s <code>close</code>-event stop (Phase 5).
+          the editor <code>&lt;dialog&gt;</code>'s <code>close</code>-event stop, and calling
+          <code>previewUpdateDrumStep</code>/<code>previewUpdateBassStep</code> from the grid's
+          existing cell handlers (Phase 5).
         </td>
       </tr>
       <tr>

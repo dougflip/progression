@@ -231,8 +231,10 @@ export function makeProgressionAudio(): AudioEngine {
 
   // Style editor preview loop — deliberately separate from the main song's
   // sequences/synths above. Never chord-driven (no progression exists to
-  // preview against), so it can't reuse _buildDrums/_buildBass.
-  let _previewSeqs: Tone.Sequence<number>[] = [];
+  // preview against), so it can't reuse _buildDrums/_buildBass. Keyed by
+  // instrument (not a flat array) so a single step can be patched live via
+  // Tone.Sequence.at() — see previewUpdateDrumStep/previewUpdateBassStep.
+  let _previewSeqs: Partial<Record<DrumInstrumentName, Tone.Sequence<number>>> = {};
   let _previewBassSeq: Tone.Sequence<BassStep> | null = null;
   let _previewBass: Tone.MonoSynth | null = null;
 
@@ -1223,8 +1225,8 @@ export function makeProgressionAudio(): AudioEngine {
 
   function _teardownPreviewLoop(): void {
     Tone.Transport.stop();
-    _previewSeqs.forEach((s) => s.dispose());
-    _previewSeqs = [];
+    Object.values(_previewSeqs).forEach((s) => s?.dispose());
+    _previewSeqs = {};
     _previewBassSeq?.dispose();
     _previewBassSeq = null;
     _previewBass?.dispose();
@@ -1618,14 +1620,13 @@ export function makeProgressionAudio(): AudioEngine {
       _previewBass.volume.value = -6;
 
       CUSTOM_STYLE_INSTRUMENTS.forEach((inst) => {
-        const seq = new Tone.Sequence<number>(
+        _previewSeqs[inst] = new Tone.Sequence<number>(
           (time, hit) => {
             if (hit) _triggerDrum(time, _sp[inst], () => _previewFallback(inst, time));
           },
           draft[inst],
           "16n",
         ).start(0);
-        _previewSeqs.push(seq);
       });
 
       _previewBassSeq = new Tone.Sequence<BassStep>(
@@ -1644,6 +1645,22 @@ export function makeProgressionAudio(): AudioEngine {
 
     previewStyleLoopStop(): void {
       _teardownPreviewLoop();
+    },
+
+    // Tone.Sequence captures its events' values once at construction — it
+    // does NOT keep reading the source array on every pass, so mutating the
+    // draft array alone (what the grid already does) never reaches an
+    // already-running loop. Its `.events` getter returns a proxied array —
+    // assigning through it (not just reading) triggers Tone's internal
+    // reschedule, patching a live sequence's step in place with no restart.
+    // No-ops if no preview loop is currently running.
+    previewUpdateDrumStep(instrument: DrumInstrumentName, index: number, hit: number): void {
+      const seq = _previewSeqs[instrument];
+      if (seq) seq.events[index] = hit;
+    },
+
+    previewUpdateBassStep(index: number, step: BassStep): void {
+      if (_previewBassSeq) _previewBassSeq.events[index] = step;
     },
   };
 }
