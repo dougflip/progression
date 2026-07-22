@@ -513,25 +513,59 @@ function deleteCustomStyle(storage: StorageConfig, id: string): void {
 
     <h2 id="phase-3">Phase 3 — playback wiring, no CRUD UI</h2>
     <p>
-      On load, read custom styles from storage. Selecting one in the new picker sets
+      <strong>Built and tested.</strong> Selecting a style in the new picker sets
       <code>playback.style</code> to a value that disambiguates from built-ins (a
-      <code>custom:&lt;id&gt;</code> convention), resolved at playback time:
+      <code>custom:&lt;id&gt;</code> convention via
+      <code>toCustomStyleId</code>/<code>isCustomStyleRef</code>/<code>customStyleIdFromRef</code>
+      in <code>custom-styles.ts</code>), resolved at playback time:
     </p>
-    <pre><code>function resolveStyleDef(styleId: string, customStyles: CustomStyleDef[]): StyleDef {
-  if (styleId.startsWith("custom:")) {
-    const found = customStyles.find(s => s.id === styleId.slice(7));
-    if (found) return toStyleDef(found);
-    return STYLES[DEFAULTS.playback.style]; // referenced style not found locally — e.g. a
-                                             // shared URL from a device without it
+    <pre><code>function resolveStyleDef(
+  styleId: string,
+  customStyles: CustomStyleDef[],
+  builtins: Record&lt;string, StyleDef&gt;,
+  fallback: StyleDef,
+): StyleDef {
+  if (isCustomStyleRef(styleId)) {
+    const found = customStyles.find((s) =&gt; s.id === customStyleIdFromRef(styleId));
+    return found ? toStyleDef(found) : fallback; // e.g. a shared URL from a device without it
   }
-  return STYLES[styleId] ?? STYLES[DEFAULTS.playback.style];
+  return builtins[styleId] ?? fallback;
 }</code></pre>
     <p>
-      <code>bass</code>/<code>drums</code> (simple/busy) selectors keep working unchanged, since the
-      resolved <code>StyleDef</code> still has <code>simple</code>/<code>busy</code> keys. At least
-      one custom style has to exist to test this — since there's no editor yet, seed one via a
-      direct <code>saveCustomStyle()</code> call, then confirm it selects and actually plays.
+      <code>builtins</code>/<code>fallback</code> are passed in rather than closed over
+      (<code>STYLES</code>/<code>DEFAULTS.playback.style</code>) — keeps
+      <code>custom-styles.ts</code> with zero dependency on <code>styles.ts</code> or core's
+      <code>DEFAULTS</code>, same reasoning as Phase 2's storage functions taking
+      <code>{ persist, load }</code> explicitly. <code>progression-core.ts</code> calls it at both
+      engine entry points (<code>rebuild</code> and <code>start</code>):
     </p>
+    <pre><code>function _getCustomStyles(): CustomStyleDef[] {
+  return getStoredCustomStyles(config); // config.persist/load, already in PlayerConfig
+}
+
+// at both call sites:
+style: resolveStyleDef(_state.playback.style, _getCustomStyles(), STYLES, STYLES[DEFAULTS.playback.style]!),</code></pre>
+    <p>
+      Also exposed on the public API as <code>app.getCustomStyles()</code>, mirroring
+      <code>getUserPresets: _getUserPresets</code>. <code>bass</code>/<code>drums</code>
+      (simple/busy) selectors keep working unchanged, since the resolved <code>StyleDef</code> still
+      has <code>simple</code>/<code>busy</code> keys.
+    </p>
+    <div class="tradeoff">
+      <strong>Bug found and fixed while wiring this up:</strong> <code>parseUrl</code> validated
+      <code>style</code> against <code>STYLE_OPTIONS</code> only, resetting anything else (including
+      a <code>custom:</code> ref) back to the default. That's fine for a genuinely invalid value,
+      but the URL is synced continuously during live play via <code>syncUrl()</code> in
+      <code>app.ts</code> (<code>history.replaceState</code> on every state change, not just on
+      "Copy share link") — so selecting a custom style would've silently reverted to the default on
+      the very next browser refresh, not just when shared to another device. Fixed by accepting the
+      <code>custom:</code> format in <code>parseUrl</code> too; whether the id actually
+      <em>exists</em> locally stays <code>resolveStyleDef</code>'s job:
+    </div>
+    <pre><code>style:
+  (STYLE_OPTIONS as readonly string[]).includes(style) || isCustomStyleRef(style)
+    ? style
+    : DEFAULTS.playback.style,</code></pre>
 
     <h3>Mockup — the "Custom Styles" picker popup</h3>
     <p>The style pill doesn't move or get relabeled — only its tap behavior changes:</p>
@@ -553,34 +587,24 @@ function deleteCustomStyle(storage: StorageConfig, id: string): void {
     </div>
     <div class="goal-box">
       <h4>🕺 Funk ▾ <span style="font-weight: 400; color: #888">(tap opens this)</span></h4>
-      <div class="picker-row active">
-        <span>⭐ Pop</span>
-        <span class="tag">built-in</span>
-      </div>
-      <div class="picker-row">
-        <span>🕺 Funk</span>
-        <span class="tag">built-in</span>
-      </div>
-      <div class="picker-row">
-        <span>🌙 Ballad</span>
-        <span class="tag">built-in</span>
-      </div>
-      <div class="picker-row">
-        <span>⚡ Rock</span>
-        <span class="tag">built-in</span>
-      </div>
-      <div class="picker-row">
-        <span>🎨 My Bossa Groove</span>
-        <span class="tag custom">custom</span>
-      </div>
-      <div class="picker-row">
-        <span>🎨 Half-Time Trap</span>
-        <span class="tag custom">custom</span>
-      </div>
+      <p class="caption" style="margin: 0 0 0.3rem">BUILT-IN</p>
+      <div class="picker-row active"><span>⭐ Pop</span></div>
+      <div class="picker-row"><span>🕺 Funk</span></div>
+      <div class="picker-row"><span>🌙 Ballad</span></div>
+      <div class="picker-row"><span>⚡ Rock</span></div>
+      <p class="caption" style="margin: 0.5rem 0 0.3rem">CUSTOM</p>
+      <div class="picker-row"><span>🎶 My Bossa Groove</span></div>
+      <div class="picker-row"><span>🎶 Half-Time Trap</span></div>
     </div>
     <p class="caption">
-      Same interaction model as the key-picker: tap the style pill to open, tap a row to select and
-      close. No create/edit affordances here — those live in Setup (Phase 4).
+      Built as another readout-pill popup, but modeled on the <strong>tempo pill</strong>
+      (<code>.tempo-group</code>/<code>#tempo-picker</code>), not the key-picker — a plain
+      bubble-phase outside-click listener is enough here (no mid-click DOM detach to race, unlike
+      the custom-cycle editor's reorder buttons), so the key-picker's capture-phase workaround isn't
+      needed. "Built-in"/"Custom" section headings replaced the per-row "built-in"/"custom" tag from
+      the original sketch once headings made the tag redundant. 🎶 (not 🎵, which voicing already
+      uses) keeps custom style labels visually distinct. No create/edit affordances here — those
+      live in Setup (Phase 4).
     </p>
 
     <h2 id="edge-cases">Edge cases worth deciding now</h2>
@@ -668,7 +692,7 @@ previewInstrument(name: DrumInstrument, velocity?: number): void</code></pre>
     <div class="goal-box">
       <h4>Custom Styles</h4>
       <div class="setup-row">
-        <span>🎨 My Bossa Groove</span>
+        <span>🎶 My Bossa Groove</span>
         <span class="row-actions">
           <button class="mockup-btn">Edit</button>
           <button class="mockup-btn">Duplicate</button>
@@ -676,7 +700,7 @@ previewInstrument(name: DrumInstrument, velocity?: number): void</code></pre>
         </span>
       </div>
       <div class="setup-row">
-        <span>🎨 Half-Time Trap</span>
+        <span>🎶 Half-Time Trap</span>
         <span class="row-actions">
           <button class="mockup-btn">Edit</button>
           <button class="mockup-btn">Duplicate</button>
