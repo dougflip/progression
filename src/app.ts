@@ -1162,7 +1162,10 @@ function appendDrumRow(instrument: DrumInstrumentName, pattern: DrumPattern): vo
       const turningOn = pattern[i] === 0;
       pattern[i] = turningOn ? 1 : 0;
       cell.classList.toggle("on", turningOn);
-      if (turningOn) audio.previewInstrument(instrument);
+      // Suppressed while the loop is playing — the loop will hit this exact
+      // step itself within a bar, so a single-tap preview on top of it just
+      // sounds like a doubled/flammed hit rather than useful feedback.
+      if (turningOn && !_styleEditorPreviewing) audio.previewInstrument(instrument);
       audio.previewUpdateDrumStep(instrument, i, pattern[i]!);
       renderStyleEditorTabs();
     });

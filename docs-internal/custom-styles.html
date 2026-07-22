@@ -1019,13 +1019,15 @@ previewStyleLoopStop(): void {
       <code>close</code>
       event — a stray loop must never keep playing after the sheet is gone.
     </p>
-    <div class="open-q">
-      <strong>Not yet decided: single-tap preview vs. the running loop.</strong> While the loop is
-      playing, tapping a cell today would <em>also</em> fire <code>previewInstrument</code> for an
-      immediate one-off hit — likely audible as a doubled/flammed hit on top of the loop's own
-      scheduled one. Options: suppress the per-tap preview while the loop is active (the loop will
-      play it on its next pass anyway), or leave it — not worth deciding until it's actually heard
-      in testing.
+    <div class="decided">
+      <strong>Single-tap preview is suppressed while the loop is playing.</strong> Confirmed
+      confusing in testing, as expected — tapping a cell fired an immediate one-off hit
+      (<code>previewInstrument</code>) <em>on top of</em> the loop's own scheduled hit for that
+      step, landing within the same bar and sounding like a doubled/flammed note. Gated on
+      <code>_styleEditorPreviewing</code> in the drum cell's click handler: the one-off preview only
+      fires when the loop isn't running. The loop itself still plays the new hit on its next pass
+      regardless (via <code>previewUpdateDrumStep</code>), so nothing is lost — turning a step on
+      while previewing is still audible, just without the redundant immediate hit.
     </div>
 
     <h2 id="deferred">Deferred / future</h2>
