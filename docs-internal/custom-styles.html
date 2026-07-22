@@ -1,0 +1,867 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Custom Styles — feature plan</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      body {
+        max-width: 780px;
+        margin: 2rem auto;
+        padding: 0 1.5rem 4rem;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+        line-height: 1.55;
+      }
+      h1 {
+        font-size: 1.6rem;
+        margin-bottom: 0.25rem;
+      }
+      h2 {
+        margin-top: 2.5rem;
+        border-bottom: 1px solid #8884;
+        padding-bottom: 0.3rem;
+      }
+      h3 {
+        margin-top: 1.5rem;
+      }
+      .subtitle {
+        color: #888;
+        margin-top: 0;
+      }
+      code,
+      pre {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 0.9em;
+      }
+      pre {
+        background: #8881;
+        border: 1px solid #8884;
+        border-radius: 6px;
+        padding: 0.75rem 1rem;
+        overflow-x: auto;
+      }
+      code {
+        background: #8881;
+        padding: 0.1em 0.35em;
+        border-radius: 4px;
+      }
+      pre code {
+        background: none;
+        padding: 0;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 1rem 0;
+      }
+      th,
+      td {
+        text-align: left;
+        border: 1px solid #8884;
+        padding: 0.4rem 0.6rem;
+        vertical-align: top;
+      }
+      th {
+        background: #8881;
+      }
+      .file {
+        font-weight: 600;
+      }
+      .note {
+        border-left: 3px solid #e8a33d;
+        background: #e8a33d1a;
+        padding: 0.6rem 1rem;
+        border-radius: 0 6px 6px 0;
+        margin: 1rem 0;
+      }
+      .open-q {
+        border-left: 3px solid #4d8ee0;
+        background: #4d8ee01a;
+        padding: 0.6rem 1rem;
+        border-radius: 0 6px 6px 0;
+        margin: 0.5rem 0;
+      }
+      .decided {
+        border-left: 3px solid #3fa55b;
+        background: #3fa55b1a;
+        padding: 0.6rem 1rem;
+        border-radius: 0 6px 6px 0;
+        margin: 0.5rem 0;
+      }
+      .tradeoff {
+        border-left: 3px solid #d1483f;
+        background: #d1483f1a;
+        padding: 0.6rem 1rem;
+        border-radius: 0 6px 6px 0;
+        margin: 0.5rem 0;
+      }
+      .goal-box {
+        border: 1px solid #8886;
+        border-radius: 10px;
+        padding: 0.9rem 1.1rem;
+        margin: 0.75rem 0;
+        background: #8880a;
+      }
+      .goal-box h4 {
+        margin: 0 0 0.6rem;
+        font-size: 1rem;
+      }
+      ul.tight li {
+        margin-bottom: 0.35rem;
+      }
+      .status {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #888;
+      }
+      .mockup-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        padding: 0.6rem 0.8rem;
+        border: 1px solid #8886;
+        border-radius: 10px;
+        background: #8880a;
+        margin: 1rem 0;
+      }
+      .mockup-btn {
+        border: 1px solid #8886;
+        border-radius: 8px;
+        padding: 0.45rem 0.7rem;
+        background: #8881;
+        font-size: 0.9rem;
+        white-space: nowrap;
+      }
+      .mockup-btn.primary {
+        border-color: #4d8ee0;
+        background: #4d8ee022;
+      }
+      .mockup-btn.danger {
+        border-color: #d1483f;
+        background: #d1483f1a;
+      }
+      .mockup-group {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+      }
+      .caption {
+        font-size: 0.85rem;
+        color: #888;
+        margin: 0.3rem 0 1.25rem;
+      }
+
+      /* --- mockup-specific styling, this doc only --- */
+      .picker-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.55rem 0.8rem;
+        border-radius: 7px;
+        font-size: 0.95rem;
+      }
+      .picker-row + .picker-row {
+        margin-top: 0.15rem;
+      }
+      .picker-row.active {
+        background: #4d8ee022;
+        font-weight: 600;
+      }
+      .picker-row .tag {
+        font-size: 0.75rem;
+        color: #888;
+        border: 1px solid #8886;
+        border-radius: 5px;
+        padding: 0.1rem 0.4rem;
+      }
+      .picker-row .tag.custom {
+        color: #9b6bd6;
+        border-color: #9b6bd688;
+      }
+      .setup-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #8883;
+        font-size: 0.95rem;
+      }
+      .setup-row:last-of-type {
+        border-bottom: none;
+      }
+      .setup-row .row-actions {
+        display: flex;
+        gap: 0.35rem;
+      }
+      .setup-row .row-actions .mockup-btn {
+        padding: 0.3rem 0.55rem;
+        font-size: 0.8rem;
+      }
+      .tab-row {
+        display: flex;
+        gap: 0.4rem;
+        margin-bottom: 0.75rem;
+      }
+      .tab {
+        padding: 0.4rem 1rem;
+        border: 1px solid #8886;
+        border-bottom: none;
+        border-radius: 8px 8px 0 0;
+        color: #888;
+        font-size: 0.9rem;
+      }
+      .tab.active {
+        background: #4d8ee022;
+        border-color: #4d8ee0;
+        color: inherit;
+        font-weight: 600;
+      }
+      table.seq-table {
+        margin: 0 0 0.5rem;
+      }
+      table.seq-table th,
+      table.seq-table td {
+        border: 1px solid #8883;
+        padding: 0.3rem 0;
+        text-align: center;
+        font-size: 0.85rem;
+      }
+      table.seq-table th.beat-head {
+        background: #8882;
+        font-weight: 600;
+      }
+      table.seq-table td.inst-label,
+      table.seq-table th.inst-label {
+        text-align: left;
+        padding-left: 0.6rem;
+        font-weight: 600;
+        white-space: nowrap;
+        border: none;
+        background: none;
+      }
+      table.seq-table td.step {
+        width: 1.9rem;
+        cursor: pointer;
+        color: #8886;
+      }
+      table.seq-table td.step.on {
+        background: #4d8ee033;
+        color: #4d8ee0;
+        font-weight: 700;
+      }
+      table.seq-table td.step.downbeat {
+        border-left: 2px solid #8886;
+      }
+      table.seq-table td.step.r {
+        background: #4d8ee022;
+        color: #4d8ee0;
+        font-weight: 700;
+      }
+      table.seq-table td.step.third {
+        background: #9b6bd622;
+        color: #9b6bd6;
+        font-weight: 700;
+      }
+      table.seq-table td.step.fifth {
+        background: #e8a33d22;
+        color: #e8a33d;
+        font-weight: 700;
+      }
+      .legend {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        font-size: 0.8rem;
+        color: #888;
+        margin: 0.4rem 0 1rem;
+      }
+      .legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+      }
+      .swatch {
+        width: 0.8rem;
+        height: 0.8rem;
+        border-radius: 3px;
+        display: inline-block;
+      }
+      .name-field-mockup {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.9rem;
+      }
+      .name-field-mockup input.mockup-input {
+        flex: 1;
+        border: 1px solid #8886;
+        border-radius: 8px;
+        padding: 0.4rem 0.7rem;
+        background: #8881;
+        font-size: 0.9rem;
+        color: inherit;
+      }
+    </style>
+  </head>
+  <body>
+    <p class="status">planning only — no code written yet, four phases below</p>
+    <h1>Custom Styles</h1>
+    <p class="subtitle">
+      Let players define their own drum beat + bass line — a <code>simple</code> and a
+      <code>busy</code> variant, same shape as the four built-in styles — instead of being limited
+      to <code>pop</code>/<code>funk</code>/<code>ballad</code>/<code>rock</code>. This doc is the
+      plan, not the implementation: data structure, storage, playback wiring, and CRUD UI are
+      staged as four independent phases, each shippable and testable before the next begins.
+    </p>
+
+    <h2 id="background">Background</h2>
+    <p>
+      Today's styles are hardcoded in <code>src/styles.ts</code> as <code>StyleDef</code> objects.
+      Each has a <code>simple</code> and <code>busy</code> variant; each variant is a set of
+      16-step drum arrays (one bar of 16th notes, <code>1</code> = hit / <code>0</code> = rest)
+      plus a <code>bass</code> phrase keyed by chord quality (<code>major</code>/<code>minor</code
+      >, each step <code>R</code>/<code>3</code>/<code>5</code>/rest):
+    </p>
+    <pre><code>pop: {
+  simple: {
+    kick:  [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
+    snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+    hat:   [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
+    bass: {
+      major: ["R",0,0,0, "R",0,0,0, "5",0,0,0, "R",0,0,0],
+      minor: ["R",0,0,0, "R",0,0,0, "R",0,0,0, "R",0,0,0],
+    },
+  },
+  busy: { /* same shape, denser hits */ },
+}</code></pre>
+    <p>
+      This is exactly the shape the user's "simple + busy" idea already describes — no new music
+      theory needed, just a way for a player to author their own version of the object above. Three
+      things make this feature unusually cheap to build on top of the existing architecture:
+    </p>
+    <ul class="tight">
+      <li>
+        The audio engine (<code>progression-audio.ts</code>) only ever consumes a resolved
+        <code>StyleDef</code> (<code>AudioStartOpts.style</code>) — it has no
+        <code>pop</code>/<code>funk</code>-specific logic anywhere. Anything that produces a valid
+        <code>StyleDef</code> shape plays with zero engine changes.
+      </li>
+      <li>
+        A storage-agnostic <code>persist</code>/<code>load</code> callback pair already flows
+        through <code>PlayerConfig</code>, used today for user-saved presets
+        (<code>saveUserPreset</code>/<code>getUserPresets</code>/etc. — a JSON array under one
+        localStorage key). Custom styles reuse the exact same pattern.
+      </li>
+      <li>
+        The key-picker popup (<code>#key-grid</code>, <code>.key-chip.active</code> toggle,
+        <code>renderCustomCycleEditor</code>'s reorderable row list) is a directly reusable UI
+        pattern for both a style picker popup and parts of the grid editor.
+      </li>
+    </ul>
+
+    <h2 id="decisions">Decisions</h2>
+    <div class="decided">
+      <strong>Storage: localStorage first, not IndexedDB.</strong> Custom styles are small JSON
+      (arrays of numbers/strings) — the same shape as user presets, which already go through
+      <code>persist</code>/<code>load</code>. Access is centralized behind
+      <code>getCustomStyles</code>/<code>saveCustomStyle</code>/<code>updateCustomStyle</code>/<code
+        >deleteCustomStyle</code
+      >
+      so nothing else ever touches storage directly — a later move to IndexedDB (if custom styles
+      start embedding real audio, or the list grows large) becomes a contained, single-module
+      change rather than a rewrite. The looper's <code>progression-looper</code> IndexedDB store is
+      the working precedent to copy if/when that day comes.
+    </div>
+    <div class="decided">
+      <strong>Selection UI: repurpose the existing style pill, don't add a new one.</strong>
+      <code>#readout-style</code> is currently a plain button that cycles forward through
+      <code>STYLE_OPTIONS</code> on tap (<code>src/app.ts:972-974</code>, the same
+      <code>cycleOpt</code> mechanism as the bass/drums/voicing/bars/cycle pills). Its click
+      handler changes from "cycle to next style" to "open the Custom Styles popup" — matching how
+      the key pill already opens <code>#key-picker</code> instead of cycling. Same slot in the
+      readout row, no new UI real estate; the other pills keep cycling exactly as today. See the
+      <a href="#phase-3">Phase 3 mockup</a>.
+    </div>
+    <div class="decided">
+      <strong>Editor starting point: both.</strong> "New" starts from a blank (all-rest) grid;
+      "Duplicate" copies any built-in or existing custom style's <code>simple</code>+<code
+        >busy</code
+      >
+      patterns as an editable starting point.
+    </div>
+    <div class="decided">
+      <strong>Pattern length: design for multi-bar later, don't build it now.</strong> The data
+      structure carries a <code>stepsPerBar</code>/bar-count field so a future "multi-bar grooves"
+      feature doesn't need a data migration, but Phase 1–4 only ever populate/consume 16-step,
+      1-bar patterns — the engine doesn't change.
+    </div>
+    <div class="decided">
+      <strong
+        >Bass major/minor: keep both fields in the data structure, edit only one in the UI.</strong
+      >
+      <code>_buildBass()</code> already resolves <code>"3"</code>/<code>"5"</code> tokens to
+      <code>voiced.bassThird</code>/<code>voiced.bassFifth</code>, computed from the chord's actual
+      quality at callback time (<code>progression-audio.ts:1140,1158-1164</code>) — the
+      major/minor split isn't doing interval math, it's just which steps/degrees got hand-authored.
+      The Phase 4 editor exposes a single bass grid per variant (no major/minor sub-tabs); on save,
+      that one pattern is written as two independent copies into <code>bass.major</code> and
+      <code>bass.minor</code> — not a shared reference, and not a <code>null</code> fallback. This
+      keeps <code>CustomStyleDef</code>'s bass shape byte-identical to the existing
+      <code>StyleBassPhrase</code> type (no new nullable field, no fallback branch to remember at
+      playback time), while leaving the door open for a future "edit minor separately" feature —
+      the field already holds a real, independently-editable pattern the day that ships.
+    </div>
+
+    <h2 id="phase-1">Phase 1 — data structure only</h2>
+    <p>
+      A <code>CustomStyleDef</code> shape: identity + pattern metadata, wrapping the existing
+      per-instrument drum-array and <code>StyleBassPhrase</code> shapes for
+      <code>simple</code>/<code>busy</code>. Instrument set is dynamic per variant — same as today,
+      where not every built-in style uses every instrument — drawn from the fixed list of
+      instruments actually wired to samples in the audio engine.
+    </p>
+    <pre><code>interface CustomStyleDef {
+  id: string;              // uuid
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  stepsPerBar: number;     // always 16 today; field exists for future multi-bar patterns
+  bars: number;            // always 1 today
+  simple: StyleVariant;    // reuses the existing type as-is
+  busy: StyleVariant;
+}
+
+// Instruments actually wired to samples (progression-audio.ts _sp):
+// kick, snare, hat, hatOpen, crash, ride, rideBell, tom, tom2
+// (snare2/tom3/tom4/crash-r/china exist on disk but aren't wired — out of scope, see Deferred)
+
+function toStyleDef(custom: CustomStyleDef): StyleDef {
+  return { simple: custom.simple, busy: custom.busy }; // strips metadata
+}</code></pre>
+    <p>
+      Deliverable: this compiles, plus one hand-written example value that
+      <code>toStyleDef()</code> turns into something that satisfies
+      <code>AudioStartOpts.style</code> — proof the shape is playable, with no storage and no UI.
+    </p>
+
+    <h2 id="phase-2">Phase 2 — storage, no UI</h2>
+    <p>
+      Mirrors <code>saveUserPreset</code>/<code>_getUserPresets</code>/<code
+        >deleteUserPreset</code
+      >
+      in <code>progression-core.ts</code> almost exactly — same JSON-array-under-one-key shape via
+      the existing <code>persist</code>/<code>load</code> callbacks, same id convention
+      (<code>Date.now().toString(36)</code>, not a new uuid scheme), same defensive parse at the
+      storage boundary:
+    </p>
+    <pre><code>const CUSTOM_STYLES_STORAGE_KEY = "progression-custom-styles-v1";
+
+function getCustomStyles(): CustomStyleDef[] {
+  try {
+    return JSON.parse(config.load(CUSTOM_STYLES_STORAGE_KEY) ?? "[]") as CustomStyleDef[];
+    // same try/catch-to-[] pattern as _getUserPresets() — the one place
+    // stale/corrupt localStorage JSON enters the typed state.
+  } catch {
+    return [];
+  }
+}
+
+function saveCustomStyle(def: Omit&lt;CustomStyleDef, "id" | "createdAt" | "updatedAt"&gt;): CustomStyleDef {
+  const now = new Date().toISOString();
+  const created = { ...def, id: Date.now().toString(36), createdAt: now, updatedAt: now };
+  config.persist(CUSTOM_STYLES_STORAGE_KEY, JSON.stringify([...getCustomStyles(), created]));
+  return created;
+}
+
+function updateCustomStyle(id: string, patch: Partial&lt;CustomStyleDef&gt;): void {
+  const styles = getCustomStyles().map((s) =>
+    s.id === id ? { ...s, ...patch, updatedAt: new Date().toISOString() } : s,
+  );
+  config.persist(CUSTOM_STYLES_STORAGE_KEY, JSON.stringify(styles));
+}
+
+function deleteCustomStyle(id: string): void {
+  config.persist(CUSTOM_STYLES_STORAGE_KEY, JSON.stringify(getCustomStyles().filter((s) => s.id !== id)));
+  // mirrors deleteUserPreset's guard on DEFAULT_PRESET_STORAGE_KEY — don't leave
+  // playback pointed at a dangling id (see Edge cases below).
+  if (getState().playback.style === `custom:${id}`) {
+    setPlayback({ style: DEFAULTS.playback.style });
+  }
+}</code></pre>
+    <p>
+      Deliverable: save the Phase 1 example, read it back, confirm it round-trips through JSON.
+      Still no UI — exercised via a script/console call or a unit test.
+    </p>
+
+    <h2 id="phase-3">Phase 3 — playback wiring, no CRUD UI</h2>
+    <p>
+      On load, read custom styles from storage. Selecting one in the new picker sets
+      <code>playback.style</code> to a value that disambiguates from built-ins (a
+      <code>custom:&lt;id&gt;</code> convention), resolved at playback time:
+    </p>
+    <pre><code>function resolveStyleDef(styleId: string, customStyles: CustomStyleDef[]): StyleDef {
+  if (styleId.startsWith("custom:")) {
+    const found = customStyles.find(s => s.id === styleId.slice(7));
+    if (found) return toStyleDef(found);
+    return STYLES[DEFAULTS.playback.style]; // referenced style not found locally — e.g. a
+                                             // shared URL from a device without it
+  }
+  return STYLES[styleId] ?? STYLES[DEFAULTS.playback.style];
+}</code></pre>
+    <p>
+      <code>bass</code>/<code>drums</code> (simple/busy) selectors keep working unchanged, since
+      the resolved <code>StyleDef</code> still has <code>simple</code>/<code>busy</code> keys. At
+      least one custom style has to exist to test this — since there's no editor yet, seed one via
+      a direct <code>saveCustomStyle()</code> call, then confirm it selects and actually plays.
+    </p>
+
+    <h3>Mockup — the "Custom Styles" picker popup</h3>
+    <p>The style pill doesn't move or get relabeled — only its tap behavior changes:</p>
+    <div class="mockup-bar">
+      <div class="mockup-group">
+        <span class="caption" style="margin: 0">Today:</span>
+        <button class="mockup-btn">🕺 Funk</button>
+      </div>
+      <span class="caption" style="margin: 0"
+        >tap → cycles forward to ⭐ Pop, then 🌙 Ballad, then ⚡ Rock…</span
+      >
+    </div>
+    <div class="mockup-bar">
+      <div class="mockup-group">
+        <span class="caption" style="margin: 0">This feature:</span>
+        <button class="mockup-btn primary">🕺 Funk ▾</button>
+      </div>
+      <span class="caption" style="margin: 0">tap → opens the picker below</span>
+    </div>
+    <div class="goal-box">
+      <h4>🕺 Funk ▾ <span style="font-weight: 400; color: #888">(tap opens this)</span></h4>
+      <div class="picker-row active">
+        <span>⭐ Pop</span>
+        <span class="tag">built-in</span>
+      </div>
+      <div class="picker-row">
+        <span>🕺 Funk</span>
+        <span class="tag">built-in</span>
+      </div>
+      <div class="picker-row">
+        <span>🌙 Ballad</span>
+        <span class="tag">built-in</span>
+      </div>
+      <div class="picker-row">
+        <span>⚡ Rock</span>
+        <span class="tag">built-in</span>
+      </div>
+      <div class="picker-row">
+        <span>🎨 My Bossa Groove</span>
+        <span class="tag custom">custom</span>
+      </div>
+      <div class="picker-row">
+        <span>🎨 Half-Time Trap</span>
+        <span class="tag custom">custom</span>
+      </div>
+    </div>
+    <p class="caption">
+      Same interaction model as the key-picker: tap the style pill to open, tap a row to select
+      and close. No create/edit affordances here — those live in Setup (Phase 4).
+    </p>
+
+    <h2 id="edge-cases">Edge cases worth deciding now</h2>
+    <div class="decided">
+      <strong>Deleting the currently-selected custom style resets <code>playback.style</code> to
+      the default</strong>, exactly like <code>deleteUserPreset</code> already clears
+      <code>DEFAULT_PRESET_STORAGE_KEY</code> when the deleted preset was the stored default (<code
+        >progression-core.ts:1372-1382</code
+      >). Handled inside <code>deleteCustomStyle()</code> itself (see Phase 2 pseudocode) — no
+      separate check needed anywhere else.
+    </div>
+    <div class="decided">
+      <strong>Saving an edit to the style currently playing rebuilds live</strong> — no
+      special-casing needed. <code>resolveStyleDef()</code> re-resolves from storage on every
+      rebuild, the same way changing the style pill already triggers a rebuild today; a save from
+      the editor just needs to call that existing path if the edited id is the active one.
+    </div>
+    <div class="note">
+      <strong>Storage size is a non-issue.</strong> Each <code>CustomStyleDef</code> is a handful
+      of 16-element arrays — a few hundred bytes of JSON. Even a few hundred custom styles stay
+      well under any realistic localStorage quota; this is the inverse of the looper's reasoning
+      for using IndexedDB (blobs are binary, a few hundred KB <em>each</em>).
+    </div>
+    <div class="note">
+      <strong>New instruments added later don't break old custom styles.</strong> A
+      <code>StyleVariant</code>'s instrument keys are already optional/sparse — some built-in
+      styles omit <code>tom</code>/<code>crash</code> today. If a future change wires up e.g.
+      <code>china</code>, existing custom styles simply have no key for it (silent), same as any
+      built-in style that predates an instrument would.
+    </div>
+    <div class="tradeoff">
+      <strong>Multi-tab writes can clobber each other — an existing risk, not a new one.</strong>
+      Every save round-trips the entire array (read-all, modify, write-all) through
+      <code>persist</code>; two tabs saving concurrently means last-write-wins. Presets have this
+      exact same limitation today. Not solved here.
+    </div>
+
+    <h2 id="phase-4">Phase 4 — CRUD UI (sequencer/drum-machine editor)</h2>
+    <p>
+      A new "Custom Styles" section in the Setup sheet (4th <code>setup-group</code>), modeled on
+      the existing user-preset list, plus an editor sheet for creating/editing one.
+    </p>
+    <div class="decided">
+      <strong>Not a separate page — another <code>&lt;dialog&gt;</code> sheet, same as Setup/Mix.</strong>
+      This app has no in-app routing or page concept at all — just two unrelated static Vite
+      entries (<code>index.html</code>, <code>docs.html</code>). Every overlay today
+      (<code>#setup-sheet</code>, <code>#mix-sheet</code>, <code>#preset-name-sheet</code>) is a
+      native <code>&lt;dialog&gt;</code> sharing one <code>.sheet-header</code>/<code
+        >.sheet-body</code
+      >
+      shell, capped at <code>max-width: 600px</code> / <code>max-height: 85dvh</code>
+      (<code>index.html:585-623</code>). A new <code>#style-editor-sheet</code> dialog reuses that
+      exact shell — the grid fits the 600px cap comfortably (16 columns at ~1.8rem ≈ 460px wide),
+      and rows scroll inside <code>.sheet-body</code> like any other sheet's overflow content.
+      <strong>Access:</strong> only from Setup's "Custom Styles" section — tapping "+ New Custom
+      Style" or "Edit" on a row opens this dialog. The Phase 3 picker popup stays selection-only, no
+      edit affordance there, so there's one entry point for managing custom styles, not two.
+    </div>
+
+    <p>Two small additions this phase needs, beyond the storage functions from Phase 2:</p>
+    <pre><code>function duplicateStyle(source: StyleDef, name: string): CustomStyleDef {
+  // source is a built-in STYLES[x] or an existing custom style already run through toStyleDef() —
+  // either way, by the time it gets here it's just a StyleDef, so one function covers both.
+  return saveCustomStyle({
+    stepsPerBar: 16,
+    bars: 1,
+    simple: structuredClone(source.simple),
+    busy: structuredClone(source.busy),
+    name,
+  });
+}</code></pre>
+    <pre><code>// New AudioEngine method — fires immediately for audition, independent of the
+// Transport/running sequences (same sample/synth trigger _triggerDrum already
+// uses internally, just not scheduled against a running song).
+previewInstrument(name: DrumInstrument, velocity?: number): void</code></pre>
+
+    <h3>Mockup — Setup sheet section</h3>
+    <div class="goal-box">
+      <h4>Custom Styles</h4>
+      <div class="setup-row">
+        <span>🎨 My Bossa Groove</span>
+        <span class="row-actions">
+          <button class="mockup-btn">Edit</button>
+          <button class="mockup-btn">Duplicate</button>
+          <button class="mockup-btn danger">Delete</button>
+        </span>
+      </div>
+      <div class="setup-row">
+        <span>🎨 Half-Time Trap</span>
+        <span class="row-actions">
+          <button class="mockup-btn">Edit</button>
+          <button class="mockup-btn">Duplicate</button>
+          <button class="mockup-btn danger">Delete</button>
+        </span>
+      </div>
+      <div class="setup-row" style="border-bottom: none; padding-top: 0.75rem">
+        <button class="mockup-btn primary">+ New Custom Style</button>
+      </div>
+    </div>
+
+    <h3>Mockup — style editor sheet</h3>
+    <div class="goal-box">
+      <div class="name-field-mockup">
+        <input class="mockup-input" type="text" value="My Bossa Groove" />
+      </div>
+      <div class="tab-row">
+        <span class="tab active">Simple</span>
+        <span class="tab">Busy</span>
+      </div>
+      <table class="seq-table">
+        <tr>
+          <th class="inst-label"></th>
+          <th class="beat-head" colspan="4">1</th>
+          <th class="beat-head" colspan="4">2</th>
+          <th class="beat-head" colspan="4">3</th>
+          <th class="beat-head" colspan="4">4</th>
+        </tr>
+        <tr>
+          <td class="inst-label">Kick</td>
+          <td class="step on downbeat">●</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step downbeat">·</td>
+          <td class="step">·</td>
+          <td class="step on">●</td>
+          <td class="step">·</td>
+          <td class="step on downbeat">●</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step downbeat">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+        </tr>
+        <tr>
+          <td class="inst-label">Snare</td>
+          <td class="step downbeat">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step on downbeat">●</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step downbeat">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step on downbeat">●</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+        </tr>
+        <tr>
+          <td class="inst-label">Hat</td>
+          <td class="step on downbeat">●</td>
+          <td class="step">·</td>
+          <td class="step on">●</td>
+          <td class="step">·</td>
+          <td class="step on downbeat">●</td>
+          <td class="step">·</td>
+          <td class="step on">●</td>
+          <td class="step">·</td>
+          <td class="step on downbeat">●</td>
+          <td class="step">·</td>
+          <td class="step on">●</td>
+          <td class="step">·</td>
+          <td class="step on downbeat">●</td>
+          <td class="step">·</td>
+          <td class="step on">●</td>
+          <td class="step">·</td>
+        </tr>
+        <tr>
+          <td class="inst-label">Ride</td>
+          <td class="step downbeat">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step downbeat">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step downbeat">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step downbeat">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+        </tr>
+      </table>
+      <div style="margin-top: 0.9rem; font-weight: 600; font-size: 0.9rem">Bass</div>
+      <table class="seq-table">
+        <tr>
+          <td class="inst-label">Bass</td>
+          <td class="step r downbeat">R</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step fifth downbeat">5</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step third downbeat">3</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step r downbeat">R</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+        </tr>
+      </table>
+      <div class="legend">
+        <span><span class="swatch" style="background: #4d8ee0"></span> Root</span>
+        <span><span class="swatch" style="background: #9b6bd6"></span> Third</span>
+        <span><span class="swatch" style="background: #e8a33d"></span> Fifth</span>
+        <span>tap a bass cell to cycle R → 3 → 5 → rest</span>
+      </div>
+      <p class="caption" style="margin-top: -0.3rem">
+        Saved to <code>bass.major</code> and <code>bass.minor</code> as identical copies behind the
+        scenes — the engine resolves the correct interval for whichever chord quality is actually
+        playing (see Decisions).
+      </p>
+      <div class="mockup-bar" style="margin-top: 0.5rem">
+        <div>
+          <button class="mockup-btn">Duplicate</button>
+          <button class="mockup-btn danger">Delete</button>
+        </div>
+        <button class="mockup-btn primary">Save</button>
+      </div>
+    </div>
+    <p class="caption">
+      Grid reuses the <code>.key-grid</code>/<code>.key-chip.active</code> toggle pattern already
+      in the key-picker. Drum cells are a binary toggle (tap to add/remove a hit); bass cells cycle
+      through 4 states since a bass step isn't just on/off. Only instruments wired to samples get a
+      row (see the Phase 1 list) — one row set is shown per tab (Simple/Busy). Bass gets a single
+      row, not major/minor sub-tabs — see the note under the bass row above for what happens
+      behind the scenes. Tapping any cell plays that instrument immediately for audition, via a new
+      <code>AudioEngine.previewInstrument(name)</code> method.
+    </p>
+
+    <h2 id="deferred">Deferred / future</h2>
+    <p>Noted here so they're not forgotten, not designed in this doc:</p>
+    <ul class="tight">
+      <li>
+        Actually using multi-bar patterns during playback — the data structure allows it
+        (<code>stepsPerBar</code>/<code>bars</code>), the engine doesn't consume it yet.
+      </li>
+      <li>Migrating storage from localStorage to IndexedDB, if/when it's warranted.</li>
+      <li>
+        Wiring the currently-unused sample files (<code>snare2</code>, <code>tom3</code>,
+        <code>tom4</code>, <code>crash-r</code>, <code>china</code>) as additional instrument rows.
+      </li>
+      <li>Sharing/exporting custom styles between devices (URL or file export/import).</li>
+    </ul>
+
+    <h2 id="files">Where it will live</h2>
+    <table>
+      <tr>
+        <th>File</th>
+        <th>Owns (planned)</th>
+      </tr>
+      <tr>
+        <td class="file">progression-core.ts</td>
+        <td>
+          <code>CustomStyleDef</code> type, <code>toStyleDef</code>, <code>resolveStyleDef</code>,
+          the four storage functions.
+        </td>
+      </tr>
+      <tr>
+        <td class="file">progression-audio.ts</td>
+        <td>
+          No changes for Phase 1–3 (already only consumes <code>StyleDef</code>). Phase 4 adds
+          <code>previewInstrument(name)</code> to <code>AudioEngine</code> for tap-to-audition.
+        </td>
+      </tr>
+      <tr>
+        <td class="file">app.ts</td>
+        <td>
+          Custom Styles picker popup wiring (Phase 3); Setup section + grid editor wiring
+          (Phase 4).
+        </td>
+      </tr>
+      <tr>
+        <td class="file">index.html</td>
+        <td>Picker popup markup (Phase 3); Setup section + grid editor markup (Phase 4).</td>
+      </tr>
+      <tr>
+        <td class="file">docs.html</td>
+        <td>Not documented yet — revisit once Phase 4 ships.</td>
+      </tr>
+    </table>
+  </body>
+</html>
