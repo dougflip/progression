@@ -1136,12 +1136,14 @@ function renderStyleEditorTabs(): void {
   styleEditorTabSimpleEl.classList.toggle("active", _styleEditorTab === "simple");
   styleEditorTabBusyEl.classList.toggle("active", _styleEditorTab === "busy");
   if (!_styleEditorDraft) return;
-  styleEditorTabSimpleEl.textContent = isBlankStyleVariantDraft(_styleEditorDraft.simple)
-    ? "Simple (empty)"
-    : "Simple";
-  styleEditorTabBusyEl.textContent = isBlankStyleVariantDraft(_styleEditorDraft.busy)
-    ? "Busy (empty)"
-    : "Busy";
+  const simpleBlank = isBlankStyleVariantDraft(_styleEditorDraft.simple);
+  const busyBlank = isBlankStyleVariantDraft(_styleEditorDraft.busy);
+  styleEditorTabSimpleEl.textContent = simpleBlank ? "Simple (empty)" : "Simple";
+  styleEditorTabBusyEl.textContent = busyBlank ? "Busy (empty)" : "Busy";
+  // Nothing to save if neither variant has a single hit anywhere — the
+  // fillBlankVariantFromOther mirror only helps when at least one side has
+  // real content to mirror from.
+  styleEditorSaveEl.disabled = simpleBlank && busyBlank;
 }
 
 function appendDrumRow(instrument: DrumInstrumentName, pattern: DrumPattern): void {

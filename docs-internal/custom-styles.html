@@ -698,6 +698,14 @@ style: resolveStyleDef(_state.playback.style, _getCustomStyles(), STYLES, STYLES
       Style" or "Edit" on a row opens this dialog. The Phase 3 picker popup stays selection-only, no
       edit affordance there, so there's one entry point for managing custom styles, not two.
     </div>
+    <div class="decided">
+      <strong>Save is disabled until at least one thing is defined.</strong> Reuses the same
+      <code>isBlankStyleVariantDraft</code> check already computed for the "(empty)" tab labels —
+      <code>styleEditorSaveEl.disabled = simpleBlank &amp;&amp; busyBlank</code>. Only disabled when
+      <em>both</em> variants are completely untouched; if either has any content, Save stays
+      enabled, since <code>fillBlankVariantFromOther</code> already mirrors the untouched one at
+      save time.
+    </div>
 
     <p>
       No separate <code>duplicateStyle</code> function landed — "Duplicate" and "New" both just open
