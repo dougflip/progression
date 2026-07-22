@@ -450,49 +450,65 @@ function toStyleDef(custom: CustomStyleDef): StyleDef {
 
     <h2 id="phase-2">Phase 2 — storage, no UI</h2>
     <p>
-      Mirrors <code>saveUserPreset</code>/<code>_getUserPresets</code>/<code>deleteUserPreset</code>
-      in <code>progression-core.ts</code> almost exactly — same JSON-array-under-one-key shape via
-      the existing <code>persist</code>/<code>load</code> callbacks, same id convention
-      (<code>Date.now().toString(36)</code>, not a new uuid scheme), same defensive parse at the
-      storage boundary:
+      <strong>Built and tested.</strong> Mirrors
+      <code>saveUserPreset</code>/<code>_getUserPresets</code>/<code>deleteUserPreset</code> in
+      <code>progression-core.ts</code> closely — same JSON-array-under-one-key shape, same defensive
+      parse at the storage boundary. Two differences from the original sketch, both found while
+      writing the tests:
     </p>
-    <pre><code>const CUSTOM_STYLES_STORAGE_KEY = "progression-custom-styles-v1";
+    <ul class="tight">
+      <li>
+        Functions take a <code>{ persist, load }</code> pair as an explicit parameter (<code
+          >Pick&lt;PlayerConfig, "persist" | "load"&gt;</code
+        >) rather than closing over <code>config</code> — <code>custom-styles.ts</code> lives
+        outside <code>makeProgressionPlayer</code>'s closure (see the Phase 1 file-location
+        decision), so there's no <code>config</code> to close over. Keeps it storage-agnostic and
+        directly testable with the same in-memory-<code>Map</code> mock
+        <code>progression-core.test.ts</code> already uses for
+        <code>persist</code>/<code>load</code>.
+      </li>
+      <li>
+        <strong>Id generation adds a random suffix</strong> —
+        <code>Date.now().toString(36)</code> alone (the original plan, copying
+        <code>saveUserPreset</code>'s scheme) collides when two styles are saved within the same
+        millisecond. The update/delete tests below demonstrated this directly: two synchronous
+        <code>saveCustomStyle()</code> calls produced identical ids, so updating/deleting one
+        silently updated/deleted the other too. Fixed with a short <code>Math.random()</code> suffix
+        rather than <code>crypto.randomUUID()</code>, to stay a minimal change.
+      </li>
+    </ul>
+    <pre><code>type StorageConfig = Pick&lt;PlayerConfig, "persist" | "load"&gt;;
+const CUSTOM_STYLES_STORAGE_KEY = "progression-custom-styles-v1";
 
-function getCustomStyles(): CustomStyleDef[] {
+function getCustomStyles(storage: StorageConfig): CustomStyleDef[] {
   try {
-    return JSON.parse(config.load(CUSTOM_STYLES_STORAGE_KEY) ?? "[]") as CustomStyleDef[];
-    // same try/catch-to-[] pattern as _getUserPresets() — the one place
-    // stale/corrupt localStorage JSON enters the typed state.
+    return JSON.parse(storage.load(CUSTOM_STYLES_STORAGE_KEY) ?? "[]") as CustomStyleDef[];
   } catch {
     return [];
   }
 }
 
-function saveCustomStyle(def: Omit&lt;CustomStyleDef, "id" | "createdAt" | "updatedAt"&gt;): CustomStyleDef {
-  const now = new Date().toISOString();
-  const created = { ...def, id: Date.now().toString(36), createdAt: now, updatedAt: now };
-  config.persist(CUSTOM_STYLES_STORAGE_KEY, JSON.stringify([...getCustomStyles(), created]));
+function saveCustomStyle(storage: StorageConfig, def: Omit&lt;CustomStyleDef, "id"&gt;): CustomStyleDef {
+  const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+  const created: CustomStyleDef = { ...def, id };
+  storage.persist(CUSTOM_STYLES_STORAGE_KEY, JSON.stringify([...getCustomStyles(storage), created]));
   return created;
 }
 
-function updateCustomStyle(id: string, patch: Partial&lt;CustomStyleDef&gt;): void {
-  const styles = getCustomStyles().map((s) =>
-    s.id === id ? { ...s, ...patch, updatedAt: new Date().toISOString() } : s,
-  );
-  config.persist(CUSTOM_STYLES_STORAGE_KEY, JSON.stringify(styles));
+function updateCustomStyle(storage: StorageConfig, id: string, patch: Partial&lt;Omit&lt;CustomStyleDef, "id"&gt;&gt;): void {
+  const styles = getCustomStyles(storage).map((s) =&gt; (s.id === id ? { ...s, ...patch } : s));
+  storage.persist(CUSTOM_STYLES_STORAGE_KEY, JSON.stringify(styles));
 }
 
-function deleteCustomStyle(id: string): void {
-  config.persist(CUSTOM_STYLES_STORAGE_KEY, JSON.stringify(getCustomStyles().filter((s) => s.id !== id)));
-  // mirrors deleteUserPreset's guard on DEFAULT_PRESET_STORAGE_KEY — don't leave
-  // playback pointed at a dangling id (see Edge cases below).
-  if (getState().playback.style === `custom:${id}`) {
-    setPlayback({ style: DEFAULTS.playback.style });
-  }
+function deleteCustomStyle(storage: StorageConfig, id: string): void {
+  storage.persist(CUSTOM_STYLES_STORAGE_KEY, JSON.stringify(getCustomStyles(storage).filter((s) =&gt; s.id !== id)));
+  // Pure storage operation — no playback-state coupling. Nothing points
+  // playback.style at a custom id until Phase 3 exists, so the "was this
+  // the active style?" guard belongs there, not here (see Edge cases).
 }</code></pre>
     <p>
-      Deliverable: save the Phase 1 example, read it back, confirm it round-trips through JSON.
-      Still no UI — exercised via a script/console call or a unit test.
+      Deliverable: save the Phase 1 example, read it back, confirm it round-trips through JSON —
+      done in <code>src/custom-styles.test.ts</code> (60 tests passing, no UI).
     </p>
 
     <h2 id="phase-3">Phase 3 — playback wiring, no CRUD UI</h2>
@@ -574,9 +590,11 @@ function deleteCustomStyle(id: string): void {
         default</strong
       >, exactly like <code>deleteUserPreset</code> already clears
       <code>DEFAULT_PRESET_STORAGE_KEY</code> when the deleted preset was the stored default
-      (<code>progression-core.ts:1372-1382</code>). Handled inside
-      <code>deleteCustomStyle()</code> itself (see Phase 2 pseudocode) — no separate check needed
-      anywhere else.
+      (<code>progression-core.ts:1372-1382</code>). Phase 2's <code>deleteCustomStyle()</code> is a
+      pure storage function with no access to live playback state (see Phase 2) — this guard belongs
+      wherever Phase 3 wires deletion into the app (checking
+      <code>playback.style === "custom:" + id</code> before calling storage's
+      <code>deleteCustomStyle</code>), not inside the storage function itself.
     </div>
     <div class="decided">
       <strong>Saving an edit to the style currently playing rebuilds live</strong> — no
