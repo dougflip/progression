@@ -13,6 +13,7 @@ import {
   isCustomStyleRef,
   toCustomStyleId,
   type CustomStyleDef,
+  type StyleVariantDraft,
 } from "./custom-styles.js";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -205,6 +206,12 @@ export interface AudioEngine {
   // Fires immediately for audition (Tone.now()), independent of the
   // Transport/running sequences — used by the style editor's grid taps.
   previewInstrument(name: DrumInstrumentName): void;
+  // Loops the editor's current draft continuously against a fixed C major
+  // triad (no real chord/key context exists in the editor) — takes the
+  // draft directly, not a converted StyleDef, so edits already made in place
+  // by the grid show up on the loop's next pass with no rebuild needed.
+  previewStyleLoopStart(draft: StyleVariantDraft, tempo: number): Promise<void>;
+  previewStyleLoopStop(): void;
 }
 
 export interface PlaybackSettings {
@@ -1263,6 +1270,18 @@ export function makeProgressionPlayer(config: PlayerConfig) {
     }
   }
 
+  // Pausing (not stopping) reuses the normal resume-later mechanism — closing
+  // the editor after a preview leaves the song exactly as resumable as any
+  // other pause.
+  async function _previewCustomStyleStart(draft: StyleVariantDraft): Promise<void> {
+    if (config.audio?.isPlaying()) _pausePlayback();
+    await config.audio?.previewStyleLoopStart(draft, _state.playback.tempo);
+  }
+
+  function _previewCustomStyleStop(): void {
+    config.audio?.previewStyleLoopStop();
+  }
+
   return {
     getState: (): AppState => ({
       ..._state,
@@ -1387,6 +1406,8 @@ export function makeProgressionPlayer(config: PlayerConfig) {
     saveCustomStyle: _saveCustomStyle,
     updateCustomStyle: _updateCustomStyle,
     deleteCustomStyle: _deleteCustomStyle,
+    previewCustomStyleStart: _previewCustomStyleStart,
+    previewCustomStyleStop: _previewCustomStyleStop,
 
     getLoadedPreset: (): UserPreset | null => _loadedPreset,
 

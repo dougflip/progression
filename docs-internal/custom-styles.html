@@ -309,8 +309,7 @@
   </head>
   <body>
     <p class="status">
-      Phases 1–4 built and tested, pending manual verification — Phase 5 (live preview loop)
-      planned, not built
+      Phases 1–5 built and tested — feature complete, pending manual verification
     </p>
     <h1>Custom Styles</h1>
     <p class="subtitle">
@@ -903,11 +902,12 @@ previewInstrument(name: DrumInstrumentName): void</code></pre>
       opening this same editor with a copied, not-yet-saved draft.
     </p>
 
-    <h2 id="phase-5">Phase 5 — live preview loop while editing (planned, not built)</h2>
+    <h2 id="phase-5">Phase 5 — live preview loop while editing</h2>
     <p>
-      Editing today only gives you one-hit-at-a-time audition (<code>previewInstrument</code>). The
-      ask: a dedicated play/stop toggle in the editor that loops the current draft continuously, so
-      toggling cells is heard in the groove immediately, not one tap at a time.
+      <strong>Built and tested.</strong> Editing previously only gave you one-hit-at-a-time audition
+      (<code>previewInstrument</code>). Now a dedicated play/stop toggle in the editor loops the
+      current draft continuously, so toggling cells is heard in the groove immediately, not one tap
+      at a time.
     </p>
     <div class="decided">
       <strong>Dedicated ▶/■ toggle button, not auto-play-on-open.</strong> Auto-starting the moment
@@ -926,50 +926,74 @@ previewInstrument(name: DrumInstrumentName): void</code></pre>
       control — the groove should sound like it will at the actual song's speed.
     </div>
     <p>
-      The one genuinely elegant part: the grid already mutates the draft's arrays in place (<code
-        >pattern[i] = ...</code
-      >, never reassigned). If the preview's <code>Tone.Sequence</code>s are built referencing those
-      <em>same</em> array objects when the loop starts, every cell tap already shows up on the
-      sequence's next pass — no "rebuild on every tap" plumbing needed. Only a Simple/Busy tab
-      switch needs an explicit restart, since that points at different arrays entirely.
+      The one genuinely elegant part, confirmed working as hoped: the grid already mutates the
+      draft's arrays in place (<code>pattern[i] = ...</code>, never reassigned). The preview's
+      <code>Tone.Sequence</code>s are built referencing those <em>same</em> array objects, so every
+      cell tap already shows up on the sequence's next pass — no "rebuild on every tap" plumbing
+      needed. Only a Simple/Busy tab switch needs an explicit restart, since that points at
+      different arrays entirely.
     </p>
-    <pre><code>// New, standalone — deliberately NOT reusing _buildDrums/_buildBass, which are
-// shaped around a chord progression this feature doesn't have.
-previewStyleLoopStart(variant: StyleVariant, tempo: number): void {
-  this.stop();              // main song, if any, must not layer under the preview
-  previewStyleLoopStop();   // tear down any earlier preview loop first
+    <div class="tradeoff">
+      <strong
+        >Delta from the original sketch: takes the draft directly, not a converted
+        <code>StyleDef</code>.</strong
+      >
+      The plan assumed <code>previewStyleLoopStart(variant: StyleDef, ...)</code>, mirroring how
+      real playback resolves a <code>StyleDef</code> first. But
+      <code>draftToStyleVariant()</code> clones the bass pattern into fresh
+      <code>{major, minor}</code> arrays (correctly, for Save — see the bass decision above) — so a
+      <code>StyleDef</code> built that way would <em>break</em> the live-array trick for bass
+      specifically: edits to <code>draft.bass</code> wouldn't reach a cloned copy.
+      <code>previewStyleLoopStart</code> takes <code>StyleVariantDraft</code> directly instead (9
+      drum patterns, one bass pattern — the exact shape the grid mutates), so every array, bass
+      included, stays a live reference.
+    </div>
+    <pre><code>// New, standalone in progression-audio.ts — deliberately NOT reusing
+// _buildDrums/_buildBass, which are shaped around a chord progression this
+// feature doesn't have. Separate state (_previewSeqs/_previewBassSeq/_previewBass),
+// never touching the main song's _kickSeq/_bassSeq/etc.
+async previewStyleLoopStart(draft: StyleVariantDraft, tempo: number): Promise&lt;void&gt; {
+  await Tone.start();          // in case this is the session's first audio interaction
+  _teardownPreviewLoop();      // tear down any earlier preview loop first
+  _initChannels();             // idempotent — channels may not exist yet this session
   Tone.Transport.bpm.value = tempo;
-  // one Tone.Sequence per instrument key present on `variant`, at "16n",
-  // referencing variant[inst] directly (same array the grid mutates) —
-  // bass sequence resolves R/3/5 against the fixed C3/E3/G3 triad.
+  // one Tone.Sequence per instrument in CUSTOM_STYLE_INSTRUMENTS, at "16n",
+  // referencing draft[inst] directly (same array the grid mutates) — bass
+  // sequence resolves R/3/5 against a fixed C3/E3/G3 triad, referencing
+  // draft.bass directly.
   Tone.Transport.start();
 }
 
 previewStyleLoopStop(): void {
-  // dispose every sequence built above, stop the transport
+  _teardownPreviewLoop(); // disposes every sequence/synth built above, stops the transport
 }</code></pre>
     <p>
       Routed through the player
-      (<code>app.previewCustomStyleStart(variant)</code>/<code>previewCustomStyleStop()</code>), not
+      (<code>app.previewCustomStyleStart(draft)</code>/<code>previewCustomStyleStop()</code>), not
       called raw on <code>audio</code> from <code>app.ts</code> — pausing the main song for preview
-      should go through the same <code>_pausePlayback()</code> path
-      <code>togglePlay()</code> already uses, so <code>_pausedAt</code> is set correctly and the
-      song is resumable afterward, exactly like pausing normally. A raw
-      <code>audio.stop()</code> call from <code>app.ts</code> would desync <code>_state</code> from
-      what's actually playing.
+      goes through the same <code>_pausePlayback()</code> path <code>togglePlay()</code> already
+      uses, so <code>_pausedAt</code> is set correctly and the song is resumable afterward, exactly
+      like pausing normally. Stopping is centralized on the editor <code>&lt;dialog&gt;</code>'s
+      native <code>close</code> event — it fires for every dismissal path (Save, Delete, ×, Esc,
+      clicking outside), so there's one place that guarantees a stray loop never keeps playing after
+      the sheet is gone, instead of stopping it in each handler.
     </p>
     <h3>Mockup — editor action row with preview</h3>
     <div class="mockup-bar">
-      <button class="mockup-btn primary">▶ Preview</button>
+      <button class="mockup-btn">▶ Preview</button>
       <div>
-        <button class="mockup-btn danger">Delete</button>
+        <button class="mockup-btn">Delete</button>
         <button class="mockup-btn primary">Save</button>
       </div>
     </div>
     <p class="caption">
-      Toggles to "■ Stop" while looping. Switching Simple/Busy tabs while active restarts the loop
-      against the newly active tab's arrays; closing the sheet (Save, Delete, or the × button)
-      always stops it — a stray loop must never keep playing after the sheet is gone.
+      Neutral <code>.icon-btn</code> styling for Preview and Delete, same as the rest of the app —
+      no "danger" color exists here (delete actions everywhere rely on a
+      <code>confirm()</code> dialog, not red styling). Toggles to "■ Stop" while looping. Switching
+      Simple/Busy tabs while active restarts the loop against the newly active tab's arrays; closing
+      the sheet (Save, Delete, ×, Esc, or clicking outside) always stops it via the dialog's
+      <code>close</code>
+      event — a stray loop must never keep playing after the sheet is gone.
     </p>
     <div class="open-q">
       <strong>Not yet decided: single-tap preview vs. the running loop.</strong> While the loop is
@@ -1009,52 +1033,67 @@ previewStyleLoopStop(): void {
         <td class="file">custom-styles.ts</td>
         <td>
           <code>CustomStyleDef</code>, <code>toStyleDef</code>, <code>resolveStyleDef</code>, the
-          <code>custom:</code>-ref id helpers, the four storage functions, and the Phase 4
+          <code>custom:</code>-ref id helpers, the four storage functions, the Phase 4
           editor-support functions (<code>CUSTOM_STYLE_INSTRUMENTS</code>,
           <code>StyleVariantDraft</code>, <code>makeBlankStyleVariantDraft</code>,
           <code>styleVariantToDraft</code>/<code>draftToStyleVariant</code>,
-          <code>cycleBassStep</code>). Zero runtime dependency on <code>progression-core.ts</code> —
-          its only import from core is <code>import type</code>, erased at compile time.
+          <code>cycleBassStep</code>), and the silent-variant fix
+          (<code>isBlankStyleVariantDraft</code>/<code>fillBlankVariantFromOther</code>). Zero
+          runtime dependency on <code>progression-core.ts</code> — its only import from core is
+          <code>import type</code>, erased at compile time.
         </td>
       </tr>
       <tr>
         <td class="file">progression-core.ts</td>
         <td>
-          <code>DrumInstrumentName</code> type; the <code>previewInstrument</code> addition to
-          <code>AudioEngine</code>; thin wrappers
-          (<code>_getCustomStyles</code>/<code>_saveCustomStyle</code>/<code>_updateCustomStyle</code>/<code>_deleteCustomStyle</code>)
-          exposed on the public API, where the "reset playback.style on delete" and "rebuild if the
-          edited style is active" logic actually lives (needs
-          <code>_state</code>/<code>_setPlayback</code>/<code>_scheduleRebuild</code>, which only
-          exist inside <code>makeProgressionPlayer</code>'s closure); the <code>parseUrl</code> fix.
+          <code>DrumInstrumentName</code> type; the
+          <code>previewInstrument</code>/<code>previewStyleLoopStart</code>/<code
+            >previewStyleLoopStop</code
+          >
+          additions to <code>AudioEngine</code>; thin wrappers
+          (<code>_getCustomStyles</code>/<code>_saveCustomStyle</code>/<code>_updateCustomStyle</code>/<code>_deleteCustomStyle</code>/<code>_previewCustomStyleStart</code>/<code>_previewCustomStyleStop</code>)
+          exposed on the public API, where the "reset playback.style on delete", "rebuild if the
+          edited style is active", and "pause the main song via <code>_pausePlayback()</code> before
+          previewing" logic actually lives (needs
+          <code>_state</code
+          >/<code>_setPlayback</code>/<code>_scheduleRebuild</code>/<code>_pausePlayback</code>,
+          which only exist inside <code>makeProgressionPlayer</code>'s closure); the
+          <code>parseUrl</code> fix.
         </td>
       </tr>
       <tr>
         <td class="file">progression-audio.ts</td>
         <td>
-          <code>previewInstrument</code> implementation and its <code>_previewFallback</code> helper
-          — the only <code>AudioEngine</code> method this whole feature needed.
+          <code>previewInstrument</code> and its <code>_previewFallback</code> helper (Phase 4); the
+          Phase 5 preview loop
+          (<code>previewStyleLoopStart</code>/<code>previewStyleLoopStop</code>/<code>_teardownPreviewLoop</code>)
+          with its own state
+          (<code>_previewSeqs</code>/<code>_previewBassSeq</code>/<code>_previewBass</code>),
+          deliberately separate from the main song's — the only <code>AudioEngine</code> methods
+          this whole feature needed.
         </td>
       </tr>
       <tr>
         <td class="file">app.ts</td>
         <td>
           Style picker popup wiring (Phase 3); Custom Styles Setup-list rendering
-          (<code>renderCustomStyleRows</code>) and the style editor sheet's tabs/grid/save/delete
-          wiring (Phase 4).
+          (<code>renderCustomStyleRows</code>), the style editor sheet's tabs/grid/save/delete
+          wiring, and the empty-tab-label logic (Phase 4); the Preview toggle, tab-switch restart,
+          and the editor <code>&lt;dialog&gt;</code>'s <code>close</code>-event stop (Phase 5).
         </td>
       </tr>
       <tr>
         <td class="file">index.html</td>
         <td>
           Style picker markup/CSS (Phase 3); Custom Styles Setup section and the
-          <code>#style-editor-sheet</code> dialog markup/CSS, including the new
-          <code>.seq-grid</code>/<code>.seq-cell</code> rules (Phase 4).
+          <code>#style-editor-sheet</code> dialog markup/CSS, including the
+          <code>.seq-grid</code>/<code>.seq-cell</code> rules (Phase 4); the Preview button markup
+          and <code>.style-editor-actions-right</code> grouping (Phase 5).
         </td>
       </tr>
       <tr>
         <td class="file">docs.html</td>
-        <td>Not documented yet — revisit once Phase 4 ships.</td>
+        <td>Not documented yet — public-facing docs are a separate step from this design doc.</td>
       </tr>
     </table>
   </body>

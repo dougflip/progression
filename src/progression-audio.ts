@@ -24,6 +24,9 @@ import {
   type LooperState,
   type LoopRef,
   type DrumInstrumentName,
+  type StyleVariantDraft,
+  CUSTOM_STYLE_INSTRUMENTS,
+  type BassStep,
 } from "./progression-core.js";
 
 interface Channels {
@@ -225,6 +228,13 @@ export function makeProgressionAudio(): AudioEngine {
   let _bass: Tone.MonoSynth | null = null;
   let _bassSeq: Tone.Sequence<BassStepItem> | null = null;
   let _beatSeq: Tone.Sequence<number> | null = null;
+
+  // Style editor preview loop — deliberately separate from the main song's
+  // sequences/synths above. Never chord-driven (no progression exists to
+  // preview against), so it can't reuse _buildDrums/_buildBass.
+  let _previewSeqs: Tone.Sequence<number>[] = [];
+  let _previewBassSeq: Tone.Sequence<BassStep> | null = null;
+  let _previewBass: Tone.MonoSynth | null = null;
 
   // ── Playback state ─────────────────────────────────────────────────────────
   let _pendingJump: number | null = null;
@@ -1205,6 +1215,22 @@ export function makeProgressionAudio(): AudioEngine {
     }
   }
 
+  const PREVIEW_LOOP_REFERENCE_PITCH: Record<Exclude<BassStep, 0>, string> = {
+    R: "C3",
+    "3": "E3",
+    "5": "G3",
+  };
+
+  function _teardownPreviewLoop(): void {
+    Tone.Transport.stop();
+    _previewSeqs.forEach((s) => s.dispose());
+    _previewSeqs = [];
+    _previewBassSeq?.dispose();
+    _previewBassSeq = null;
+    _previewBass?.dispose();
+    _previewBass = null;
+  }
+
   // ── Public interface ───────────────────────────────────────────────────────
 
   return {
@@ -1568,6 +1594,56 @@ export function makeProgressionAudio(): AudioEngine {
       } else {
         _safe(() => _previewFallback(name, time));
       }
+    },
+
+    async previewStyleLoopStart(draft: StyleVariantDraft, tempo: number): Promise<void> {
+      await Tone.start();
+      _teardownPreviewLoop();
+      _initChannels();
+      Tone.Transport.bpm.value = tempo;
+
+      _previewBass = new Tone.MonoSynth({
+        oscillator: { type: "sawtooth" },
+        filter: { Q: 2, type: "lowpass" },
+        envelope: { attack: 0.01, decay: 0.25, sustain: 0.4, release: 0.3 },
+        filterEnvelope: {
+          attack: 0.01,
+          decay: 0.2,
+          sustain: 0.4,
+          release: 0.3,
+          baseFrequency: 80,
+          octaves: 2.5,
+        },
+      }).connect(_channels!.bass);
+      _previewBass.volume.value = -6;
+
+      CUSTOM_STYLE_INSTRUMENTS.forEach((inst) => {
+        const seq = new Tone.Sequence<number>(
+          (time, hit) => {
+            if (hit) _triggerDrum(time, _sp[inst], () => _previewFallback(inst, time));
+          },
+          draft[inst],
+          "16n",
+        ).start(0);
+        _previewSeqs.push(seq);
+      });
+
+      _previewBassSeq = new Tone.Sequence<BassStep>(
+        (time, step) => {
+          if (step === 0) return;
+          _safe(() =>
+            _previewBass!.triggerAttackRelease(PREVIEW_LOOP_REFERENCE_PITCH[step], "8n", time),
+          );
+        },
+        draft.bass,
+        "16n",
+      ).start(0);
+
+      Tone.Transport.start();
+    },
+
+    previewStyleLoopStop(): void {
+      _teardownPreviewLoop();
     },
   };
 }

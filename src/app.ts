@@ -138,6 +138,7 @@ const styleEditorTabBusyEl = $("style-editor-tab-busy") as HTMLButtonElement;
 const styleEditorGridEl = $("style-editor-grid") as HTMLDivElement;
 const styleEditorSaveEl = $("style-editor-save") as HTMLButtonElement;
 const styleEditorDeleteEl = $("style-editor-delete") as HTMLButtonElement;
+const styleEditorPreviewEl = $("style-editor-preview") as HTMLButtonElement;
 
 $("app-version").textContent = `v${__APP_VERSION__} build-${__APP_SHA__}`;
 
@@ -1090,11 +1091,14 @@ interface StyleEditorDraft {
 let _styleEditorDraft: StyleEditorDraft | null = null;
 let _styleEditorEditingId: string | null = null;
 let _styleEditorTab: "simple" | "busy" = "simple";
+let _styleEditorPreviewing = false;
 
 function openStyleEditor(draft: StyleEditorDraft, editingId: string | null): void {
   _styleEditorDraft = draft;
   _styleEditorEditingId = editingId;
   _styleEditorTab = "simple";
+  _styleEditorPreviewing = false;
+  styleEditorPreviewEl.textContent = "▶ Preview";
   styleEditorTitleEl.textContent = editingId ? "Edit Custom Style" : "New Custom Style";
   styleEditorNameEl.value = draft.name;
   styleEditorDeleteEl.hidden = editingId === null;
@@ -1106,6 +1110,27 @@ function openStyleEditor(draft: StyleEditorDraft, editingId: string | null): voi
     styleEditorNameEl.select();
   }, 50);
 }
+
+// Fires for every dismissal path (Save, Delete, the × button, ESC, clicking
+// outside) — a single place to guarantee a stray loop never keeps playing
+// after the sheet is gone, rather than stopping it in each handler.
+styleEditorSheetEl.addEventListener("close", () => {
+  if (_styleEditorPreviewing) app.previewCustomStyleStop();
+  _styleEditorPreviewing = false;
+});
+
+styleEditorPreviewEl.addEventListener("click", async () => {
+  if (!_styleEditorDraft) return;
+  if (_styleEditorPreviewing) {
+    app.previewCustomStyleStop();
+    _styleEditorPreviewing = false;
+    styleEditorPreviewEl.textContent = "▶ Preview";
+    return;
+  }
+  await app.previewCustomStyleStart(_styleEditorDraft[_styleEditorTab]);
+  _styleEditorPreviewing = true;
+  styleEditorPreviewEl.textContent = "■ Stop";
+});
 
 function renderStyleEditorTabs(): void {
   styleEditorTabSimpleEl.classList.toggle("active", _styleEditorTab === "simple");
@@ -1177,16 +1202,19 @@ function renderStyleEditorGrid(): void {
   appendBassRow(variant.bass);
 }
 
-styleEditorTabSimpleEl.addEventListener("click", () => {
-  _styleEditorTab = "simple";
+async function switchStyleEditorTab(tab: "simple" | "busy"): Promise<void> {
+  _styleEditorTab = tab;
   renderStyleEditorTabs();
   renderStyleEditorGrid();
-});
-styleEditorTabBusyEl.addEventListener("click", () => {
-  _styleEditorTab = "busy";
-  renderStyleEditorTabs();
-  renderStyleEditorGrid();
-});
+  // Different tab = different arrays entirely, so a running preview must
+  // restart against them rather than keep looping the old tab's patterns.
+  if (_styleEditorPreviewing && _styleEditorDraft) {
+    await app.previewCustomStyleStart(_styleEditorDraft[tab]);
+  }
+}
+
+styleEditorTabSimpleEl.addEventListener("click", () => void switchStyleEditorTab("simple"));
+styleEditorTabBusyEl.addEventListener("click", () => void switchStyleEditorTab("busy"));
 
 styleEditorSaveEl.addEventListener("click", () => {
   if (!_styleEditorDraft) return;
