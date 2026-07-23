@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { StyleDef } from "./progression-core";
 import {
   CUSTOM_STYLE_INSTRUMENTS,
-  EXAMPLE_CUSTOM_STYLE,
+  type CustomStyleDef,
   cycleBassStep,
   customStyleIdFromRef,
   deleteCustomStyle,
@@ -27,6 +27,32 @@ function makeMockStorage() {
     load: (key: string) => store.get(key) ?? null,
   };
 }
+
+// prettier-ignore
+const EXAMPLE_CUSTOM_STYLE: CustomStyleDef = {
+  id: "example",
+  name: "My Bossa Groove",
+  stepsPerBar: 16,
+  bars: 1,
+  simple: {
+    kick:  [1,0,0,0, 0,0,1,0, 0,0,1,0, 0,0,0,0],
+    snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+    hat:   [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
+    bass: {
+      major: ["R",0,0,0, 0,0,"5",0, "R",0,0,0, 0,0,"5",0],
+      minor: ["R",0,0,0, 0,0,"5",0, "R",0,0,0, 0,0,"5",0],
+    },
+  },
+  busy: {
+    kick:  [1,0,0,1, 0,0,1,0, 0,0,1,0, 0,0,1,0],
+    snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+    hat:   [1,0,1,0, 1,0,1,1, 1,0,1,0, 1,0,1,1],
+    bass: {
+      major: ["R",0,"5",0, "3",0,"5",0, "R",0,"5",0, "3",0,"5",0],
+      minor: ["R",0,"5",0, "3",0,"5",0, "R",0,"5",0, "3",0,"5",0],
+    },
+  },
+};
 
 describe("toStyleDef", () => {
   it("converts a CustomStyleDef into a playable StyleDef", () => {

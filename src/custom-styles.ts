@@ -228,29 +228,3 @@ export function cycleBassStep(step: BassStep): BassStep {
   const order: BassStep[] = ["R", "3", "5", 0];
   return order[(order.indexOf(step) + 1) % order.length]!;
 }
-
-// prettier-ignore
-export const EXAMPLE_CUSTOM_STYLE: CustomStyleDef = {
-  id: "example",
-  name: "My Bossa Groove",
-  stepsPerBar: 16,
-  bars: 1,
-  simple: {
-    kick:  [1,0,0,0, 0,0,1,0, 0,0,1,0, 0,0,0,0],
-    snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
-    hat:   [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
-    bass: {
-      major: ["R",0,0,0, 0,0,"5",0, "R",0,0,0, 0,0,"5",0],
-      minor: ["R",0,0,0, 0,0,"5",0, "R",0,0,0, 0,0,"5",0],
-    },
-  },
-  busy: {
-    kick:  [1,0,0,1, 0,0,1,0, 0,0,1,0, 0,0,1,0],
-    snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
-    hat:   [1,0,1,0, 1,0,1,1, 1,0,1,0, 1,0,1,1],
-    bass: {
-      major: ["R",0,"5",0, "3",0,"5",0, "R",0,"5",0, "3",0,"5",0],
-      minor: ["R",0,"5",0, "3",0,"5",0, "R",0,"5",0, "3",0,"5",0],
-    },
-  },
-};
