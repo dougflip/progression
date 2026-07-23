@@ -478,7 +478,9 @@ export {
   draftToStyleVariant,
   cycleBassStep,
   isBlankStyleVariantDraft,
-  fillBlankVariantFromOther,
+  cloneStyleVariantDraft,
+  styleVariantDraftsEqual,
+  resolveLinkedVariants,
 } from "./custom-styles.js";
 
 // ─── Token utilities ─────────────────────────────────────────────────────────

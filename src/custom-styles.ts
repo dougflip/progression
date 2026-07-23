@@ -193,7 +193,7 @@ export function isBlankStyleVariantDraft(draft: StyleVariantDraft): boolean {
   );
 }
 
-function cloneStyleVariantDraft(draft: StyleVariantDraft): StyleVariantDraft {
+export function cloneStyleVariantDraft(draft: StyleVariantDraft): StyleVariantDraft {
   const cloned = {} as StyleVariantDraft;
   CUSTOM_STYLE_INSTRUMENTS.forEach((inst) => {
     cloned[inst] = [...draft[inst]] as DrumPattern;
@@ -202,26 +202,43 @@ function cloneStyleVariantDraft(draft: StyleVariantDraft): StyleVariantDraft {
   return cloned;
 }
 
+export function styleVariantDraftsEqual(a: StyleVariantDraft, b: StyleVariantDraft): boolean {
+  return (
+    CUSTOM_STYLE_INSTRUMENTS.every((inst) => a[inst].every((step, i) => step === b[inst][i])) &&
+    a.bass.every((step, i) => step === b.bass[i])
+  );
+}
+
 // Fixes the "silent variant" trap: a brand-new style starts both Simple and
 // Busy blank, and it's easy to only fill in whichever tab happened to be
 // open, leaving the other silent at playback — the more likely to bite since
-// DEFAULTS.playback.bass is "busy", not "simple". At save time, whichever
-// variant was never touched (still entirely blank) mirrors the other one
-// instead of saving silent. If both are blank, there's nothing to mirror —
-// genuinely nothing authored yet.
-export function fillBlankVariantFromOther(draft: {
-  simple: StyleVariantDraft;
-  busy: StyleVariantDraft;
-}): { simple: StyleVariantDraft; busy: StyleVariantDraft } {
-  const simpleBlank = isBlankStyleVariantDraft(draft.simple);
-  const busyBlank = isBlankStyleVariantDraft(draft.busy);
-  if (simpleBlank && !busyBlank) {
-    return { simple: cloneStyleVariantDraft(draft.busy), busy: draft.busy };
+// DEFAULTS.playback.bass is "busy", not "simple". Rather than mirroring once
+// at the first save and letting the two drift apart on every edit after
+// that, a variant that was linked (blank, or equal to the other) when the
+// editor was *opened* keeps mirroring its twin on every save, as long as
+// only one side was actually edited this session — so a player who only
+// ever wants to maintain a single pattern never has to duplicate an edit by
+// hand. Edit both sides in the same sitting and neither counts as "the
+// untouched one," so nothing is forced; from then on the two are
+// independently forked (comparing unequal at the next open) and stay that
+// way. `original` is a snapshot of the draft as it was when the editor
+// opened (blank drafts, for a style that's never been saved) — not the
+// persisted value — so this measures edits made *this session*, regardless
+// of how the two variants got to their starting state.
+export function resolveLinkedVariants(
+  current: { simple: StyleVariantDraft; busy: StyleVariantDraft },
+  original: { simple: StyleVariantDraft; busy: StyleVariantDraft },
+): { simple: StyleVariantDraft; busy: StyleVariantDraft } {
+  const wasLinked = styleVariantDraftsEqual(original.simple, original.busy);
+  const simpleTouched = !styleVariantDraftsEqual(current.simple, original.simple);
+  const busyTouched = !styleVariantDraftsEqual(current.busy, original.busy);
+  if (wasLinked && simpleTouched && !busyTouched) {
+    return { simple: current.simple, busy: cloneStyleVariantDraft(current.simple) };
   }
-  if (busyBlank && !simpleBlank) {
-    return { simple: draft.simple, busy: cloneStyleVariantDraft(draft.simple) };
+  if (wasLinked && busyTouched && !simpleTouched) {
+    return { simple: cloneStyleVariantDraft(current.busy), busy: current.busy };
   }
-  return draft;
+  return current;
 }
 
 export function cycleBassStep(step: BassStep): BassStep {

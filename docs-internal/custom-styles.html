@@ -636,13 +636,32 @@ style: resolveStyleDef(_state.playback.style, _getCustomStyles(), STYLES, STYLES
       <code>DEFAULTS.playback.bass</code> is <code>"busy"</code>, not <code>"simple"</code>, so a
       style edited only on the Simple tab plays with no bass at all unless the Bass pill happens to
       be set to Simple. Fixed at save time, not by changing the editor's tab model:
-      <code>isBlankStyleVariantDraft()</code> checks whether a variant is still entirely all-rest,
-      and <code>fillBlankVariantFromOther()</code> mirrors the other variant into it (independent
-      copy, not aliased) if so — if both are blank, there's nothing to mirror. The Simple/Busy tab
-      labels also show "<code>(empty)</code>" live while editing, so the gap is visible before you
-      even reach Save. Known tradeoff: a deliberately all-silent variant (if anyone ever wants one)
-      gets overwritten by this same heuristic — accepted, since built-in styles never have a fully
-      blank variant either.
+      <code>isBlankStyleVariantDraft()</code> checks whether a variant is still entirely all-rest —
+      if so, it's mirrored from the other variant (independent copy, not aliased) rather than saved
+      silent; if both are blank, there's nothing to mirror. The Simple/Busy tab labels also show
+      "<code>(empty)</code>" live while editing, so the gap is visible before you even reach Save.
+    </div>
+    <div class="tradeoff">
+      <strong
+        >Follow-up, moving forward only: the initial mirror-once-at-save fix let Simple/Busy drift
+        apart again on every edit after that.</strong
+      >
+      A player who only ever wants to maintain one pattern (say, they only ever touch Simple) had to
+      manually re-copy each future edit into Busy by hand, or accept it silently going stale —
+      exactly the trap the fix above was meant to close.
+      <code>resolveLinkedVariants()</code> replaced the original one-shot
+      <code>fillBlankVariantFromOther()</code>: rather than asking "is this variant still blank
+      right now," it compares the current draft against a snapshot of how both variants looked when
+      the editor was <em>opened</em> (<code>cloneStyleVariantDraft()</code>, taken once in
+      <code>openStyleEditor</code>). If the two were linked at open time (blank, or already equal to
+      each other) and only one side was actually edited this session, the untouched side is
+      re-synced from the touched one on every save — not just the first. Edit both sides in the same
+      sitting and neither counts as "the untouched one," so nothing is forced; from that point on
+      the two are independently forked (they compare unequal at the next open) and stay that way. No
+      schema change — both fields stay full, always-populated <code>StyleVariant</code>s, so
+      <code>toStyleDef</code>/<code>resolveStyleDef</code>/the engine are untouched; the entire fix
+      lives in the editor's save step. Existing custom styles aren't migrated — this only governs
+      saves made after the fix landed.
     </div>
     <div class="note">
       <strong>Storage size is a non-issue.</strong> Each <code>CustomStyleDef</code> is a handful of
@@ -703,8 +722,8 @@ style: resolveStyleDef(_state.playback.style, _getCustomStyles(), STYLES, STYLES
       <code>isBlankStyleVariantDraft</code> check already computed for the "(empty)" tab labels —
       <code>styleEditorSaveEl.disabled = simpleBlank &amp;&amp; busyBlank</code>. Only disabled when
       <em>both</em> variants are completely untouched; if either has any content, Save stays
-      enabled, since <code>fillBlankVariantFromOther</code> already mirrors the untouched one at
-      save time.
+      enabled, since <code>resolveLinkedVariants</code> already mirrors the
+      untouched-and-still-linked one at save time (see the follow-up tradeoff above).
     </div>
 
     <p>
@@ -1071,10 +1090,12 @@ previewStyleLoopStop(): void {
           editor-support functions (<code>CUSTOM_STYLE_INSTRUMENTS</code>,
           <code>StyleVariantDraft</code>, <code>makeBlankStyleVariantDraft</code>,
           <code>styleVariantToDraft</code>/<code>draftToStyleVariant</code>,
-          <code>cycleBassStep</code>), and the silent-variant fix
-          (<code>isBlankStyleVariantDraft</code>/<code>fillBlankVariantFromOther</code>). Zero
-          runtime dependency on <code>progression-core.ts</code> — its only import from core is
-          <code>import type</code>, erased at compile time.
+          <code>cycleBassStep</code>), the silent-variant fix
+          (<code>isBlankStyleVariantDraft</code>), and the linked-variant sync fix
+          (<code>cloneStyleVariantDraft</code>, <code>styleVariantDraftsEqual</code>,
+          <code>resolveLinkedVariants</code>). Zero runtime dependency on
+          <code>progression-core.ts</code> — its only import from core is <code>import type</code>,
+          erased at compile time.
         </td>
       </tr>
       <tr>
