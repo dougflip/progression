@@ -942,23 +942,38 @@ document.addEventListener(
 
 // ── Pill flyouts (shared) ─────────────────────────────────────────────────
 // One dropdown "shell" is reused by every readout pill (style, tempo, bars,
-// voicing, loop) so they all feel like the same component. Anchor side is
-// picked per-open based on which half of the screen the trigger pill is in,
-// so a pill near either edge never pushes its flyout off-screen.
+// voicing, loop) so they all feel like the same component. Preferred
+// position is centered on the trigger pill; if that would overflow past
+// #readout's edge, it falls back to anchoring to whichever edge (left/right)
+// the pill is closer to, so a pill near either edge never pushes its
+// flyout off-screen.
 
 const FLYOUT_EDGE_MARGIN = 8;
 
 function positionFlyout(triggerBtn: HTMLElement, flyoutEl: HTMLElement): void {
   const readoutRect = readoutEl.getBoundingClientRect();
   const btnRect = triggerBtn.getBoundingClientRect();
-  const anchorLeft = btnRect.left + btnRect.width / 2 < window.innerWidth / 2;
+  const btnCenter = btnRect.left + btnRect.width / 2;
 
   flyoutEl.style.top = `${btnRect.bottom - readoutRect.top + 8}px`;
-  flyoutEl.style.left = anchorLeft ? `${FLYOUT_EDGE_MARGIN}px` : "auto";
-  flyoutEl.style.right = anchorLeft ? "auto" : `${FLYOUT_EDGE_MARGIN}px`;
+
+  const flyoutWidth = flyoutEl.getBoundingClientRect().width;
+  const centeredLeft = btnCenter - flyoutWidth / 2;
+  const fitsCentered =
+    centeredLeft >= readoutRect.left + FLYOUT_EDGE_MARGIN &&
+    centeredLeft + flyoutWidth <= readoutRect.right - FLYOUT_EDGE_MARGIN;
+
+  if (fitsCentered) {
+    flyoutEl.style.left = `${centeredLeft - readoutRect.left}px`;
+    flyoutEl.style.right = "auto";
+  } else {
+    const anchorLeft = btnCenter < window.innerWidth / 2;
+    flyoutEl.style.left = anchorLeft ? `${FLYOUT_EDGE_MARGIN}px` : "auto";
+    flyoutEl.style.right = anchorLeft ? "auto" : `${FLYOUT_EDGE_MARGIN}px`;
+  }
 
   const flyoutRect = flyoutEl.getBoundingClientRect();
-  const arrowLeft = btnRect.left + btnRect.width / 2 - flyoutRect.left;
+  const arrowLeft = btnCenter - flyoutRect.left;
   flyoutEl.style.setProperty(
     "--arrow-left",
     `${Math.max(12, Math.min(flyoutRect.width - 12, arrowLeft))}px`,
