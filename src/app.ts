@@ -106,6 +106,7 @@ const presetNameSubmitEl = $("preset-name-submit") as HTMLButtonElement;
 const presetNameDefaultEl = $("preset-name-default") as HTMLInputElement;
 const scrubberBar = $("scrubber-bar") as HTMLDivElement;
 const scrubberTrack = $("scrubber-track") as HTMLDivElement;
+const readoutEl = $("readout") as HTMLDivElement;
 const readoutTempoEl = $("readout-tempo") as HTMLElement;
 const readoutStyleEl = $("readout-style") as HTMLButtonElement;
 const stylePickerEl = $("style-picker") as HTMLDivElement;
@@ -113,8 +114,14 @@ const stylePickerRowsEl = $("style-picker-rows") as HTMLDivElement;
 const readoutBassEl = $("readout-bass") as HTMLButtonElement;
 const readoutDrumsEl = $("readout-drums") as HTMLButtonElement;
 const readoutVoicingEl = $("readout-voicing") as HTMLButtonElement;
+const voicingPickerEl = $("voicing-picker") as HTMLDivElement;
+const voicingPickerRowsEl = $("voicing-picker-rows") as HTMLDivElement;
 const readoutBarsEl = $("readout-bars") as HTMLButtonElement;
+const barsPickerEl = $("bars-picker") as HTMLDivElement;
+const barsPickerRowsEl = $("bars-picker-rows") as HTMLDivElement;
 const readoutCycleEl = $("readout-cycle") as HTMLButtonElement;
+const loopPickerEl = $("loop-picker") as HTMLDivElement;
+const loopPickerRowsEl = $("loop-picker-rows") as HTMLDivElement;
 const readoutAdvanceEl = $("readout-advance") as HTMLButtonElement;
 const keyScrubberBar = $("key-scrubber-bar") as HTMLDivElement;
 const keyScrubberTrack = $("key-scrubber-track") as HTMLDivElement;
@@ -933,33 +940,114 @@ document.addEventListener(
   true,
 );
 
-// ── Style picker ─────────────────────────────────────────────────────────
+// ── Pill flyouts (shared) ─────────────────────────────────────────────────
+// One dropdown "shell" is reused by every readout pill (style, tempo, bars,
+// voicing, loop) so they all feel like the same component. Preferred
+// position is centered on the trigger pill; if that would overflow past
+// #readout's edge, it falls back to anchoring to whichever edge (left/right)
+// the pill is closer to, so a pill near either edge never pushes its
+// flyout off-screen.
 
-function customStyleLabel(name: string): string {
-  return `🎶 ${name}`;
+const FLYOUT_EDGE_MARGIN = 8;
+
+function positionFlyout(triggerBtn: HTMLElement, flyoutEl: HTMLElement): void {
+  const readoutRect = readoutEl.getBoundingClientRect();
+  const btnRect = triggerBtn.getBoundingClientRect();
+  const btnCenter = btnRect.left + btnRect.width / 2;
+
+  flyoutEl.style.top = `${btnRect.bottom - readoutRect.top + 8}px`;
+
+  const flyoutWidth = flyoutEl.getBoundingClientRect().width;
+  const centeredLeft = btnCenter - flyoutWidth / 2;
+  const fitsCentered =
+    centeredLeft >= readoutRect.left + FLYOUT_EDGE_MARGIN &&
+    centeredLeft + flyoutWidth <= readoutRect.right - FLYOUT_EDGE_MARGIN;
+
+  if (fitsCentered) {
+    flyoutEl.style.left = `${centeredLeft - readoutRect.left}px`;
+    flyoutEl.style.right = "auto";
+  } else {
+    const anchorLeft = btnCenter < window.innerWidth / 2;
+    flyoutEl.style.left = anchorLeft ? `${FLYOUT_EDGE_MARGIN}px` : "auto";
+    flyoutEl.style.right = anchorLeft ? "auto" : `${FLYOUT_EDGE_MARGIN}px`;
+  }
+
+  const flyoutRect = flyoutEl.getBoundingClientRect();
+  const arrowLeft = btnCenter - flyoutRect.left;
+  flyoutEl.style.setProperty(
+    "--arrow-left",
+    `${Math.max(12, Math.min(flyoutRect.width - 12, arrowLeft))}px`,
+  );
 }
 
-function makeStylePickerHeading(text: string): void {
-  stylePickerRowsEl.appendChild(
+function wireFlyout(
+  triggerBtn: HTMLButtonElement,
+  flyoutEl: HTMLElement,
+  onOpen?: () => void,
+): void {
+  triggerBtn.addEventListener("click", () => {
+    if (!flyoutEl.hidden) {
+      flyoutEl.hidden = true;
+      return;
+    }
+    onOpen?.();
+    flyoutEl.hidden = false;
+    positionFlyout(triggerBtn, flyoutEl);
+  });
+  document.addEventListener("click", (e: MouseEvent) => {
+    if (flyoutEl.hidden) return;
+    if (triggerBtn.contains(e.target as Node) || flyoutEl.contains(e.target as Node)) return;
+    flyoutEl.hidden = true;
+  });
+}
+
+function makePickerHeading(container: HTMLElement, text: string): void {
+  container.appendChild(
     Object.assign(document.createElement("div"), {
-      className: "style-picker-heading",
+      className: "picker-heading",
       textContent: text,
     }),
   );
 }
 
-function makeStylePickerRow(label: string, isActive: boolean, onSelect: () => void): void {
+function makePickerRow(
+  container: HTMLElement,
+  flyoutEl: HTMLElement,
+  label: string,
+  isActive: boolean,
+  onSelect: () => void,
+): void {
   const row = Object.assign(document.createElement("button"), {
     type: "button",
-    className: "style-picker-row",
+    className: "picker-row",
     textContent: label,
   });
   row.classList.toggle("active", isActive);
   row.addEventListener("click", () => {
     onSelect();
-    stylePickerEl.hidden = true;
+    flyoutEl.hidden = true;
   });
-  stylePickerRowsEl.appendChild(row);
+  container.appendChild(row);
+}
+
+function renderOptionRows<T>(
+  rowsEl: HTMLElement,
+  flyoutEl: HTMLElement,
+  options: readonly T[],
+  labelFor: (opt: T) => string,
+  current: T,
+  onSelect: (opt: T) => void,
+): void {
+  rowsEl.innerHTML = "";
+  options.forEach((opt) => {
+    makePickerRow(rowsEl, flyoutEl, labelFor(opt), opt === current, () => onSelect(opt));
+  });
+}
+
+// ── Style picker ─────────────────────────────────────────────────────────
+
+function customStyleLabel(name: string): string {
+  return `🎶 ${name}`;
 }
 
 function renderStylePicker(): void {
@@ -967,35 +1055,33 @@ function renderStylePicker(): void {
   stylePickerRowsEl.innerHTML = "";
   const customStyles = app.getCustomStyles();
 
-  if (customStyles.length > 0) makeStylePickerHeading("Built-in");
+  if (customStyles.length > 0) makePickerHeading(stylePickerRowsEl, "Built-in");
   (STYLE_OPTIONS as readonly string[]).forEach((opt) => {
-    makeStylePickerRow(STYLE_LABELS[opt as StyleOption], state.playback.style === opt, () =>
-      app.setPlayback({ style: opt }),
+    makePickerRow(
+      stylePickerRowsEl,
+      stylePickerEl,
+      STYLE_LABELS[opt as StyleOption],
+      state.playback.style === opt,
+      () => app.setPlayback({ style: opt }),
     );
   });
 
   if (customStyles.length > 0) {
-    makeStylePickerHeading("Custom");
+    makePickerHeading(stylePickerRowsEl, "Custom");
     customStyles.forEach((custom: CustomStyleDef) => {
       const ref = toCustomStyleId(custom.id);
-      makeStylePickerRow(customStyleLabel(custom.name), state.playback.style === ref, () =>
-        app.setPlayback({ style: ref }),
+      makePickerRow(
+        stylePickerRowsEl,
+        stylePickerEl,
+        customStyleLabel(custom.name),
+        state.playback.style === ref,
+        () => app.setPlayback({ style: ref }),
       );
     });
   }
 }
 
-readoutStyleEl.addEventListener("click", () => {
-  if (stylePickerEl.hidden) {
-    renderStylePicker();
-    stylePickerEl.hidden = false;
-  } else stylePickerEl.hidden = true;
-});
-document.addEventListener("click", (e: MouseEvent) => {
-  if (stylePickerEl.hidden) return;
-  if (readoutStyleEl.contains(e.target as Node) || stylePickerEl.contains(e.target as Node)) return;
-  stylePickerEl.hidden = true;
-});
+wireFlyout(readoutStyleEl, stylePickerEl, renderStylePicker);
 
 // ── Custom Styles: Setup list ─────────────────────────────────────────────
 
@@ -1253,12 +1339,10 @@ styleEditorDeleteEl.addEventListener("click", () => {
 
 const tempoPickerEl = $("tempo-picker") as HTMLDivElement;
 const tempoQuickEl = $("tempo-quick") as HTMLInputElement;
+const tempoToggleEl = $("tempo-toggle") as HTMLButtonElement;
 
-($("tempo-toggle") as HTMLButtonElement).addEventListener("click", () => {
-  if (tempoPickerEl.hidden) {
-    tempoQuickEl.value = String(app.getState().playback.tempo);
-    tempoPickerEl.hidden = false;
-  } else tempoPickerEl.hidden = true;
+wireFlyout(tempoToggleEl, tempoPickerEl, () => {
+  tempoQuickEl.value = String(app.getState().playback.tempo);
 });
 tempoQuickEl.addEventListener("input", () =>
   app.setPlayback({ tempo: Math.max(40, Math.min(220, parseInt(tempoQuickEl.value, 10))) }),
@@ -1269,15 +1353,6 @@ tempoQuickEl.addEventListener("input", () =>
 ($("tempo-up") as HTMLButtonElement).addEventListener("click", () =>
   app.setPlayback({ tempo: Math.min(220, app.getState().playback.tempo + 1) }),
 );
-document.addEventListener("click", (e: MouseEvent) => {
-  if (tempoPickerEl.hidden) return;
-  if (
-    ($("tempo-toggle") as HTMLElement).contains(e.target as Node) ||
-    tempoPickerEl.contains(e.target as Node)
-  )
-    return;
-  tempoPickerEl.hidden = true;
-});
 
 // ── Tap tempo ─────────────────────────────────────────────────────────────
 
@@ -1327,19 +1402,41 @@ readoutBassEl.addEventListener("click", () =>
 readoutDrumsEl.addEventListener("click", () =>
   app.setPlayback({ drums: cycleOpt(DRUM_OPTIONS, app.getState().playback.drums) }),
 );
-readoutVoicingEl.addEventListener("click", () =>
-  app.setPlayback({ voicing: cycleOpt(VOICING_OPTIONS, app.getState().playback.voicing) }),
-);
-readoutBarsEl.addEventListener("click", () =>
-  app.setPlayback({ bars: cycleOpt(BARS_OPTIONS, app.getState().playback.bars) }),
-);
-readoutCycleEl.addEventListener("click", () =>
-  app.setCycle(
-    cycleOpt(CYCLE_OPTIONS, app.getState().playback.cycle as (typeof CYCLE_OPTIONS)[number]),
-  ),
-);
 readoutAdvanceEl.addEventListener("click", () =>
   app.setPlayback({ advance: app.getState().playback.advance === "auto" ? "manual" : "auto" }),
+);
+
+wireFlyout(readoutVoicingEl, voicingPickerEl, () =>
+  renderOptionRows(
+    voicingPickerRowsEl,
+    voicingPickerEl,
+    VOICING_OPTIONS,
+    (opt) => VOICING_PILL_LABELS[opt],
+    app.getState().playback.voicing as VoicingOption,
+    (opt) => app.setPlayback({ voicing: opt }),
+  ),
+);
+
+wireFlyout(readoutBarsEl, barsPickerEl, () =>
+  renderOptionRows(
+    barsPickerRowsEl,
+    barsPickerEl,
+    BARS_OPTIONS,
+    (n) => `‖ ${n} ${n === 1 ? "bar" : "bars"}`,
+    app.getState().playback.bars,
+    (n) => app.setPlayback({ bars: n }),
+  ),
+);
+
+wireFlyout(readoutCycleEl, loopPickerEl, () =>
+  renderOptionRows(
+    loopPickerRowsEl,
+    loopPickerEl,
+    CYCLE_OPTIONS,
+    (opt) => CYCLE_LABELS[opt] ?? opt,
+    app.getState().playback.cycle as (typeof CYCLE_OPTIONS)[number],
+    (opt) => app.setCycle(opt),
+  ),
 );
 
 function renderCustomCycleEditor(state: AppState): void {
