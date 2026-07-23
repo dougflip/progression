@@ -8,6 +8,7 @@ src/app.ts                — host: DOM wiring, render callbacks, event handlers
 src/progression-core.ts   — pure logic: music theory, state, URL, presets, factory
 src/progression-audio.ts  — Tone.js engine: plays what core gives it
 src/styles.ts             — pure data: style/bass pattern definitions
+src/custom-styles.ts      — user-authored styles: CustomStyleDef, toStyleDef conversion (see docs-internal/custom-styles.html)
 public/favicon.svg        — static asset, copied to dist/ as-is
 vite.config.js            — build config: multi-page entry points, Tone vendor chunk, version/SHA injection
 src/vite-env.d.ts         — ambient types for build-time globals (__APP_VERSION__, __APP_SHA__)
@@ -49,8 +50,17 @@ tsconfig.json             — strict TypeScript config (noEmit; Vite handles tra
   getPendingKeyJump(): number | null,
   armLoopRecording(muteDuringRecording: boolean): Promise<void>,
   cancelLoopRecording(): void,
-  deleteLoop(): void,
+  deleteLoop(sectionIndex: number): void,
   getLooperState(): LooperState,
+  setSectionLoops(loops: (LoopRef | null)[]): void,
+  copyLoop(id: string): Promise<string | null>,
+  sweepOrphanedLoops(keepIds: string[]): Promise<void>,
+  setLoopOffsetMs(ms: number): void,
+  previewInstrument(name: DrumInstrumentName): void,
+  previewStyleLoopStart(draft: StyleVariantDraft, tempo: number): Promise<void>,
+  previewStyleLoopStop(): void,
+  previewUpdateDrumStep(instrument: DrumInstrumentName, index: number, hit: number): void,
+  previewUpdateBassStep(index: number, step: BassStep): void,
 }
 ```
 
@@ -59,6 +69,8 @@ tsconfig.json             — strict TypeScript config (noEmit; Vite handles tra
 Channels are created once on first `start()` and survive stop/rebuild cycles. Teardown disposes synths and sequences but never channels.
 
 **Looper (experimental, flag-gated spike).** `armLoopRecording`/`cancelLoopRecording`/`deleteLoop`/`getLooperState` add a single-track, no-overdub mic looper — `LooperState` cycles `idle → arming → counting-in → recording → looping`, driven from inside the existing lap-boundary check in `_buildPart` (the same block that advances the key cycle), and loop playback uses the same manual stop/start-at-`time` pattern as drum sample triggering (`_triggerDrum`) rather than `Player.loop`/`.sync()`, so it can never drift relative to the Transport. UI is behind a `looperEnabled` localStorage flag (off by default), hidden in the action bar when off or when `cycle !== 'none'`. This was deliberately built for "working software fast" over correct long-term architecture — design reasoning, deferred scope (configurable loop length, overdub, per-section loops), and a tradeoffs log live in `docs-internal/looper.html`.
+
+**Custom styles.** Players can author their own drum/bass patterns in `src/custom-styles.ts` (`CustomStyleDef`, reusing `StyleVariant`/`StyleBassPhrase` as-is) stored in localStorage, selected via a `custom:<id>` prefix on `playback.style` resolved at playback time by `resolveStyleDef` — the engine only ever consumes a resolved `StyleDef` for actual playback, so no `AudioEngine` methods beyond `previewInstrument` (tap-to-audition) were needed for that. The editor's live preview loop (`previewStyleLoopStart`/`previewStyleLoopStop`) is a second, deliberately separate playback path — not chord-driven, so it can't reuse `_buildDrums`/`_buildBass` — that takes the in-editor draft directly (not a converted `StyleDef`) rather than reusing engine playback's own resolved shape; bass resolves against a fixed C major triad since the editor has no real chord/key context. Live edits while the loop runs do **not** happen automatically — `Tone.Sequence` captures each step's value once at construction rather than re-reading the source array, so `previewUpdateDrumStep`/`previewUpdateBassStep` patch a running loop's step explicitly via `Tone.Sequence`'s proxied `.events` array. Full design, phased build log, and mockups live in `docs-internal/custom-styles.html`.
 
 ## Cycle modes
 

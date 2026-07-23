@@ -23,6 +23,10 @@ import {
   type AudioEngine,
   type LooperState,
   type LoopRef,
+  type DrumInstrumentName,
+  type StyleVariantDraft,
+  CUSTOM_STYLE_INSTRUMENTS,
+  type BassStep,
 } from "./progression-core.js";
 
 interface Channels {
@@ -224,6 +228,15 @@ export function makeProgressionAudio(): AudioEngine {
   let _bass: Tone.MonoSynth | null = null;
   let _bassSeq: Tone.Sequence<BassStepItem> | null = null;
   let _beatSeq: Tone.Sequence<number> | null = null;
+
+  // Style editor preview loop — deliberately separate from the main song's
+  // sequences/synths above. Never chord-driven (no progression exists to
+  // preview against), so it can't reuse _buildDrums/_buildBass. Keyed by
+  // instrument (not a flat array) so a single step can be patched live via
+  // Tone.Sequence.at() — see previewUpdateDrumStep/previewUpdateBassStep.
+  let _previewSeqs: Partial<Record<DrumInstrumentName, Tone.Sequence<number>>> = {};
+  let _previewBassSeq: Tone.Sequence<BassStep> | null = null;
+  let _previewBass: Tone.MonoSynth | null = null;
 
   // ── Playback state ─────────────────────────────────────────────────────────
   let _pendingJump: number | null = null;
@@ -1169,6 +1182,57 @@ export function makeProgressionAudio(): AudioEngine {
     ).start(0);
   }
 
+  // Note/duration choices duplicate _buildDrums' sequence callbacks above —
+  // accepted duplication rather than refactoring _buildDrums to share a
+  // per-instrument descriptor table, since this only matters when a sample
+  // hasn't finished loading yet (the common case always hits the sample
+  // branch below).
+  function _previewFallback(name: DrumInstrumentName, time: number): void {
+    switch (name) {
+      case "kick":
+        _kick?.triggerAttackRelease("C1", "8n", time);
+        break;
+      case "snare":
+        _snare?.triggerAttackRelease("16n", time);
+        break;
+      case "hat":
+        _hat?.triggerAttackRelease("32n", time);
+        break;
+      case "hatOpen":
+        _hatOpen?.triggerAttackRelease("8n", time);
+        break;
+      case "crash":
+        _crash?.triggerAttackRelease("4n", time);
+        break;
+      case "ride":
+      case "rideBell":
+        _ride?.triggerAttackRelease("32n", time);
+        break;
+      case "tom":
+        _tom?.triggerAttackRelease("A1", "8n", time);
+        break;
+      case "tom2":
+        _tom2?.triggerAttackRelease("D2", "8n", time);
+        break;
+    }
+  }
+
+  const PREVIEW_LOOP_REFERENCE_PITCH: Record<Exclude<BassStep, 0>, string> = {
+    R: "C3",
+    "3": "E3",
+    "5": "G3",
+  };
+
+  function _teardownPreviewLoop(): void {
+    Tone.Transport.stop();
+    Object.values(_previewSeqs).forEach((s) => s?.dispose());
+    _previewSeqs = {};
+    _previewBassSeq?.dispose();
+    _previewBassSeq = null;
+    _previewBass?.dispose();
+    _previewBass = null;
+  }
+
   // ── Public interface ───────────────────────────────────────────────────────
 
   return {
@@ -1519,6 +1583,84 @@ export function makeProgressionAudio(): AudioEngine {
       if (!raw || sectionIndex < 0) return;
       const targetSeconds = Tone.Time(`${_sectionBars[sectionIndex] ?? 0}m`).toSeconds() as number;
       _loopPlayer.buffer = new Tone.ToneAudioBuffer(_buildAlignedBuffer(raw, targetSeconds, ms));
+    },
+
+    previewInstrument(name: DrumInstrumentName): void {
+      const player = _sp[name];
+      const time = Tone.now();
+      if (player.loaded) {
+        _safe(() => {
+          player.stop(time);
+          player.start(time);
+        });
+      } else {
+        _safe(() => _previewFallback(name, time));
+      }
+    },
+
+    async previewStyleLoopStart(draft: StyleVariantDraft, tempo: number): Promise<void> {
+      await Tone.start();
+      _teardownPreviewLoop();
+      _initChannels();
+      Tone.Transport.bpm.value = tempo;
+
+      _previewBass = new Tone.MonoSynth({
+        oscillator: { type: "sawtooth" },
+        filter: { Q: 2, type: "lowpass" },
+        envelope: { attack: 0.01, decay: 0.25, sustain: 0.4, release: 0.3 },
+        filterEnvelope: {
+          attack: 0.01,
+          decay: 0.2,
+          sustain: 0.4,
+          release: 0.3,
+          baseFrequency: 80,
+          octaves: 2.5,
+        },
+      }).connect(_channels!.bass);
+      _previewBass.volume.value = -6;
+
+      CUSTOM_STYLE_INSTRUMENTS.forEach((inst) => {
+        _previewSeqs[inst] = new Tone.Sequence<number>(
+          (time, hit) => {
+            if (hit) _triggerDrum(time, _sp[inst], () => _previewFallback(inst, time));
+          },
+          draft[inst],
+          "16n",
+        ).start(0);
+      });
+
+      _previewBassSeq = new Tone.Sequence<BassStep>(
+        (time, step) => {
+          if (step === 0) return;
+          _safe(() =>
+            _previewBass!.triggerAttackRelease(PREVIEW_LOOP_REFERENCE_PITCH[step], "8n", time),
+          );
+        },
+        draft.bass,
+        "16n",
+      ).start(0);
+
+      Tone.Transport.start();
+    },
+
+    previewStyleLoopStop(): void {
+      _teardownPreviewLoop();
+    },
+
+    // Tone.Sequence captures its events' values once at construction — it
+    // does NOT keep reading the source array on every pass, so mutating the
+    // draft array alone (what the grid already does) never reaches an
+    // already-running loop. Its `.events` getter returns a proxied array —
+    // assigning through it (not just reading) triggers Tone's internal
+    // reschedule, patching a live sequence's step in place with no restart.
+    // No-ops if no preview loop is currently running.
+    previewUpdateDrumStep(instrument: DrumInstrumentName, index: number, hit: number): void {
+      const seq = _previewSeqs[instrument];
+      if (seq) seq.events[index] = hit;
+    },
+
+    previewUpdateBassStep(index: number, step: BassStep): void {
+      if (_previewBassSeq) _previewBassSeq.events[index] = step;
     },
   };
 }

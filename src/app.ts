@@ -29,6 +29,22 @@ import {
   type UserPreset,
   type ChordTickEvent,
   type LooperState,
+  type CustomStyleDef,
+  toCustomStyleId,
+  isCustomStyleRef,
+  customStyleIdFromRef,
+  CUSTOM_STYLE_INSTRUMENTS,
+  CUSTOM_STYLE_INSTRUMENT_LABELS,
+  type StyleVariantDraft,
+  makeBlankStyleVariantDraft,
+  styleVariantToDraft,
+  draftToStyleVariant,
+  cycleBassStep,
+  isBlankStyleVariantDraft,
+  fillBlankVariantFromOther,
+  type DrumInstrumentName,
+  type DrumPattern,
+  type BassPattern,
 } from "./progression-core.js";
 import { PRESETS } from "./presets.js";
 import { makeProgressionAudio } from "./progression-audio.js";
@@ -92,6 +108,8 @@ const scrubberBar = $("scrubber-bar") as HTMLDivElement;
 const scrubberTrack = $("scrubber-track") as HTMLDivElement;
 const readoutTempoEl = $("readout-tempo") as HTMLElement;
 const readoutStyleEl = $("readout-style") as HTMLButtonElement;
+const stylePickerEl = $("style-picker") as HTMLDivElement;
+const stylePickerRowsEl = $("style-picker-rows") as HTMLDivElement;
 const readoutBassEl = $("readout-bass") as HTMLButtonElement;
 const readoutDrumsEl = $("readout-drums") as HTMLButtonElement;
 const readoutVoicingEl = $("readout-voicing") as HTMLButtonElement;
@@ -110,6 +128,17 @@ const chordsOnEl = $("chords-on") as HTMLInputElement;
 const bassOnEl = $("bass-on") as HTMLInputElement;
 const drumsOnEl = $("drums-on") as HTMLInputElement;
 const keepAwakeEl = $("keep-awake") as HTMLInputElement;
+const customStyleRowsEl = $("custom-style-rows") as HTMLDivElement;
+const addCustomStyleEl = $("add-custom-style") as HTMLButtonElement;
+const styleEditorSheetEl = $("style-editor-sheet") as HTMLDialogElement;
+const styleEditorTitleEl = $("style-editor-title") as HTMLElement;
+const styleEditorNameEl = $("style-editor-name") as HTMLInputElement;
+const styleEditorTabSimpleEl = $("style-editor-tab-simple") as HTMLButtonElement;
+const styleEditorTabBusyEl = $("style-editor-tab-busy") as HTMLButtonElement;
+const styleEditorGridEl = $("style-editor-grid") as HTMLDivElement;
+const styleEditorSaveEl = $("style-editor-save") as HTMLButtonElement;
+const styleEditorDeleteEl = $("style-editor-delete") as HTMLButtonElement;
+const styleEditorPreviewEl = $("style-editor-preview") as HTMLButtonElement;
 
 $("app-version").textContent = `v${__APP_VERSION__} build-${__APP_SHA__}`;
 
@@ -129,6 +158,7 @@ function render(state: AppState): void {
   renderPresetIndicator();
   syncLoopBtnVisibility(state);
   renderLoopButton(state, app.getLooperState());
+  renderCustomStyleRows();
 }
 
 // ── Looper (spike) ─────────────────────────────────────────────────────────
@@ -387,8 +417,14 @@ function onChordTick({
 
 function renderReadout(state: AppState): void {
   readoutTempoEl.textContent = String(state.playback.tempo);
-  readoutStyleEl.textContent =
-    STYLE_LABELS[state.playback.style as StyleOption] ?? state.playback.style;
+  const activeCustomStyle = isCustomStyleRef(state.playback.style)
+    ? app.getCustomStyles().find((s) => s.id === customStyleIdFromRef(state.playback.style))
+    : undefined;
+  readoutStyleEl.textContent = activeCustomStyle
+    ? customStyleLabel(activeCustomStyle.name)
+    : isCustomStyleRef(state.playback.style)
+      ? state.playback.style
+      : (STYLE_LABELS[state.playback.style as StyleOption] ?? state.playback.style);
   readoutStyleEl.setAttribute("aria-label", `Style: ${state.playback.style}`);
   readoutBassEl.textContent = BASS_LABELS[state.playback.bass as BassOption] ?? state.playback.bass;
   readoutBassEl.setAttribute("aria-label", `Bass: ${state.playback.bass}`);
@@ -897,6 +933,322 @@ document.addEventListener(
   true,
 );
 
+// ── Style picker ─────────────────────────────────────────────────────────
+
+function customStyleLabel(name: string): string {
+  return `🎶 ${name}`;
+}
+
+function makeStylePickerHeading(text: string): void {
+  stylePickerRowsEl.appendChild(
+    Object.assign(document.createElement("div"), {
+      className: "style-picker-heading",
+      textContent: text,
+    }),
+  );
+}
+
+function makeStylePickerRow(label: string, isActive: boolean, onSelect: () => void): void {
+  const row = Object.assign(document.createElement("button"), {
+    type: "button",
+    className: "style-picker-row",
+    textContent: label,
+  });
+  row.classList.toggle("active", isActive);
+  row.addEventListener("click", () => {
+    onSelect();
+    stylePickerEl.hidden = true;
+  });
+  stylePickerRowsEl.appendChild(row);
+}
+
+function renderStylePicker(): void {
+  const state = app.getState();
+  stylePickerRowsEl.innerHTML = "";
+  const customStyles = app.getCustomStyles();
+
+  if (customStyles.length > 0) makeStylePickerHeading("Built-in");
+  (STYLE_OPTIONS as readonly string[]).forEach((opt) => {
+    makeStylePickerRow(STYLE_LABELS[opt as StyleOption], state.playback.style === opt, () =>
+      app.setPlayback({ style: opt }),
+    );
+  });
+
+  if (customStyles.length > 0) {
+    makeStylePickerHeading("Custom");
+    customStyles.forEach((custom: CustomStyleDef) => {
+      const ref = toCustomStyleId(custom.id);
+      makeStylePickerRow(customStyleLabel(custom.name), state.playback.style === ref, () =>
+        app.setPlayback({ style: ref }),
+      );
+    });
+  }
+}
+
+readoutStyleEl.addEventListener("click", () => {
+  if (stylePickerEl.hidden) {
+    renderStylePicker();
+    stylePickerEl.hidden = false;
+  } else stylePickerEl.hidden = true;
+});
+document.addEventListener("click", (e: MouseEvent) => {
+  if (stylePickerEl.hidden) return;
+  if (readoutStyleEl.contains(e.target as Node) || stylePickerEl.contains(e.target as Node)) return;
+  stylePickerEl.hidden = true;
+});
+
+// ── Custom Styles: Setup list ─────────────────────────────────────────────
+
+function renderCustomStyleRows(): void {
+  customStyleRowsEl.innerHTML = "";
+  const styles = app.getCustomStyles();
+
+  if (styles.length === 0) {
+    customStyleRowsEl.appendChild(
+      Object.assign(document.createElement("div"), {
+        className: "empty-presets",
+        textContent: "No custom styles yet.",
+      }),
+    );
+    return;
+  }
+
+  styles.forEach((custom: CustomStyleDef) => {
+    const row = document.createElement("div");
+    row.className = "section-row";
+
+    const nameEl = Object.assign(document.createElement("span"), {
+      className: "user-preset-name",
+      textContent: custom.name,
+    });
+
+    const editBtn = Object.assign(document.createElement("button"), {
+      type: "button",
+      className: "icon-btn",
+      textContent: "✎",
+    });
+    editBtn.setAttribute("aria-label", `Edit ${custom.name}`);
+    editBtn.addEventListener("click", () =>
+      openStyleEditor(
+        {
+          name: custom.name,
+          simple: styleVariantToDraft(custom.simple),
+          busy: styleVariantToDraft(custom.busy),
+        },
+        custom.id,
+      ),
+    );
+
+    const dupBtn = Object.assign(document.createElement("button"), {
+      type: "button",
+      className: "icon-btn",
+      textContent: "⧉",
+    });
+    dupBtn.setAttribute("aria-label", `Duplicate ${custom.name}`);
+    dupBtn.addEventListener("click", () =>
+      openStyleEditor(
+        {
+          name: `${custom.name} copy`,
+          simple: styleVariantToDraft(custom.simple),
+          busy: styleVariantToDraft(custom.busy),
+        },
+        null,
+      ),
+    );
+
+    const delBtn = Object.assign(document.createElement("button"), {
+      type: "button",
+      className: "icon-btn",
+      textContent: "×",
+    });
+    delBtn.setAttribute("aria-label", `Delete ${custom.name}`);
+    delBtn.addEventListener("click", () => {
+      if (!window.confirm(`Delete "${custom.name}"?`)) return;
+      app.deleteCustomStyle(custom.id);
+      renderCustomStyleRows();
+    });
+
+    row.append(nameEl, editBtn, dupBtn, delBtn);
+    customStyleRowsEl.appendChild(row);
+  });
+}
+
+addCustomStyleEl.addEventListener("click", () =>
+  openStyleEditor(
+    { name: "", simple: makeBlankStyleVariantDraft(), busy: makeBlankStyleVariantDraft() },
+    null,
+  ),
+);
+
+// ── Custom Styles: sequencer grid editor ──────────────────────────────────
+
+interface StyleEditorDraft {
+  name: string;
+  simple: StyleVariantDraft;
+  busy: StyleVariantDraft;
+}
+
+let _styleEditorDraft: StyleEditorDraft | null = null;
+let _styleEditorEditingId: string | null = null;
+let _styleEditorTab: "simple" | "busy" = "simple";
+let _styleEditorPreviewing = false;
+
+function openStyleEditor(draft: StyleEditorDraft, editingId: string | null): void {
+  _styleEditorDraft = draft;
+  _styleEditorEditingId = editingId;
+  _styleEditorTab = "simple";
+  _styleEditorPreviewing = false;
+  styleEditorPreviewEl.textContent = "▶ Preview";
+  styleEditorTitleEl.textContent = editingId ? "Edit Custom Style" : "New Custom Style";
+  styleEditorNameEl.value = draft.name;
+  styleEditorDeleteEl.hidden = editingId === null;
+  renderStyleEditorTabs();
+  renderStyleEditorGrid();
+  styleEditorSheetEl.showModal();
+  setTimeout(() => {
+    styleEditorNameEl.focus();
+    styleEditorNameEl.select();
+  }, 50);
+}
+
+// Fires for every dismissal path (Save, Delete, the × button, ESC, clicking
+// outside) — a single place to guarantee a stray loop never keeps playing
+// after the sheet is gone, rather than stopping it in each handler.
+styleEditorSheetEl.addEventListener("close", () => {
+  if (_styleEditorPreviewing) app.previewCustomStyleStop();
+  _styleEditorPreviewing = false;
+});
+
+styleEditorPreviewEl.addEventListener("click", async () => {
+  if (!_styleEditorDraft) return;
+  if (_styleEditorPreviewing) {
+    app.previewCustomStyleStop();
+    _styleEditorPreviewing = false;
+    styleEditorPreviewEl.textContent = "▶ Preview";
+    return;
+  }
+  await app.previewCustomStyleStart(_styleEditorDraft[_styleEditorTab]);
+  _styleEditorPreviewing = true;
+  styleEditorPreviewEl.textContent = "■ Stop";
+});
+
+function renderStyleEditorTabs(): void {
+  styleEditorTabSimpleEl.classList.toggle("active", _styleEditorTab === "simple");
+  styleEditorTabBusyEl.classList.toggle("active", _styleEditorTab === "busy");
+  if (!_styleEditorDraft) return;
+  const simpleBlank = isBlankStyleVariantDraft(_styleEditorDraft.simple);
+  const busyBlank = isBlankStyleVariantDraft(_styleEditorDraft.busy);
+  styleEditorTabSimpleEl.textContent = simpleBlank ? "Simple (empty)" : "Simple";
+  styleEditorTabBusyEl.textContent = busyBlank ? "Busy (empty)" : "Busy";
+  // Nothing to save if neither variant has a single hit anywhere — the
+  // fillBlankVariantFromOther mirror only helps when at least one side has
+  // real content to mirror from.
+  styleEditorSaveEl.disabled = simpleBlank && busyBlank;
+}
+
+function appendDrumRow(instrument: DrumInstrumentName, pattern: DrumPattern): void {
+  styleEditorGridEl.appendChild(
+    Object.assign(document.createElement("div"), {
+      className: "seq-row-label",
+      textContent: CUSTOM_STYLE_INSTRUMENT_LABELS[instrument],
+    }),
+  );
+  pattern.forEach((step, i) => {
+    const cell = Object.assign(document.createElement("button"), {
+      type: "button",
+      className: "seq-cell",
+    });
+    cell.classList.toggle("on", step === 1);
+    cell.classList.toggle("beat-start", i % 4 === 0);
+    cell.addEventListener("click", () => {
+      const turningOn = pattern[i] === 0;
+      pattern[i] = turningOn ? 1 : 0;
+      cell.classList.toggle("on", turningOn);
+      // Suppressed while the loop is playing — the loop will hit this exact
+      // step itself within a bar, so a single-tap preview on top of it just
+      // sounds like a doubled/flammed hit rather than useful feedback.
+      if (turningOn && !_styleEditorPreviewing) audio.previewInstrument(instrument);
+      audio.previewUpdateDrumStep(instrument, i, pattern[i]!);
+      renderStyleEditorTabs();
+    });
+    styleEditorGridEl.appendChild(cell);
+  });
+}
+
+function appendBassRow(pattern: BassPattern): void {
+  styleEditorGridEl.appendChild(
+    Object.assign(document.createElement("div"), {
+      className: "seq-row-label",
+      textContent: "Bass",
+    }),
+  );
+  pattern.forEach((step, i) => {
+    const cell = Object.assign(document.createElement("button"), {
+      type: "button",
+      className: "seq-cell",
+      textContent: step === 0 ? "" : String(step),
+    });
+    cell.classList.toggle("on", step !== 0);
+    cell.classList.toggle("beat-start", i % 4 === 0);
+    cell.addEventListener("click", () => {
+      pattern[i] = cycleBassStep(pattern[i]!);
+      cell.textContent = pattern[i] === 0 ? "" : String(pattern[i]);
+      cell.classList.toggle("on", pattern[i] !== 0);
+      audio.previewUpdateBassStep(i, pattern[i]!);
+      renderStyleEditorTabs();
+    });
+    styleEditorGridEl.appendChild(cell);
+  });
+}
+
+function renderStyleEditorGrid(): void {
+  if (!_styleEditorDraft) return;
+  const variant = _styleEditorDraft[_styleEditorTab];
+  styleEditorGridEl.innerHTML = "";
+  CUSTOM_STYLE_INSTRUMENTS.forEach((inst) => appendDrumRow(inst, variant[inst]));
+  appendBassRow(variant.bass);
+}
+
+async function switchStyleEditorTab(tab: "simple" | "busy"): Promise<void> {
+  _styleEditorTab = tab;
+  renderStyleEditorTabs();
+  renderStyleEditorGrid();
+  // Different tab = different arrays entirely, so a running preview must
+  // restart against them rather than keep looping the old tab's patterns.
+  if (_styleEditorPreviewing && _styleEditorDraft) {
+    await app.previewCustomStyleStart(_styleEditorDraft[tab]);
+  }
+}
+
+styleEditorTabSimpleEl.addEventListener("click", () => void switchStyleEditorTab("simple"));
+styleEditorTabBusyEl.addEventListener("click", () => void switchStyleEditorTab("busy"));
+
+styleEditorSaveEl.addEventListener("click", () => {
+  if (!_styleEditorDraft) return;
+  // Whichever variant was never touched (still entirely blank) mirrors the
+  // other rather than saving silent — see docs-internal/custom-styles.html.
+  const { simple, busy } = fillBlankVariantFromOther(_styleEditorDraft);
+  const def = {
+    name: styleEditorNameEl.value.trim() || "Untitled Style",
+    stepsPerBar: 16,
+    bars: 1,
+    simple: draftToStyleVariant(simple),
+    busy: draftToStyleVariant(busy),
+  };
+  if (_styleEditorEditingId) app.updateCustomStyle(_styleEditorEditingId, def);
+  else app.saveCustomStyle(def);
+  styleEditorSheetEl.close();
+  renderCustomStyleRows();
+});
+
+styleEditorDeleteEl.addEventListener("click", () => {
+  if (!_styleEditorEditingId) return;
+  if (!window.confirm(`Delete "${_styleEditorDraft?.name ?? "this style"}"?`)) return;
+  app.deleteCustomStyle(_styleEditorEditingId);
+  styleEditorSheetEl.close();
+  renderCustomStyleRows();
+});
+
 // ── Tempo picker ─────────────────────────────────────────────────────────
 
 const tempoPickerEl = $("tempo-picker") as HTMLDivElement;
@@ -969,9 +1321,6 @@ document
 // ── Readout pill cycling ──────────────────────────────────────────────────
 
 const cycleOpt = <T>(opts: readonly T[], cur: T): T => opts[(opts.indexOf(cur) + 1) % opts.length]!;
-readoutStyleEl.addEventListener("click", () =>
-  app.setPlayback({ style: cycleOpt(STYLE_OPTIONS, app.getState().playback.style) }),
-);
 readoutBassEl.addEventListener("click", () =>
   app.setPlayback({ bass: cycleOpt(BASS_OPTIONS, app.getState().playback.bass) }),
 );

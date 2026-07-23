@@ -420,6 +420,137 @@
         animation: tap-flash 0.35s ease-out forwards;
       }
 
+      .style-picker-group {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+      }
+      #style-picker {
+        position: absolute;
+        top: calc(100% + 0.55rem);
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+        background: var(--surface-alt);
+        border: 1px solid var(--border);
+        border-radius: 0.5rem;
+        padding: 0.5rem;
+        min-width: 13rem;
+        max-height: 60vh;
+        overflow-y: auto;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        z-index: 5;
+      }
+      [data-theme="dark"] #style-picker {
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+      }
+      #style-picker::before {
+        content: "";
+        position: absolute;
+        top: -0.35rem;
+        left: 50%;
+        transform: translateX(-50%) rotate(45deg);
+        width: 0.6rem;
+        height: 0.6rem;
+        background: var(--surface-alt);
+        border-left: 1px solid var(--border);
+        border-top: 1px solid var(--border);
+      }
+      #style-picker[hidden] {
+        display: none;
+      }
+      .style-picker-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        padding: 0.45rem 0.6rem;
+        border-radius: 0.4rem;
+        border: none;
+        background: none;
+        color: var(--text);
+        font-size: 0.9rem;
+        font-family: inherit;
+        cursor: pointer;
+        text-align: left;
+        width: 100%;
+      }
+      .style-picker-row:hover,
+      .style-picker-row:active {
+        background: var(--surface-alt-active);
+      }
+      .style-picker-row.active {
+        background: var(--accent);
+        color: var(--accent-text);
+      }
+      .style-picker-heading {
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--text-3);
+        padding: 0.5rem 0.6rem 0.25rem;
+      }
+      .style-picker-heading:first-child {
+        padding-top: 0.15rem;
+      }
+
+      /* ── Custom style editor ── */
+      .seq-grid {
+        display: grid;
+        grid-template-columns: 4.5rem repeat(16, minmax(1.5rem, 1fr));
+        gap: 0.2rem;
+        overflow-x: auto;
+        margin: 0.9rem 0;
+        padding-bottom: 0.3rem;
+      }
+      .seq-row-label {
+        display: flex;
+        align-items: center;
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--text-2);
+        white-space: nowrap;
+        padding-right: 0.4rem;
+      }
+      .seq-cell {
+        aspect-ratio: 1;
+        min-width: 1.5rem;
+        border: 1px solid var(--border);
+        border-radius: 0.3rem;
+        background: var(--surface-alt);
+        cursor: pointer;
+        padding: 0;
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--text-2);
+        font-family: inherit;
+      }
+      .seq-cell:active {
+        background: var(--surface-alt-active);
+      }
+      .seq-cell.on {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: var(--accent-text);
+      }
+      .seq-cell.beat-start {
+        border-left: 2px solid var(--text-4);
+      }
+      .style-editor-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 1rem;
+        gap: 0.5rem;
+      }
+      .style-editor-actions-right {
+        display: flex;
+        gap: 0.5rem;
+      }
+
       #status {
         margin-top: 0.75rem;
         text-align: center;
@@ -1109,6 +1240,10 @@
       .primary-btn:hover {
         opacity: 0.85;
       }
+      .primary-btn:disabled {
+        opacity: 0.3;
+        cursor: default;
+      }
       .top-icon-link {
         display: inline-flex;
         align-items: center;
@@ -1264,7 +1399,12 @@
         ><span class="beat-dot"></span>
       </div>
       <div id="readout">
-        <button type="button" class="readout-btn" id="readout-style">Funk</button>
+        <span class="style-picker-group">
+          <button type="button" class="readout-btn" id="readout-style">Funk</button>
+          <div id="style-picker" hidden>
+            <div id="style-picker-rows"></div>
+          </div>
+        </span>
         <button type="button" class="readout-btn" id="readout-bass">Busy</button>
         <button type="button" class="readout-btn" id="readout-drums">Simple</button>
         <button type="button" class="readout-btn" id="readout-voicing">Lead/loop</button>
@@ -1348,6 +1488,14 @@
             Section numbers (e.g. <code>1 2 1 3</code>). <code>2:4</code> = section&nbsp;2 four
             times.
           </div>
+        </section>
+
+        <section class="setup-group">
+          <h3 class="setup-group-title">Custom Styles</h3>
+          <div id="custom-style-rows" class="section-rows"></div>
+          <button id="add-custom-style" type="button" class="preset-btn add-section-btn">
+            + New Custom Style
+          </button>
         </section>
 
         <section class="setup-group">
@@ -1481,6 +1629,42 @@
           ><input id="preset-name-default" type="checkbox" /> Set as default</label
         >
         <button id="preset-name-submit" type="button" class="primary-btn">Save Preset</button>
+      </div>
+    </dialog>
+
+    <dialog id="style-editor-sheet">
+      <div class="sheet-header">
+        <h2 id="style-editor-title">New Custom Style</h2>
+        <button class="close-btn" type="button" data-close="style-editor-sheet">×</button>
+      </div>
+      <div class="sheet-body">
+        <label class="field-label" for="style-editor-name">Name</label>
+        <input
+          id="style-editor-name"
+          type="text"
+          class="text-input"
+          placeholder="e.g. My Bossa Groove"
+          autocomplete="off"
+          autocapitalize="off"
+          autocorrect="off"
+          spellcheck="false"
+        />
+        <label class="field-label">Variant</label>
+        <div class="option-group" id="style-editor-tabs">
+          <button type="button" class="option-btn" id="style-editor-tab-simple">Simple</button>
+          <button type="button" class="option-btn" id="style-editor-tab-busy">Busy</button>
+        </div>
+        <div id="style-editor-grid" class="seq-grid"></div>
+        <div class="hint">
+          Tap a drum cell to add or remove a hit. Tap a bass cell to cycle root → 3rd → 5th → rest.
+        </div>
+        <div class="style-editor-actions">
+          <button id="style-editor-preview" type="button" class="icon-btn">▶ Preview</button>
+          <div class="style-editor-actions-right">
+            <button id="style-editor-delete" type="button" class="icon-btn" hidden>Delete</button>
+            <button id="style-editor-save" type="button" class="primary-btn">Save</button>
+          </div>
+        </div>
       </div>
     </dialog>
 

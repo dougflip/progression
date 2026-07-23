@@ -4,6 +4,17 @@
  */
 
 import { STYLE_OPTIONS, BASS_OPTIONS, DRUM_OPTIONS, VOICING_OPTIONS, STYLES } from "./styles.js";
+import {
+  getCustomStyles as getStoredCustomStyles,
+  saveCustomStyle as saveStoredCustomStyle,
+  updateCustomStyle as updateStoredCustomStyle,
+  deleteCustomStyle as deleteStoredCustomStyle,
+  resolveStyleDef,
+  isCustomStyleRef,
+  toCustomStyleId,
+  type CustomStyleDef,
+  type StyleVariantDraft,
+} from "./custom-styles.js";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -105,6 +116,8 @@ export interface StyleDef {
   busy: StyleVariant;
 }
 
+export type DrumInstrumentName = keyof Omit<StyleVariant, "bass">;
+
 export interface MixSettings {
   chordVol: number;
   bassVol: number;
@@ -190,6 +203,22 @@ export interface AudioEngine {
   copyLoop(id: string): Promise<string | null>;
   sweepOrphanedLoops(keepIds: string[]): Promise<void>;
   setLoopOffsetMs(ms: number): void;
+  // Fires immediately for audition (Tone.now()), independent of the
+  // Transport/running sequences — used by the style editor's grid taps.
+  previewInstrument(name: DrumInstrumentName): void;
+  // Loops the editor's current draft continuously against a fixed C major
+  // triad (no real chord/key context exists in the editor) — takes the
+  // draft directly, not a converted StyleDef, matching the shape
+  // previewUpdateDrumStep/previewUpdateBassStep patch live below.
+  previewStyleLoopStart(draft: StyleVariantDraft, tempo: number): Promise<void>;
+  previewStyleLoopStop(): void;
+  // Patches a single step of an already-running preview loop in place, via
+  // Tone.Sequence's proxied `events` array — mutating the draft's own arrays
+  // (what the grid already does) does NOT reach a running loop on its own,
+  // since Tone.Sequence captures event values once at construction, not on
+  // every pass. No-ops if no preview loop is currently running.
+  previewUpdateDrumStep(instrument: DrumInstrumentName, index: number, hit: number): void;
+  previewUpdateBassStep(index: number, step: BassStep): void;
 }
 
 export interface PlaybackSettings {
@@ -434,6 +463,23 @@ export {
   VOICING_PILL_LABELS,
   STYLES,
 } from "./styles.js";
+
+export {
+  type CustomStyleDef,
+  toCustomStyleId,
+  isCustomStyleRef,
+  customStyleIdFromRef,
+  CUSTOM_STYLE_INSTRUMENTS,
+  type CustomStyleInstrument,
+  CUSTOM_STYLE_INSTRUMENT_LABELS,
+  type StyleVariantDraft,
+  makeBlankStyleVariantDraft,
+  styleVariantToDraft,
+  draftToStyleVariant,
+  cycleBassStep,
+  isBlankStyleVariantDraft,
+  fillBlankVariantFromOther,
+} from "./custom-styles.js";
 
 // ─── Token utilities ─────────────────────────────────────────────────────────
 
@@ -844,7 +890,16 @@ export function parseUrl(searchString: string): AppState {
       bars: (BARS_OPTIONS as readonly number[]).includes(bars) ? bars : DEFAULTS.playback.bars,
       cycle: (CYCLE_OPTIONS as readonly string[]).includes(cycle) ? cycle : DEFAULTS.playback.cycle,
       customCycleKeys,
-      style: (STYLE_OPTIONS as readonly string[]).includes(style) ? style : DEFAULTS.playback.style,
+      // A custom style ref (e.g. "custom:abc123") must survive here even though
+      // it's not in STYLE_OPTIONS — the URL is synced continuously during live
+      // play (see syncUrl in app.ts), not just on share, so rejecting the format
+      // here would silently revert a custom selection on the next refresh.
+      // Whether the id actually exists locally is resolveStyleDef's job, not
+      // this one's.
+      style:
+        (STYLE_OPTIONS as readonly string[]).includes(style) || isCustomStyleRef(style)
+          ? style
+          : DEFAULTS.playback.style,
       bass: (BASS_OPTIONS as readonly string[]).includes(bass) ? bass : DEFAULTS.playback.bass,
       drums: (DRUM_OPTIONS as readonly string[]).includes(drums) ? drums : DEFAULTS.playback.drums,
       voicing: (VOICING_OPTIONS as readonly string[]).includes(voicing)
@@ -1036,7 +1091,12 @@ export function makeProgressionPlayer(config: PlayerConfig) {
         );
         config.audio!.rebuild({
           chordSequence: chords,
-          style: STYLES[_state.playback.style]!,
+          style: resolveStyleDef(
+            _state.playback.style,
+            _getCustomStyles(),
+            STYLES,
+            STYLES[DEFAULTS.playback.style]!,
+          ),
           bassVariant: _state.playback.bass,
           drumVariant: _state.playback.drums,
           voicing: _state.playback.voicing,
@@ -1122,7 +1182,12 @@ export function makeProgressionPlayer(config: PlayerConfig) {
     await config.audio!.start({
       chordSequence: chords,
       tempo: _state.playback.tempo,
-      style: STYLES[_state.playback.style]!,
+      style: resolveStyleDef(
+        _state.playback.style,
+        _getCustomStyles(),
+        STYLES,
+        STYLES[DEFAULTS.playback.style]!,
+      ),
       bassVariant: _state.playback.bass,
       drumVariant: _state.playback.drums,
       voicing: _state.playback.voicing,
@@ -1183,6 +1248,45 @@ export function makeProgressionPlayer(config: PlayerConfig) {
     } catch {
       return [];
     }
+  }
+
+  function _getCustomStyles(): CustomStyleDef[] {
+    return getStoredCustomStyles(config);
+  }
+
+  function _saveCustomStyle(def: Omit<CustomStyleDef, "id">): CustomStyleDef {
+    return saveStoredCustomStyle(config, def);
+  }
+
+  function _updateCustomStyle(id: string, patch: Partial<Omit<CustomStyleDef, "id">>): void {
+    updateStoredCustomStyle(config, id, patch);
+    // The edited style's content changed, but playback.style (still
+    // "custom:<id>") didn't — resolveStyleDef needs a rebuild to pick up the
+    // new pattern data, the same way changing the style pill already does.
+    if (config.audio?.isPlaying() && _state.playback.style === toCustomStyleId(id)) {
+      _scheduleRebuild();
+    }
+  }
+
+  function _deleteCustomStyle(id: string): void {
+    deleteStoredCustomStyle(config, id);
+    // Mirrors deleteUserPreset's guard on DEFAULT_PRESET_STORAGE_KEY — don't
+    // leave playback pointed at a dangling id.
+    if (_state.playback.style === toCustomStyleId(id)) {
+      _setPlayback({ style: DEFAULTS.playback.style });
+    }
+  }
+
+  // Pausing (not stopping) reuses the normal resume-later mechanism — closing
+  // the editor after a preview leaves the song exactly as resumable as any
+  // other pause.
+  async function _previewCustomStyleStart(draft: StyleVariantDraft): Promise<void> {
+    if (config.audio?.isPlaying()) _pausePlayback();
+    await config.audio?.previewStyleLoopStart(draft, _state.playback.tempo);
+  }
+
+  function _previewCustomStyleStop(): void {
+    config.audio?.previewStyleLoopStop();
   }
 
   return {
@@ -1305,6 +1409,12 @@ export function makeProgressionPlayer(config: PlayerConfig) {
     },
 
     getUserPresets: _getUserPresets,
+    getCustomStyles: _getCustomStyles,
+    saveCustomStyle: _saveCustomStyle,
+    updateCustomStyle: _updateCustomStyle,
+    deleteCustomStyle: _deleteCustomStyle,
+    previewCustomStyleStart: _previewCustomStyleStart,
+    previewCustomStyleStop: _previewCustomStyleStop,
 
     getLoadedPreset: (): UserPreset | null => _loadedPreset,
 

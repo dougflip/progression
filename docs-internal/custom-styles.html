@@ -1,0 +1,1135 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Custom Styles — feature plan</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      body {
+        max-width: 780px;
+        margin: 2rem auto;
+        padding: 0 1.5rem 4rem;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+        line-height: 1.55;
+      }
+      h1 {
+        font-size: 1.6rem;
+        margin-bottom: 0.25rem;
+      }
+      h2 {
+        margin-top: 2.5rem;
+        border-bottom: 1px solid #8884;
+        padding-bottom: 0.3rem;
+      }
+      h3 {
+        margin-top: 1.5rem;
+      }
+      .subtitle {
+        color: #888;
+        margin-top: 0;
+      }
+      code,
+      pre {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 0.9em;
+      }
+      pre {
+        background: #8881;
+        border: 1px solid #8884;
+        border-radius: 6px;
+        padding: 0.75rem 1rem;
+        overflow-x: auto;
+      }
+      code {
+        background: #8881;
+        padding: 0.1em 0.35em;
+        border-radius: 4px;
+      }
+      pre code {
+        background: none;
+        padding: 0;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 1rem 0;
+      }
+      th,
+      td {
+        text-align: left;
+        border: 1px solid #8884;
+        padding: 0.4rem 0.6rem;
+        vertical-align: top;
+      }
+      th {
+        background: #8881;
+      }
+      .file {
+        font-weight: 600;
+      }
+      .note {
+        border-left: 3px solid #e8a33d;
+        background: #e8a33d1a;
+        padding: 0.6rem 1rem;
+        border-radius: 0 6px 6px 0;
+        margin: 1rem 0;
+      }
+      .open-q {
+        border-left: 3px solid #4d8ee0;
+        background: #4d8ee01a;
+        padding: 0.6rem 1rem;
+        border-radius: 0 6px 6px 0;
+        margin: 0.5rem 0;
+      }
+      .decided {
+        border-left: 3px solid #3fa55b;
+        background: #3fa55b1a;
+        padding: 0.6rem 1rem;
+        border-radius: 0 6px 6px 0;
+        margin: 0.5rem 0;
+      }
+      .tradeoff {
+        border-left: 3px solid #d1483f;
+        background: #d1483f1a;
+        padding: 0.6rem 1rem;
+        border-radius: 0 6px 6px 0;
+        margin: 0.5rem 0;
+      }
+      .goal-box {
+        border: 1px solid #8886;
+        border-radius: 10px;
+        padding: 0.9rem 1.1rem;
+        margin: 0.75rem 0;
+        background: #8880a;
+      }
+      .goal-box h4 {
+        margin: 0 0 0.6rem;
+        font-size: 1rem;
+      }
+      ul.tight li {
+        margin-bottom: 0.35rem;
+      }
+      .status {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #888;
+      }
+      .mockup-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        padding: 0.6rem 0.8rem;
+        border: 1px solid #8886;
+        border-radius: 10px;
+        background: #8880a;
+        margin: 1rem 0;
+      }
+      .mockup-btn {
+        border: 1px solid #8886;
+        border-radius: 8px;
+        padding: 0.45rem 0.7rem;
+        background: #8881;
+        font-size: 0.9rem;
+        white-space: nowrap;
+      }
+      .mockup-btn.primary {
+        border-color: #4d8ee0;
+        background: #4d8ee022;
+      }
+      .mockup-btn.danger {
+        border-color: #d1483f;
+        background: #d1483f1a;
+      }
+      .mockup-group {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+      }
+      .caption {
+        font-size: 0.85rem;
+        color: #888;
+        margin: 0.3rem 0 1.25rem;
+      }
+
+      /* --- mockup-specific styling, this doc only --- */
+      .picker-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.55rem 0.8rem;
+        border-radius: 7px;
+        font-size: 0.95rem;
+      }
+      .picker-row + .picker-row {
+        margin-top: 0.15rem;
+      }
+      .picker-row.active {
+        background: #4d8ee022;
+        font-weight: 600;
+      }
+      .picker-row .tag {
+        font-size: 0.75rem;
+        color: #888;
+        border: 1px solid #8886;
+        border-radius: 5px;
+        padding: 0.1rem 0.4rem;
+      }
+      .picker-row .tag.custom {
+        color: #9b6bd6;
+        border-color: #9b6bd688;
+      }
+      .setup-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #8883;
+        font-size: 0.95rem;
+      }
+      .setup-row:last-of-type {
+        border-bottom: none;
+      }
+      .setup-row .row-actions {
+        display: flex;
+        gap: 0.35rem;
+      }
+      .setup-row .row-actions .mockup-btn {
+        padding: 0.3rem 0.55rem;
+        font-size: 0.8rem;
+      }
+      .tab-row {
+        display: flex;
+        gap: 0.4rem;
+        margin-bottom: 0.75rem;
+      }
+      .tab {
+        padding: 0.4rem 1rem;
+        border: 1px solid #8886;
+        border-bottom: none;
+        border-radius: 8px 8px 0 0;
+        color: #888;
+        font-size: 0.9rem;
+      }
+      .tab.active {
+        background: #4d8ee022;
+        border-color: #4d8ee0;
+        color: inherit;
+        font-weight: 600;
+      }
+      table.seq-table {
+        margin: 0 0 0.5rem;
+      }
+      table.seq-table th,
+      table.seq-table td {
+        border: 1px solid #8883;
+        padding: 0.3rem 0;
+        text-align: center;
+        font-size: 0.85rem;
+      }
+      table.seq-table th.beat-head {
+        background: #8882;
+        font-weight: 600;
+      }
+      table.seq-table td.inst-label,
+      table.seq-table th.inst-label {
+        text-align: left;
+        padding-left: 0.6rem;
+        font-weight: 600;
+        white-space: nowrap;
+        border: none;
+        background: none;
+      }
+      table.seq-table td.step {
+        width: 1.9rem;
+        cursor: pointer;
+        color: #8886;
+      }
+      table.seq-table td.step.on {
+        background: #4d8ee033;
+        color: #4d8ee0;
+        font-weight: 700;
+      }
+      table.seq-table td.step.downbeat {
+        border-left: 2px solid #8886;
+      }
+      table.seq-table td.step.r {
+        background: #4d8ee022;
+        color: #4d8ee0;
+        font-weight: 700;
+      }
+      table.seq-table td.step.third {
+        background: #9b6bd622;
+        color: #9b6bd6;
+        font-weight: 700;
+      }
+      table.seq-table td.step.fifth {
+        background: #e8a33d22;
+        color: #e8a33d;
+        font-weight: 700;
+      }
+      .legend {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        font-size: 0.8rem;
+        color: #888;
+        margin: 0.4rem 0 1rem;
+      }
+      .legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+      }
+      .swatch {
+        width: 0.8rem;
+        height: 0.8rem;
+        border-radius: 3px;
+        display: inline-block;
+      }
+      .name-field-mockup {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.9rem;
+      }
+      .name-field-mockup input.mockup-input {
+        flex: 1;
+        border: 1px solid #8886;
+        border-radius: 8px;
+        padding: 0.4rem 0.7rem;
+        background: #8881;
+        font-size: 0.9rem;
+        color: inherit;
+      }
+    </style>
+  </head>
+  <body>
+    <p class="status">
+      Phases 1–5 built and tested — feature complete, pending manual verification
+    </p>
+    <h1>Custom Styles</h1>
+    <p class="subtitle">
+      Let players define their own drum beat + bass line — a <code>simple</code> and a
+      <code>busy</code> variant, same shape as the four built-in styles — instead of being limited
+      to <code>pop</code>/<code>funk</code>/<code>ballad</code>/<code>rock</code>. Built as four
+      independent phases — data structure, storage, playback wiring, and CRUD UI — each shipped and
+      tested before the next began. This doc tracks the plan and now the as-built reality; wherever
+      they diverged, a note explains why.
+    </p>
+
+    <h2 id="background">Background</h2>
+    <p>
+      Today's styles are hardcoded in <code>src/styles.ts</code> as <code>StyleDef</code> objects.
+      Each has a <code>simple</code> and <code>busy</code> variant; each variant is a set of 16-step
+      drum arrays (one bar of 16th notes, <code>1</code> = hit / <code>0</code> = rest) plus a
+      <code>bass</code> phrase keyed by chord quality (<code>major</code>/<code>minor</code>, each
+      step <code>R</code>/<code>3</code>/<code>5</code>/rest):
+    </p>
+    <pre><code>pop: {
+  simple: {
+    kick:  [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
+    snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+    hat:   [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
+    bass: {
+      major: ["R",0,0,0, "R",0,0,0, "5",0,0,0, "R",0,0,0],
+      minor: ["R",0,0,0, "R",0,0,0, "R",0,0,0, "R",0,0,0],
+    },
+  },
+  busy: { /* same shape, denser hits */ },
+}</code></pre>
+    <p>
+      This is exactly the shape the user's "simple + busy" idea already describes — no new music
+      theory needed, just a way for a player to author their own version of the object above. Three
+      things make this feature unusually cheap to build on top of the existing architecture:
+    </p>
+    <ul class="tight">
+      <li>
+        The audio engine (<code>progression-audio.ts</code>) only ever consumes a resolved
+        <code>StyleDef</code> (<code>AudioStartOpts.style</code>) — it has no
+        <code>pop</code>/<code>funk</code>-specific logic anywhere. Anything that produces a valid
+        <code>StyleDef</code> shape plays with zero engine changes.
+      </li>
+      <li>
+        A storage-agnostic <code>persist</code>/<code>load</code> callback pair already flows
+        through <code>PlayerConfig</code>, used today for user-saved presets
+        (<code>saveUserPreset</code>/<code>getUserPresets</code>/etc. — a JSON array under one
+        localStorage key). Custom styles reuse the exact same pattern.
+      </li>
+      <li>
+        The key-picker popup (<code>#key-grid</code>, <code>.key-chip.active</code> toggle,
+        <code>renderCustomCycleEditor</code>'s reorderable row list) is a directly reusable UI
+        pattern for both a style picker popup and parts of the grid editor.
+      </li>
+    </ul>
+
+    <h2 id="decisions">Decisions</h2>
+    <div class="decided">
+      <strong>Storage: localStorage first, not IndexedDB.</strong> Custom styles are small JSON
+      (arrays of numbers/strings) — the same shape as user presets, which already go through
+      <code>persist</code>/<code>load</code>. Access is centralized behind
+      <code>getCustomStyles</code>/<code>saveCustomStyle</code>/<code>updateCustomStyle</code>/<code
+        >deleteCustomStyle</code
+      >
+      so nothing else ever touches storage directly — a later move to IndexedDB (if custom styles
+      start embedding real audio, or the list grows large) becomes a contained, single-module change
+      rather than a rewrite. The looper's <code>progression-looper</code> IndexedDB store is the
+      working precedent to copy if/when that day comes.
+    </div>
+    <div class="decided">
+      <strong>Selection UI: repurpose the existing style pill, don't add a new one.</strong>
+      <code>#readout-style</code> is currently a plain button that cycles forward through
+      <code>STYLE_OPTIONS</code> on tap (<code>src/app.ts:972-974</code>, the same
+      <code>cycleOpt</code> mechanism as the bass/drums/voicing/bars/cycle pills). Its click handler
+      changes from "cycle to next style" to "open the Custom Styles popup" — matching how the key
+      pill already opens <code>#key-picker</code> instead of cycling. Same slot in the readout row,
+      no new UI real estate; the other pills keep cycling exactly as today. See the
+      <a href="#phase-3">Phase 3 mockup</a>.
+    </div>
+    <div class="decided">
+      <strong>Editor starting point: both.</strong> "New" starts from a blank (all-rest) grid;
+      "Duplicate" copies any built-in or existing custom style's <code>simple</code>+<code
+        >busy</code
+      >
+      patterns as an editable starting point.
+    </div>
+    <div class="decided">
+      <strong>Pattern length: design for multi-bar later, don't build it now.</strong> The data
+      structure carries a <code>stepsPerBar</code>/bar-count field so a future "multi-bar grooves"
+      feature doesn't need a data migration, but Phase 1–4 only ever populate/consume 16-step, 1-bar
+      patterns — the engine doesn't change.
+    </div>
+    <div class="decided">
+      <strong
+        >Bass major/minor: keep both fields in the data structure, edit only one in the UI.</strong
+      >
+      <code>_buildBass()</code> already resolves <code>"3"</code>/<code>"5"</code> tokens to
+      <code>voiced.bassThird</code>/<code>voiced.bassFifth</code>, computed from the chord's actual
+      quality at callback time (<code>progression-audio.ts:1140,1158-1164</code>) — the major/minor
+      split isn't doing interval math, it's just which steps/degrees got hand-authored. The Phase 4
+      editor exposes a single bass grid per variant (no major/minor sub-tabs); on save, that one
+      pattern is written as two independent copies into <code>bass.major</code> and
+      <code>bass.minor</code> — not a shared reference, and not a <code>null</code> fallback. This
+      keeps <code>CustomStyleDef</code>'s bass shape byte-identical to the existing
+      <code>StyleBassPhrase</code> type (no new nullable field, no fallback branch to remember at
+      playback time), while leaving the door open for a future "edit minor separately" feature — the
+      field already holds a real, independently-editable pattern the day that ships.
+    </div>
+
+    <h2 id="phase-1">Phase 1 — data structure only</h2>
+    <p>
+      A <code>CustomStyleDef</code> shape: identity + pattern metadata, wrapping the existing
+      per-instrument drum-array and <code>StyleBassPhrase</code> shapes for
+      <code>simple</code>/<code>busy</code>. Instrument set is dynamic per variant — same as today,
+      where not every built-in style uses every instrument — drawn from the fixed list of
+      instruments actually wired to samples in the audio engine.
+    </p>
+    <pre><code>interface CustomStyleDef {
+  id: string;              // uuid
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  stepsPerBar: number;     // always 16 today; field exists for future multi-bar patterns
+  bars: number;            // always 1 today
+  simple: StyleVariant;    // reuses the existing type as-is
+  busy: StyleVariant;
+}
+
+// Instruments actually wired to samples (progression-audio.ts _sp):
+// kick, snare, hat, hatOpen, crash, ride, rideBell, tom, tom2
+// (snare2/tom3/tom4/crash-r/china exist on disk but aren't wired — out of scope, see Deferred)
+
+function toStyleDef(custom: CustomStyleDef): StyleDef {
+  return { simple: custom.simple, busy: custom.busy }; // strips metadata
+}</code></pre>
+    <p>
+      Deliverable: this compiles, plus one hand-written example value that
+      <code>toStyleDef()</code> turns into something that satisfies
+      <code>AudioStartOpts.style</code> — proof the shape is playable, with no storage and no UI.
+    </p>
+
+    <h2 id="phase-2">Phase 2 — storage, no UI</h2>
+    <p>
+      <strong>Built and tested.</strong> Mirrors
+      <code>saveUserPreset</code>/<code>_getUserPresets</code>/<code>deleteUserPreset</code> in
+      <code>progression-core.ts</code> closely — same JSON-array-under-one-key shape, same defensive
+      parse at the storage boundary. Two differences from the original sketch, both found while
+      writing the tests:
+    </p>
+    <ul class="tight">
+      <li>
+        Functions take a <code>{ persist, load }</code> pair as an explicit parameter (<code
+          >Pick&lt;PlayerConfig, "persist" | "load"&gt;</code
+        >) rather than closing over <code>config</code> — <code>custom-styles.ts</code> lives
+        outside <code>makeProgressionPlayer</code>'s closure (see the Phase 1 file-location
+        decision), so there's no <code>config</code> to close over. Keeps it storage-agnostic and
+        directly testable with the same in-memory-<code>Map</code> mock
+        <code>progression-core.test.ts</code> already uses for
+        <code>persist</code>/<code>load</code>.
+      </li>
+      <li>
+        <strong>Id generation adds a random suffix</strong> —
+        <code>Date.now().toString(36)</code> alone (the original plan, copying
+        <code>saveUserPreset</code>'s scheme) collides when two styles are saved within the same
+        millisecond. The update/delete tests below demonstrated this directly: two synchronous
+        <code>saveCustomStyle()</code> calls produced identical ids, so updating/deleting one
+        silently updated/deleted the other too. Fixed with a short <code>Math.random()</code> suffix
+        rather than <code>crypto.randomUUID()</code>, to stay a minimal change.
+      </li>
+    </ul>
+    <pre><code>type StorageConfig = Pick&lt;PlayerConfig, "persist" | "load"&gt;;
+const CUSTOM_STYLES_STORAGE_KEY = "progression-custom-styles-v1";
+
+function getCustomStyles(storage: StorageConfig): CustomStyleDef[] {
+  try {
+    return JSON.parse(storage.load(CUSTOM_STYLES_STORAGE_KEY) ?? "[]") as CustomStyleDef[];
+  } catch {
+    return [];
+  }
+}
+
+function saveCustomStyle(storage: StorageConfig, def: Omit&lt;CustomStyleDef, "id"&gt;): CustomStyleDef {
+  const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+  const created: CustomStyleDef = { ...def, id };
+  storage.persist(CUSTOM_STYLES_STORAGE_KEY, JSON.stringify([...getCustomStyles(storage), created]));
+  return created;
+}
+
+function updateCustomStyle(storage: StorageConfig, id: string, patch: Partial&lt;Omit&lt;CustomStyleDef, "id"&gt;&gt;): void {
+  const styles = getCustomStyles(storage).map((s) =&gt; (s.id === id ? { ...s, ...patch } : s));
+  storage.persist(CUSTOM_STYLES_STORAGE_KEY, JSON.stringify(styles));
+}
+
+function deleteCustomStyle(storage: StorageConfig, id: string): void {
+  storage.persist(CUSTOM_STYLES_STORAGE_KEY, JSON.stringify(getCustomStyles(storage).filter((s) =&gt; s.id !== id)));
+  // Pure storage operation — no playback-state coupling. Nothing points
+  // playback.style at a custom id until Phase 3 exists, so the "was this
+  // the active style?" guard belongs there, not here (see Edge cases).
+}</code></pre>
+    <p>
+      Deliverable: save the Phase 1 example, read it back, confirm it round-trips through JSON —
+      done in <code>src/custom-styles.test.ts</code> (60 tests passing, no UI).
+    </p>
+
+    <h2 id="phase-3">Phase 3 — playback wiring, no CRUD UI</h2>
+    <p>
+      <strong>Built and tested.</strong> Selecting a style in the new picker sets
+      <code>playback.style</code> to a value that disambiguates from built-ins (a
+      <code>custom:&lt;id&gt;</code> convention via
+      <code>toCustomStyleId</code>/<code>isCustomStyleRef</code>/<code>customStyleIdFromRef</code>
+      in <code>custom-styles.ts</code>), resolved at playback time:
+    </p>
+    <pre><code>function resolveStyleDef(
+  styleId: string,
+  customStyles: CustomStyleDef[],
+  builtins: Record&lt;string, StyleDef&gt;,
+  fallback: StyleDef,
+): StyleDef {
+  if (isCustomStyleRef(styleId)) {
+    const found = customStyles.find((s) =&gt; s.id === customStyleIdFromRef(styleId));
+    return found ? toStyleDef(found) : fallback; // e.g. a shared URL from a device without it
+  }
+  return builtins[styleId] ?? fallback;
+}</code></pre>
+    <p>
+      <code>builtins</code>/<code>fallback</code> are passed in rather than closed over
+      (<code>STYLES</code>/<code>DEFAULTS.playback.style</code>) — keeps
+      <code>custom-styles.ts</code> with zero dependency on <code>styles.ts</code> or core's
+      <code>DEFAULTS</code>, same reasoning as Phase 2's storage functions taking
+      <code>{ persist, load }</code> explicitly. <code>progression-core.ts</code> calls it at both
+      engine entry points (<code>rebuild</code> and <code>start</code>):
+    </p>
+    <pre><code>function _getCustomStyles(): CustomStyleDef[] {
+  return getStoredCustomStyles(config); // config.persist/load, already in PlayerConfig
+}
+
+// at both call sites:
+style: resolveStyleDef(_state.playback.style, _getCustomStyles(), STYLES, STYLES[DEFAULTS.playback.style]!),</code></pre>
+    <p>
+      Also exposed on the public API as <code>app.getCustomStyles()</code>, mirroring
+      <code>getUserPresets: _getUserPresets</code>. <code>bass</code>/<code>drums</code>
+      (simple/busy) selectors keep working unchanged, since the resolved <code>StyleDef</code> still
+      has <code>simple</code>/<code>busy</code> keys.
+    </p>
+    <div class="tradeoff">
+      <strong>Bug found and fixed while wiring this up:</strong> <code>parseUrl</code> validated
+      <code>style</code> against <code>STYLE_OPTIONS</code> only, resetting anything else (including
+      a <code>custom:</code> ref) back to the default. That's fine for a genuinely invalid value,
+      but the URL is synced continuously during live play via <code>syncUrl()</code> in
+      <code>app.ts</code> (<code>history.replaceState</code> on every state change, not just on
+      "Copy share link") — so selecting a custom style would've silently reverted to the default on
+      the very next browser refresh, not just when shared to another device. Fixed by accepting the
+      <code>custom:</code> format in <code>parseUrl</code> too; whether the id actually
+      <em>exists</em> locally stays <code>resolveStyleDef</code>'s job:
+    </div>
+    <pre><code>style:
+  (STYLE_OPTIONS as readonly string[]).includes(style) || isCustomStyleRef(style)
+    ? style
+    : DEFAULTS.playback.style,</code></pre>
+
+    <h3>Mockup — the "Custom Styles" picker popup</h3>
+    <p>The style pill doesn't move or get relabeled — only its tap behavior changes:</p>
+    <div class="mockup-bar">
+      <div class="mockup-group">
+        <span class="caption" style="margin: 0">Today:</span>
+        <button class="mockup-btn">🕺 Funk</button>
+      </div>
+      <span class="caption" style="margin: 0"
+        >tap → cycles forward to ⭐ Pop, then 🌙 Ballad, then ⚡ Rock…</span
+      >
+    </div>
+    <div class="mockup-bar">
+      <div class="mockup-group">
+        <span class="caption" style="margin: 0">This feature:</span>
+        <button class="mockup-btn primary">🕺 Funk ▾</button>
+      </div>
+      <span class="caption" style="margin: 0">tap → opens the picker below</span>
+    </div>
+    <div class="goal-box">
+      <h4>🕺 Funk ▾ <span style="font-weight: 400; color: #888">(tap opens this)</span></h4>
+      <p class="caption" style="margin: 0 0 0.3rem">BUILT-IN</p>
+      <div class="picker-row active"><span>⭐ Pop</span></div>
+      <div class="picker-row"><span>🕺 Funk</span></div>
+      <div class="picker-row"><span>🌙 Ballad</span></div>
+      <div class="picker-row"><span>⚡ Rock</span></div>
+      <p class="caption" style="margin: 0.5rem 0 0.3rem">CUSTOM</p>
+      <div class="picker-row"><span>🎶 My Bossa Groove</span></div>
+      <div class="picker-row"><span>🎶 Half-Time Trap</span></div>
+    </div>
+    <p class="caption">
+      Built as another readout-pill popup, but modeled on the <strong>tempo pill</strong>
+      (<code>.tempo-group</code>/<code>#tempo-picker</code>), not the key-picker — a plain
+      bubble-phase outside-click listener is enough here (no mid-click DOM detach to race, unlike
+      the custom-cycle editor's reorder buttons), so the key-picker's capture-phase workaround isn't
+      needed. "Built-in"/"Custom" section headings replaced the per-row "built-in"/"custom" tag from
+      the original sketch once headings made the tag redundant. 🎶 (not 🎵, which voicing already
+      uses) keeps custom style labels visually distinct. No create/edit affordances here — those
+      live in Setup (Phase 4).
+    </p>
+
+    <h2 id="edge-cases">Edge cases worth deciding now</h2>
+    <div class="decided">
+      <strong
+        >Deleting the currently-selected custom style resets <code>playback.style</code> to the
+        default</strong
+      >, exactly like <code>deleteUserPreset</code> already clears
+      <code>DEFAULT_PRESET_STORAGE_KEY</code> when the deleted preset was the stored default
+      (<code>progression-core.ts:1372-1382</code>). Phase 2's <code>deleteCustomStyle()</code> is a
+      pure storage function with no access to live playback state (see Phase 2) — this guard belongs
+      wherever Phase 3 wires deletion into the app (checking
+      <code>playback.style === "custom:" + id</code> before calling storage's
+      <code>deleteCustomStyle</code>), not inside the storage function itself.
+    </div>
+    <div class="decided">
+      <strong>Saving an edit to the style currently playing rebuilds live</strong> — no
+      special-casing needed. <code>resolveStyleDef()</code> re-resolves from storage on every
+      rebuild, the same way changing the style pill already triggers a rebuild today; a save from
+      the editor just needs to call that existing path if the edited id is the active one.
+    </div>
+    <div class="decided">
+      <strong>Bug found in manual testing: a brand-new style can be silently half-blank.</strong>
+      Both Simple and Busy start entirely blank, and it's easy to only fill in whichever tab
+      happened to be open — the other stays all-rest at save time. This bit immediately in practice:
+      <code>DEFAULTS.playback.bass</code> is <code>"busy"</code>, not <code>"simple"</code>, so a
+      style edited only on the Simple tab plays with no bass at all unless the Bass pill happens to
+      be set to Simple. Fixed at save time, not by changing the editor's tab model:
+      <code>isBlankStyleVariantDraft()</code> checks whether a variant is still entirely all-rest,
+      and <code>fillBlankVariantFromOther()</code> mirrors the other variant into it (independent
+      copy, not aliased) if so — if both are blank, there's nothing to mirror. The Simple/Busy tab
+      labels also show "<code>(empty)</code>" live while editing, so the gap is visible before you
+      even reach Save. Known tradeoff: a deliberately all-silent variant (if anyone ever wants one)
+      gets overwritten by this same heuristic — accepted, since built-in styles never have a fully
+      blank variant either.
+    </div>
+    <div class="note">
+      <strong>Storage size is a non-issue.</strong> Each <code>CustomStyleDef</code> is a handful of
+      16-element arrays — a few hundred bytes of JSON. Even a few hundred custom styles stay well
+      under any realistic localStorage quota; this is the inverse of the looper's reasoning for
+      using IndexedDB (blobs are binary, a few hundred KB <em>each</em>).
+    </div>
+    <div class="note">
+      <strong>New instruments added later don't break old custom styles.</strong> A
+      <code>StyleVariant</code>'s instrument keys are already optional/sparse — some built-in styles
+      omit <code>tom</code>/<code>crash</code> today. If a future change wires up e.g.
+      <code>china</code>, existing custom styles simply have no key for it (silent), same as any
+      built-in style that predates an instrument would.
+    </div>
+    <div class="tradeoff">
+      <strong>Multi-tab writes can clobber each other — an existing risk, not a new one.</strong>
+      Every save round-trips the entire array (read-all, modify, write-all) through
+      <code>persist</code>; two tabs saving concurrently means last-write-wins. Presets have this
+      exact same limitation today. Not solved here.
+    </div>
+
+    <h2 id="phase-4">Phase 4 — CRUD UI (sequencer/drum-machine editor)</h2>
+    <p>
+      <strong>Built and tested.</strong> A new "Custom Styles" section in the Setup sheet (4th
+      <code>setup-group</code>), modeled on the existing user-preset list, plus an editor sheet for
+      creating/editing one.
+    </p>
+    <div class="tradeoff">
+      <strong
+        >Scope trim: "Duplicate" only works from an existing custom style, not a built-in.</strong
+      >
+      The Setup list's rows are custom styles only — built-ins aren't listed there, so there's no
+      natural place to pick "duplicate Funk" from. Adding that would need its own source-picker UI
+      (built-ins + customs), which is real extra surface for a nice-to-have. Deferred (see below);
+      "New" (blank) and "Duplicate" (from an existing custom style) cover the core CRUD need today.
+    </div>
+    <div class="decided">
+      <strong
+        >Not a separate page — another <code>&lt;dialog&gt;</code> sheet, same as Setup/Mix.</strong
+      >
+      This app has no in-app routing or page concept at all — just two unrelated static Vite entries
+      (<code>index.html</code>, <code>docs.html</code>). Every overlay today
+      (<code>#setup-sheet</code>, <code>#mix-sheet</code>, <code>#preset-name-sheet</code>) is a
+      native <code>&lt;dialog&gt;</code> sharing one <code>.sheet-header</code>/<code
+        >.sheet-body</code
+      >
+      shell, capped at <code>max-width: 600px</code> /
+      <code>max-height: 85dvh</code> (<code>index.html:585-623</code>). A new
+      <code>#style-editor-sheet</code> dialog reuses that exact shell — the grid fits the 600px cap
+      comfortably (16 columns at ~1.8rem ≈ 460px wide), and rows scroll inside
+      <code>.sheet-body</code> like any other sheet's overflow content.
+      <strong>Access:</strong> only from Setup's "Custom Styles" section — tapping "+ New Custom
+      Style" or "Edit" on a row opens this dialog. The Phase 3 picker popup stays selection-only, no
+      edit affordance there, so there's one entry point for managing custom styles, not two.
+    </div>
+    <div class="decided">
+      <strong>Save is disabled until at least one thing is defined.</strong> Reuses the same
+      <code>isBlankStyleVariantDraft</code> check already computed for the "(empty)" tab labels —
+      <code>styleEditorSaveEl.disabled = simpleBlank &amp;&amp; busyBlank</code>. Only disabled when
+      <em>both</em> variants are completely untouched; if either has any content, Save stays
+      enabled, since <code>fillBlankVariantFromOther</code> already mirrors the untouched one at
+      save time.
+    </div>
+
+    <p>
+      No separate <code>duplicateStyle</code> function landed — "Duplicate" and "New" both just open
+      the editor with an in-memory draft; nothing is persisted until Save, so an abandoned duplicate
+      never touches storage (the original doc sketch had duplication call
+      <code>saveCustomStyle</code> immediately, which would've littered storage with never-renamed
+      copies for every "duplicate then close without editing" case):
+    </p>
+    <pre><code>interface StyleVariantDraft {
+  // one full 16-step DrumPattern per instrument (always present, blank = all-rest —
+  // unlike StyleVariant's sparse optional keys) plus a single BassPattern (not
+  // {major, minor} — see the bass decision above)
+}
+
+// "New":      { name: "", simple: makeBlankStyleVariantDraft(), busy: makeBlankStyleVariantDraft() }
+// "Edit":     { name: custom.name, simple: styleVariantToDraft(custom.simple), busy: styleVariantToDraft(custom.busy) }, editingId = custom.id
+// "Duplicate": same as Edit's draft, name suffixed " copy", editingId = null
+
+// on Save:
+const def = {
+  name, stepsPerBar: 16, bars: 1,
+  simple: draftToStyleVariant(draft.simple),
+  busy: draftToStyleVariant(draft.busy),
+};
+editingId ? app.updateCustomStyle(editingId, def) : app.saveCustomStyle(def);</code></pre>
+    <pre><code>// New AudioEngine method — fires immediately for audition (Tone.now()),
+// independent of the Transport/running sequences. No velocity param (the
+// original sketch had one) — samples are single fixed-volume players with no
+// velocity layers, and built-in playback doesn't vary hit velocity either, so
+// there was nothing for it to actually control.
+previewInstrument(name: DrumInstrumentName): void</code></pre>
+
+    <h3>Mockup — Setup sheet section</h3>
+    <div class="goal-box">
+      <h4>Custom Styles</h4>
+      <div class="setup-row">
+        <span>🎶 My Bossa Groove</span>
+        <span class="row-actions">
+          <button class="mockup-btn">Edit</button>
+          <button class="mockup-btn">Duplicate</button>
+          <button class="mockup-btn danger">Delete</button>
+        </span>
+      </div>
+      <div class="setup-row">
+        <span>🎶 Half-Time Trap</span>
+        <span class="row-actions">
+          <button class="mockup-btn">Edit</button>
+          <button class="mockup-btn">Duplicate</button>
+          <button class="mockup-btn danger">Delete</button>
+        </span>
+      </div>
+      <div class="setup-row" style="border-bottom: none; padding-top: 0.75rem">
+        <button class="mockup-btn primary">+ New Custom Style</button>
+      </div>
+    </div>
+
+    <h3>Mockup — style editor sheet</h3>
+    <div class="goal-box">
+      <div class="name-field-mockup">
+        <input class="mockup-input" type="text" value="My Bossa Groove" />
+      </div>
+      <div class="tab-row">
+        <span class="tab active">Simple</span>
+        <span class="tab">Busy</span>
+      </div>
+      <table class="seq-table">
+        <tr>
+          <th class="inst-label"></th>
+          <th class="beat-head" colspan="4">1</th>
+          <th class="beat-head" colspan="4">2</th>
+          <th class="beat-head" colspan="4">3</th>
+          <th class="beat-head" colspan="4">4</th>
+        </tr>
+        <tr>
+          <td class="inst-label">Kick</td>
+          <td class="step on downbeat">●</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step downbeat">·</td>
+          <td class="step">·</td>
+          <td class="step on">●</td>
+          <td class="step">·</td>
+          <td class="step on downbeat">●</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step downbeat">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+        </tr>
+        <tr>
+          <td class="inst-label">Snare</td>
+          <td class="step downbeat">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step on downbeat">●</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step downbeat">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step on downbeat">●</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+        </tr>
+        <tr>
+          <td class="inst-label">Hat</td>
+          <td class="step on downbeat">●</td>
+          <td class="step">·</td>
+          <td class="step on">●</td>
+          <td class="step">·</td>
+          <td class="step on downbeat">●</td>
+          <td class="step">·</td>
+          <td class="step on">●</td>
+          <td class="step">·</td>
+          <td class="step on downbeat">●</td>
+          <td class="step">·</td>
+          <td class="step on">●</td>
+          <td class="step">·</td>
+          <td class="step on downbeat">●</td>
+          <td class="step">·</td>
+          <td class="step on">●</td>
+          <td class="step">·</td>
+        </tr>
+        <tr>
+          <td class="inst-label">Ride</td>
+          <td class="step downbeat">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step downbeat">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step downbeat">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step downbeat">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+        </tr>
+      </table>
+      <div style="margin-top: 0.9rem; font-weight: 600; font-size: 0.9rem">Bass</div>
+      <table class="seq-table">
+        <tr>
+          <td class="inst-label">Bass</td>
+          <td class="step r downbeat">R</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step fifth downbeat">5</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step third downbeat">3</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step r downbeat">R</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+          <td class="step">·</td>
+        </tr>
+      </table>
+      <div class="legend">
+        <span><span class="swatch" style="background: #4d8ee0"></span> Root</span>
+        <span><span class="swatch" style="background: #9b6bd6"></span> Third</span>
+        <span><span class="swatch" style="background: #e8a33d"></span> Fifth</span>
+        <span>tap a bass cell to cycle R → 3 → 5 → rest</span>
+      </div>
+      <p class="caption" style="margin-top: -0.3rem">
+        Saved to <code>bass.major</code> and <code>bass.minor</code> as identical copies behind the
+        scenes — the engine resolves the correct interval for whichever chord quality is actually
+        playing (see Decisions).
+      </p>
+      <div class="mockup-bar" style="margin-top: 0.5rem">
+        <button class="mockup-btn danger">Delete</button>
+        <button class="mockup-btn primary">Save</button>
+      </div>
+    </div>
+    <p class="caption">
+      A dedicated <code>.seq-grid</code>/<code>.seq-cell</code> CSS grid, not
+      <code>.key-grid</code>/<code>.key-chip</code> — the key-picker's grid is a fixed 4 columns,
+      too narrow for 16 steps. All 9 wired instruments (see the Phase 1 list) always get a row, in a
+      fixed order, defaulting to blank/all-rest — unlike <code>StyleVariant</code>'s sparse optional
+      keys, the editor draft always has a full 16-step array per instrument so the grid never needs
+      to conditionally materialize a row. Drum cells are a binary toggle (tap to add/remove a hit,
+      only firing preview audio when a hit is <em>added</em>, not removed); bass cells cycle through
+      4 states since a bass step isn't just on/off. Bass gets a single row, not major/minor sub-tabs
+      — see the note under the bass row above for what happens behind the scenes. Tapping a drum
+      cell plays that instrument immediately via <code>AudioEngine.previewInstrument(name)</code>;
+      bass cells don't preview (would need key context to pick a real pitch — deferred). "Duplicate"
+      isn't in this sheet's own action row — it's a per-row action on the Setup list (see above),
+      opening this same editor with a copied, not-yet-saved draft.
+    </p>
+
+    <h2 id="phase-5">Phase 5 — live preview loop while editing</h2>
+    <p>
+      <strong>Built and tested.</strong> Editing previously only gave you one-hit-at-a-time audition
+      (<code>previewInstrument</code>). Now a dedicated play/stop toggle in the editor loops the
+      current draft continuously, so toggling cells is heard in the groove immediately, not one tap
+      at a time.
+    </p>
+    <div class="decided">
+      <strong>Dedicated ▶/■ toggle button, not auto-play-on-open.</strong> Auto-starting the moment
+      the sheet opens would drone before you've even looked at the grid, and it collapses two
+      genuinely different modes (single-cell audition vs. continuous groove) into one. An explicit
+      button keeps both available.
+    </div>
+    <div class="decided">
+      <strong>Bass resolves against a fixed C major triad, not real song context.</strong> The
+      editor has no chord/key to voice against — there's no song playing, possibly no song loaded at
+      all. <code>R</code>/<code>3</code>/<code>5</code> map to fixed reference pitches (e.g.
+      C3/E3/G3) good enough for auditioning the <em>pattern</em>, not the harmony.
+    </div>
+    <div class="decided">
+      <strong>Tempo: reuse <code>playback.tempo</code> as-is.</strong> No separate preview-tempo
+      control — the groove should sound like it will at the actual song's speed.
+    </div>
+    <div class="tradeoff">
+      <strong
+        >The "live array reference" assumption below turned out wrong — caught in manual
+        testing.</strong
+      >
+      The original plan (and this doc, until this fix) assumed that building the preview's
+      <code>Tone.Sequence</code>s against the draft's own arrays would be enough — cell taps already
+      mutate those arrays in place, so surely the running loop would just see the new values on its
+      next pass. It doesn't: <code>Tone.Sequence</code> captures each event's value once at
+      construction time, not by continuing to read the source array. Manual testing confirmed the
+      single-tap preview sound still played, but the running loop kept playing the
+      <em>old</em> pattern — proof the loop wasn't seeing the mutation at all.
+    </div>
+    <p>
+      The actual mechanism: <code>Tone.Sequence</code>'s <code>.events</code> getter returns a
+      proxied array (Tone.js's own words: "private reference to all of the sequence proxies") —
+      <em>assigning</em> through it, e.g. <code>seq.events[i] = value</code>, triggers Tone's
+      internal reschedule and patches that one step of an already-running loop, with no restart.
+      Reading/mutating a plain array reference elsewhere never reaches it. So two new
+      <code>AudioEngine</code> methods patch a step explicitly, called right after the grid mutates
+      the draft (which still happens, and still matters for Save):
+    </p>
+    <pre><code>previewUpdateDrumStep(instrument: DrumInstrumentName, index: number, hit: number): void {
+  const seq = _previewSeqs[instrument]; // keyed by instrument, not a flat array — needs lookup
+  if (seq) seq.events[index] = hit;     // no-op if no preview loop is running
+}
+
+previewUpdateBassStep(index: number, step: BassStep): void {
+  if (_previewBassSeq) _previewBassSeq.events[index] = step;
+}</code></pre>
+    <p>
+      Called from the grid's existing cell handlers in <code>app.ts</code>, right after the existing
+      <code>pattern[i] = ...</code> mutation — unconditionally, not gated on whether preview is
+      currently running, since the methods above already no-op harmlessly when
+      <code>_previewSeqs</code>/<code>_previewBassSeq</code> are empty/null.
+    </p>
+    <div class="tradeoff">
+      <strong>Kept: takes the draft directly, not a converted <code>StyleDef</code>.</strong>
+      This decision survives even though the original reasoning for it (automatic live-array pickup)
+      didn't pan out — it's still necessary for a different reason now:
+      <code>previewUpdateDrumStep</code>/<code>previewUpdateBassStep</code> need
+      <code>_previewSeqs</code> keyed by the same 9 instrument names and a single bass sequence,
+      exactly the <code>StyleVariantDraft</code> shape — a converted <code>StyleDef</code> (with
+      bass split into cloned <code>{major, minor}</code> copies) wouldn't line up the same way.
+    </div>
+    <pre><code>// New, standalone in progression-audio.ts — deliberately NOT reusing
+// _buildDrums/_buildBass, which are shaped around a chord progression this
+// feature doesn't have. Separate state (_previewSeqs/_previewBassSeq/_previewBass),
+// never touching the main song's _kickSeq/_bassSeq/etc. _previewSeqs is keyed
+// by instrument (not a flat array) so previewUpdateDrumStep can look one up.
+async previewStyleLoopStart(draft: StyleVariantDraft, tempo: number): Promise&lt;void&gt; {
+  await Tone.start();          // in case this is the session's first audio interaction
+  _teardownPreviewLoop();      // tear down any earlier preview loop first
+  _initChannels();             // idempotent — channels may not exist yet this session
+  Tone.Transport.bpm.value = tempo;
+  // one Tone.Sequence per instrument in CUSTOM_STYLE_INSTRUMENTS, at "16n" —
+  // bass sequence resolves R/3/5 against a fixed C3/E3/G3 triad.
+  Tone.Transport.start();
+}
+
+previewStyleLoopStop(): void {
+  _teardownPreviewLoop(); // disposes every sequence/synth built above, stops the transport
+}</code></pre>
+    <p>
+      Routed through the player
+      (<code>app.previewCustomStyleStart(draft)</code>/<code>previewCustomStyleStop()</code>), not
+      called raw on <code>audio</code> from <code>app.ts</code> — pausing the main song for preview
+      goes through the same <code>_pausePlayback()</code> path <code>togglePlay()</code> already
+      uses, so <code>_pausedAt</code> is set correctly and the song is resumable afterward, exactly
+      like pausing normally. <code>previewUpdateDrumStep</code>/<code>previewUpdateBassStep</code>
+      are called directly on <code>audio</code> from <code>app.ts</code>, same as
+      <code>previewInstrument</code> — no state mutation for the player to mediate, just an audio
+      action. Stopping is centralized on the editor <code>&lt;dialog&gt;</code>'s native
+      <code>close</code> event — it fires for every dismissal path (Save, Delete, ×, Esc, clicking
+      outside), so there's one place that guarantees a stray loop never keeps playing after the
+      sheet is gone, instead of stopping it in each handler.
+    </p>
+    <h3>Mockup — editor action row with preview</h3>
+    <div class="mockup-bar">
+      <button class="mockup-btn">▶ Preview</button>
+      <div>
+        <button class="mockup-btn">Delete</button>
+        <button class="mockup-btn primary">Save</button>
+      </div>
+    </div>
+    <p class="caption">
+      Neutral <code>.icon-btn</code> styling for Preview and Delete, same as the rest of the app —
+      no "danger" color exists here (delete actions everywhere rely on a
+      <code>confirm()</code> dialog, not red styling). Toggles to "■ Stop" while looping. Switching
+      Simple/Busy tabs while active restarts the loop against the newly active tab's arrays; closing
+      the sheet (Save, Delete, ×, Esc, or clicking outside) always stops it via the dialog's
+      <code>close</code>
+      event — a stray loop must never keep playing after the sheet is gone.
+    </p>
+    <div class="decided">
+      <strong>Single-tap preview is suppressed while the loop is playing.</strong> Confirmed
+      confusing in testing, as expected — tapping a cell fired an immediate one-off hit
+      (<code>previewInstrument</code>) <em>on top of</em> the loop's own scheduled hit for that
+      step, landing within the same bar and sounding like a doubled/flammed note. Gated on
+      <code>_styleEditorPreviewing</code> in the drum cell's click handler: the one-off preview only
+      fires when the loop isn't running. The loop itself still plays the new hit on its next pass
+      regardless (via <code>previewUpdateDrumStep</code>), so nothing is lost — turning a step on
+      while previewing is still audible, just without the redundant immediate hit.
+    </div>
+
+    <h2 id="deferred">Deferred / future</h2>
+    <p>Noted here so they're not forgotten, not designed in this doc:</p>
+    <ul class="tight">
+      <li>
+        Actually using multi-bar patterns during playback — the data structure allows it
+        (<code>stepsPerBar</code>/<code>bars</code>), the engine doesn't consume it yet.
+      </li>
+      <li>Migrating storage from localStorage to IndexedDB, if/when it's warranted.</li>
+      <li>
+        Wiring the currently-unused sample files (<code>snare2</code>, <code>tom3</code>,
+        <code>tom4</code>, <code>crash-r</code>, <code>china</code>) as additional instrument rows.
+      </li>
+      <li>Sharing/exporting custom styles between devices (URL or file export/import).</li>
+      <li>
+        "Duplicate" starting from a built-in style, not just an existing custom one (see the Phase 4
+        scope-trim note above) — would need a source picker.
+      </li>
+    </ul>
+
+    <h2 id="files">Where it lives</h2>
+    <table>
+      <tr>
+        <th>File</th>
+        <th>Owns</th>
+      </tr>
+      <tr>
+        <td class="file">custom-styles.ts</td>
+        <td>
+          <code>CustomStyleDef</code>, <code>toStyleDef</code>, <code>resolveStyleDef</code>, the
+          <code>custom:</code>-ref id helpers, the four storage functions, the Phase 4
+          editor-support functions (<code>CUSTOM_STYLE_INSTRUMENTS</code>,
+          <code>StyleVariantDraft</code>, <code>makeBlankStyleVariantDraft</code>,
+          <code>styleVariantToDraft</code>/<code>draftToStyleVariant</code>,
+          <code>cycleBassStep</code>), and the silent-variant fix
+          (<code>isBlankStyleVariantDraft</code>/<code>fillBlankVariantFromOther</code>). Zero
+          runtime dependency on <code>progression-core.ts</code> — its only import from core is
+          <code>import type</code>, erased at compile time.
+        </td>
+      </tr>
+      <tr>
+        <td class="file">progression-core.ts</td>
+        <td>
+          <code>DrumInstrumentName</code> type; the
+          <code>previewInstrument</code>/<code>previewStyleLoopStart</code>/<code
+            >previewStyleLoopStop</code
+          >
+          additions to <code>AudioEngine</code>; thin wrappers
+          (<code>_getCustomStyles</code>/<code>_saveCustomStyle</code>/<code>_updateCustomStyle</code>/<code>_deleteCustomStyle</code>/<code>_previewCustomStyleStart</code>/<code>_previewCustomStyleStop</code>)
+          exposed on the public API, where the "reset playback.style on delete", "rebuild if the
+          edited style is active", and "pause the main song via <code>_pausePlayback()</code> before
+          previewing" logic actually lives (needs
+          <code>_state</code
+          >/<code>_setPlayback</code>/<code>_scheduleRebuild</code>/<code>_pausePlayback</code>,
+          which only exist inside <code>makeProgressionPlayer</code>'s closure); the
+          <code>parseUrl</code> fix.
+        </td>
+      </tr>
+      <tr>
+        <td class="file">progression-audio.ts</td>
+        <td>
+          <code>previewInstrument</code> and its <code>_previewFallback</code> helper (Phase 4); the
+          Phase 5 preview loop
+          (<code>previewStyleLoopStart</code>/<code>previewStyleLoopStop</code>/<code>_teardownPreviewLoop</code>/<code>previewUpdateDrumStep</code>/<code>previewUpdateBassStep</code>)
+          with its own state (<code>_previewSeqs</code> — keyed by instrument, not a flat array —
+          /<code>_previewBassSeq</code>/<code>_previewBass</code>), deliberately separate from the
+          main song's — the only <code>AudioEngine</code> methods this whole feature needed.
+        </td>
+      </tr>
+      <tr>
+        <td class="file">app.ts</td>
+        <td>
+          Style picker popup wiring (Phase 3); Custom Styles Setup-list rendering
+          (<code>renderCustomStyleRows</code>), the style editor sheet's tabs/grid/save/delete
+          wiring, and the empty-tab-label logic (Phase 4); the Preview toggle, tab-switch restart,
+          the editor <code>&lt;dialog&gt;</code>'s <code>close</code>-event stop, and calling
+          <code>previewUpdateDrumStep</code>/<code>previewUpdateBassStep</code> from the grid's
+          existing cell handlers (Phase 5).
+        </td>
+      </tr>
+      <tr>
+        <td class="file">index.html</td>
+        <td>
+          Style picker markup/CSS (Phase 3); Custom Styles Setup section and the
+          <code>#style-editor-sheet</code> dialog markup/CSS, including the
+          <code>.seq-grid</code>/<code>.seq-cell</code> rules (Phase 4); the Preview button markup
+          and <code>.style-editor-actions-right</code> grouping (Phase 5).
+        </td>
+      </tr>
+      <tr>
+        <td class="file">docs.html</td>
+        <td>Not documented yet — public-facing docs are a separate step from this design doc.</td>
+      </tr>
+    </table>
+  </body>
+</html>
