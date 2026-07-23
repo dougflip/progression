@@ -41,7 +41,8 @@ import {
   draftToStyleVariant,
   cycleBassStep,
   isBlankStyleVariantDraft,
-  fillBlankVariantFromOther,
+  cloneStyleVariantDraft,
+  resolveLinkedVariants,
   type DrumInstrumentName,
   type DrumPattern,
   type BassPattern,
@@ -1175,12 +1176,20 @@ interface StyleEditorDraft {
 }
 
 let _styleEditorDraft: StyleEditorDraft | null = null;
+// Snapshot of simple/busy as they were when the editor opened — resolveLinkedVariants
+// diffs against this at save time to tell which side was actually edited this session,
+// not just which side happens to differ from the other one right now.
+let _styleEditorOriginal: { simple: StyleVariantDraft; busy: StyleVariantDraft } | null = null;
 let _styleEditorEditingId: string | null = null;
 let _styleEditorTab: "simple" | "busy" = "simple";
 let _styleEditorPreviewing = false;
 
 function openStyleEditor(draft: StyleEditorDraft, editingId: string | null): void {
   _styleEditorDraft = draft;
+  _styleEditorOriginal = {
+    simple: cloneStyleVariantDraft(draft.simple),
+    busy: cloneStyleVariantDraft(draft.busy),
+  };
   _styleEditorEditingId = editingId;
   _styleEditorTab = "simple";
   _styleEditorPreviewing = false;
@@ -1310,10 +1319,12 @@ styleEditorTabSimpleEl.addEventListener("click", () => void switchStyleEditorTab
 styleEditorTabBusyEl.addEventListener("click", () => void switchStyleEditorTab("busy"));
 
 styleEditorSaveEl.addEventListener("click", () => {
-  if (!_styleEditorDraft) return;
-  // Whichever variant was never touched (still entirely blank) mirrors the
-  // other rather than saving silent — see docs-internal/custom-styles.html.
-  const { simple, busy } = fillBlankVariantFromOther(_styleEditorDraft);
+  if (!_styleEditorDraft || !_styleEditorOriginal) return;
+  // Whichever variant was linked (blank, or equal to its twin) when this
+  // editing session started and wasn't itself edited this session mirrors
+  // the other one, rather than drifting out of sync — see
+  // docs-internal/custom-styles.html.
+  const { simple, busy } = resolveLinkedVariants(_styleEditorDraft, _styleEditorOriginal);
   const def = {
     name: styleEditorNameEl.value.trim() || "Untitled Style",
     stepsPerBar: 16,

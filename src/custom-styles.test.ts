@@ -4,14 +4,15 @@ import {
   CUSTOM_STYLE_INSTRUMENTS,
   type CustomStyleDef,
   cycleBassStep,
+  cloneStyleVariantDraft,
   customStyleIdFromRef,
   deleteCustomStyle,
   draftToStyleVariant,
-  fillBlankVariantFromOther,
   getCustomStyles,
   isBlankStyleVariantDraft,
   isCustomStyleRef,
   makeBlankStyleVariantDraft,
+  resolveLinkedVariants,
   resolveStyleDef,
   saveCustomStyle,
   styleVariantToDraft,
@@ -235,31 +236,105 @@ describe("isBlankStyleVariantDraft", () => {
   });
 });
 
-describe("fillBlankVariantFromOther", () => {
-  it("mirrors busy into simple when simple was never touched", () => {
+describe("resolveLinkedVariants", () => {
+  it("mirrors busy into simple on first save, when simple was never touched", () => {
     const busy = styleVariantToDraft(EXAMPLE_CUSTOM_STYLE.busy);
-    const result = fillBlankVariantFromOther({ simple: makeBlankStyleVariantDraft(), busy });
+    const original = { simple: makeBlankStyleVariantDraft(), busy: makeBlankStyleVariantDraft() };
+    const current = { simple: makeBlankStyleVariantDraft(), busy };
+    const result = resolveLinkedVariants(current, original);
     expect(result.simple).toEqual(busy);
     expect(result.simple).not.toBe(busy); // independent copy, not aliased
   });
 
-  it("mirrors simple into busy when busy was never touched", () => {
+  it("mirrors simple into busy on first save, when busy was never touched", () => {
     const simple = styleVariantToDraft(EXAMPLE_CUSTOM_STYLE.simple);
-    const result = fillBlankVariantFromOther({ simple, busy: makeBlankStyleVariantDraft() });
+    const original = { simple: makeBlankStyleVariantDraft(), busy: makeBlankStyleVariantDraft() };
+    const current = { simple, busy: makeBlankStyleVariantDraft() };
+    const result = resolveLinkedVariants(current, original);
     expect(result.busy).toEqual(simple);
     expect(result.busy).not.toBe(simple);
   });
 
-  it("leaves both untouched when both are blank", () => {
-    const draft = { simple: makeBlankStyleVariantDraft(), busy: makeBlankStyleVariantDraft() };
-    expect(fillBlankVariantFromOther(draft)).toBe(draft);
+  it("leaves both untouched when both are still blank", () => {
+    const original = { simple: makeBlankStyleVariantDraft(), busy: makeBlankStyleVariantDraft() };
+    const current = { simple: makeBlankStyleVariantDraft(), busy: makeBlankStyleVariantDraft() };
+    expect(resolveLinkedVariants(current, original)).toBe(current);
   });
 
-  it("leaves both untouched when both already have content", () => {
-    const draft = {
+  it("leaves both alone when both were authored independently from the start", () => {
+    const original = {
       simple: styleVariantToDraft(EXAMPLE_CUSTOM_STYLE.simple),
       busy: styleVariantToDraft(EXAMPLE_CUSTOM_STYLE.busy),
     };
-    expect(fillBlankVariantFromOther(draft)).toBe(draft);
+    // Same content this session — neither side changed.
+    const current = {
+      simple: styleVariantToDraft(EXAMPLE_CUSTOM_STYLE.simple),
+      busy: styleVariantToDraft(EXAMPLE_CUSTOM_STYLE.busy),
+    };
+    expect(resolveLinkedVariants(current, original)).toBe(current);
+  });
+
+  it("re-syncs busy on a later edit to simple, when the two were still linked", () => {
+    // Simulates re-opening a style whose busy was mirrored from simple on an
+    // earlier save (so they're equal going in), then editing only simple.
+    // Each side gets its own clone — styleVariantToDraft doesn't clone its
+    // source arrays, so two calls on the same source would alias, and
+    // mutating one would leak into the "original" snapshot too (exactly
+    // the bug this test is meant to catch in the real editor).
+    const linked = styleVariantToDraft(EXAMPLE_CUSTOM_STYLE.simple);
+    const original = {
+      simple: cloneStyleVariantDraft(linked),
+      busy: cloneStyleVariantDraft(linked),
+    };
+    const editedSimple = cloneStyleVariantDraft(linked);
+    editedSimple.kick[3] = 1;
+    const current = { simple: editedSimple, busy: cloneStyleVariantDraft(linked) };
+
+    const result = resolveLinkedVariants(current, original);
+    expect(result.busy).toEqual(editedSimple);
+    expect(result.busy).not.toBe(editedSimple);
+  });
+
+  it("re-syncs simple on a later edit to busy, when the two were still linked", () => {
+    const linked = styleVariantToDraft(EXAMPLE_CUSTOM_STYLE.busy);
+    const original = {
+      simple: cloneStyleVariantDraft(linked),
+      busy: cloneStyleVariantDraft(linked),
+    };
+    const editedBusy = cloneStyleVariantDraft(linked);
+    editedBusy.snare[7] = 1;
+    const current = { simple: cloneStyleVariantDraft(linked), busy: editedBusy };
+
+    const result = resolveLinkedVariants(current, original);
+    expect(result.simple).toEqual(editedBusy);
+    expect(result.simple).not.toBe(editedBusy);
+  });
+
+  it("forks both, with no sync, when both are edited in the same session", () => {
+    const linked = styleVariantToDraft(EXAMPLE_CUSTOM_STYLE.simple);
+    const original = {
+      simple: cloneStyleVariantDraft(linked),
+      busy: cloneStyleVariantDraft(linked),
+    };
+    const editedSimple = cloneStyleVariantDraft(linked);
+    editedSimple.kick[3] = 1;
+    const editedBusy = styleVariantToDraft(EXAMPLE_CUSTOM_STYLE.busy);
+    const current = { simple: editedSimple, busy: editedBusy };
+
+    expect(resolveLinkedVariants(current, original)).toBe(current);
+  });
+
+  it("never re-links a variant that was already forked at open time", () => {
+    // simple/busy already differ when the editor opens — a prior session
+    // forked them. Editing only simple should not pull busy back in sync.
+    const original = {
+      simple: styleVariantToDraft(EXAMPLE_CUSTOM_STYLE.simple),
+      busy: styleVariantToDraft(EXAMPLE_CUSTOM_STYLE.busy),
+    };
+    const editedSimple = cloneStyleVariantDraft(original.simple);
+    editedSimple.kick[3] = 1;
+    const current = { simple: editedSimple, busy: cloneStyleVariantDraft(original.busy) };
+
+    expect(resolveLinkedVariants(current, original)).toBe(current);
   });
 });
