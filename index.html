@@ -278,6 +278,7 @@
 
       /* ── Readout ── */
       #readout {
+        position: relative;
         display: flex;
         justify-content: center;
         align-items: center;
@@ -315,16 +316,16 @@
         opacity: 0.3;
         cursor: default;
       }
-      .tempo-group {
-        position: relative;
-        display: inline-flex;
-        align-items: center;
-      }
-      #tempo-picker {
+      /* Shared shell for every readout pill's dropdown (style, tempo, bars,
+         voicing, loop): box/arrow styling is identical, only the inner
+         content differs. Position (top/left/right + --arrow-left) is
+         computed per-open in JS since the anchor side depends on which half
+         of the screen the trigger pill sits in. Overflow stays visible here
+         (not on this element) so the arrow, which sits just outside the box,
+         doesn't get clipped — any scrolling happens on an inner .picker-rows
+         wrapper instead. */
+      .pill-flyout {
         position: absolute;
-        top: calc(100% + 0.55rem);
-        left: 50%;
-        transform: translateX(-50%);
         display: flex;
         flex-direction: column;
         gap: 0.5rem;
@@ -332,18 +333,23 @@
         border: 1px solid var(--border);
         border-radius: 0.5rem;
         padding: 0.55rem 0.7rem;
-        min-width: 15rem;
+        min-width: 13rem;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
         z-index: 5;
       }
-      [data-theme="dark"] #tempo-picker {
+      .picker-rows {
+        max-height: 50vh;
+        max-height: 50dvh;
+        overflow-y: auto;
+      }
+      [data-theme="dark"] .pill-flyout {
         box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
       }
-      #tempo-picker::before {
+      .pill-flyout::before {
         content: "";
         position: absolute;
         top: -0.35rem;
-        left: 50%;
+        left: var(--arrow-left, 50%);
         transform: translateX(-50%) rotate(45deg);
         width: 0.6rem;
         height: 0.6rem;
@@ -351,8 +357,11 @@
         border-left: 1px solid var(--border);
         border-top: 1px solid var(--border);
       }
-      #tempo-picker[hidden] {
+      .pill-flyout[hidden] {
         display: none;
+      }
+      #tempo-picker {
+        min-width: 15rem;
       }
       .tempo-controls {
         display: flex;
@@ -420,48 +429,11 @@
         animation: tap-flash 0.35s ease-out forwards;
       }
 
-      .style-picker-group {
-        position: relative;
-        display: inline-flex;
-        align-items: center;
-      }
       #style-picker {
-        position: absolute;
-        top: calc(100% + 0.55rem);
-        left: 50%;
-        transform: translateX(-50%);
-        display: flex;
-        flex-direction: column;
         gap: 0.15rem;
-        background: var(--surface-alt);
-        border: 1px solid var(--border);
-        border-radius: 0.5rem;
         padding: 0.5rem;
-        min-width: 13rem;
-        max-height: 60vh;
-        overflow-y: auto;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-        z-index: 5;
       }
-      [data-theme="dark"] #style-picker {
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
-      }
-      #style-picker::before {
-        content: "";
-        position: absolute;
-        top: -0.35rem;
-        left: 50%;
-        transform: translateX(-50%) rotate(45deg);
-        width: 0.6rem;
-        height: 0.6rem;
-        background: var(--surface-alt);
-        border-left: 1px solid var(--border);
-        border-top: 1px solid var(--border);
-      }
-      #style-picker[hidden] {
-        display: none;
-      }
-      .style-picker-row {
+      .picker-row {
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -477,15 +449,15 @@
         text-align: left;
         width: 100%;
       }
-      .style-picker-row:hover,
-      .style-picker-row:active {
+      .picker-row:hover,
+      .picker-row:active {
         background: var(--surface-alt-active);
       }
-      .style-picker-row.active {
+      .picker-row.active {
         background: var(--accent);
         color: var(--accent-text);
       }
-      .style-picker-heading {
+      .picker-heading {
         font-size: 0.7rem;
         font-weight: 600;
         text-transform: uppercase;
@@ -493,7 +465,7 @@
         color: var(--text-3);
         padding: 0.5rem 0.6rem 0.25rem;
       }
-      .style-picker-heading:first-child {
+      .picker-heading:first-child {
         padding-top: 0.15rem;
       }
 
@@ -1399,31 +1371,36 @@
         ><span class="beat-dot"></span>
       </div>
       <div id="readout">
-        <span class="style-picker-group">
-          <button type="button" class="readout-btn" id="readout-style">Funk</button>
-          <div id="style-picker" hidden>
-            <div id="style-picker-rows"></div>
-          </div>
-        </span>
+        <button type="button" class="readout-btn" id="readout-style">Funk</button>
+        <div id="style-picker" class="pill-flyout" hidden>
+          <div id="style-picker-rows" class="picker-rows"></div>
+        </div>
         <button type="button" class="readout-btn" id="readout-bass">Busy</button>
         <button type="button" class="readout-btn" id="readout-drums">Simple</button>
         <button type="button" class="readout-btn" id="readout-voicing">Lead/loop</button>
+        <div id="voicing-picker" class="pill-flyout" hidden>
+          <div id="voicing-picker-rows" class="picker-rows"></div>
+        </div>
         <div class="readout-row-break"></div>
         <button type="button" class="readout-btn" id="readout-bars">2 bars</button>
-        <span class="tempo-group">
-          <button type="button" class="readout-btn" id="tempo-toggle">
-            ⏱️ <strong id="readout-tempo">85</strong> BPM
-          </button>
-          <div id="tempo-picker" hidden>
-            <div class="tempo-controls">
-              <button type="button" class="tempo-step" id="tempo-down">−</button>
-              <input id="tempo-quick" type="range" min="40" max="220" step="1" />
-              <button type="button" class="tempo-step" id="tempo-up">+</button>
-            </div>
-            <button type="button" class="tap-btn" id="tap-tempo-pop">Tap</button>
+        <div id="bars-picker" class="pill-flyout" hidden>
+          <div id="bars-picker-rows" class="picker-rows"></div>
+        </div>
+        <button type="button" class="readout-btn" id="tempo-toggle">
+          ⏱️ <strong id="readout-tempo">85</strong> BPM
+        </button>
+        <div id="tempo-picker" class="pill-flyout" hidden>
+          <div class="tempo-controls">
+            <button type="button" class="tempo-step" id="tempo-down">−</button>
+            <input id="tempo-quick" type="range" min="40" max="220" step="1" />
+            <button type="button" class="tempo-step" id="tempo-up">+</button>
           </div>
-        </span>
+          <button type="button" class="tap-btn" id="tap-tempo-pop">Tap</button>
+        </div>
         <button type="button" class="readout-btn" id="readout-cycle">Loop</button>
+        <div id="loop-picker" class="pill-flyout" hidden>
+          <div id="loop-picker-rows" class="picker-rows"></div>
+        </div>
         <button type="button" class="readout-btn" id="readout-advance">Auto</button>
       </div>
       <div id="status"></div>
