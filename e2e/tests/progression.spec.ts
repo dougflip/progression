@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { dismissWelcomeModal } from "./support/welcome-modal";
 
 const BASE = "/progression/";
 const SCREENSHOT_OPTS = { animations: "disabled" } as const;
@@ -10,9 +11,7 @@ test("first-time welcome modal is shown", async ({ page }) => {
 
 test.describe("with welcome modal dismissed", () => {
   test.beforeEach(async ({ page }) => {
-    await page.addInitScript(() => {
-      localStorage.setItem("cppWelcomed", "1");
-    });
+    await dismissWelcomeModal(page);
   });
 
   test("sharp key (C) - chord chips use sharp names", async ({ page }) => {

@@ -1,14 +1,13 @@
 import { expect, test } from "@playwright/test";
 import { makePlaybackPillsPage } from "./pages/playback-pills-page";
 import { makeKeyPickerPage } from "./pages/key-picker-page";
+import { dismissWelcomeModal } from "./support/welcome-modal";
 
 const BASE = "/progression/";
 const SCREENSHOT_OPTS = { animations: "disabled" } as const;
 
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => {
-    localStorage.setItem("cppWelcomed", "1");
-  });
+  await dismissWelcomeModal(page);
 });
 
 test("style pill - opens the style flyout", async ({ page }) => {

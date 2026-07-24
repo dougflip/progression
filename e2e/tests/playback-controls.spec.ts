@@ -1,12 +1,11 @@
 import { expect, test } from "@playwright/test";
 import { makePlaybackControlsPage } from "./pages/playback-controls-page";
+import { dismissWelcomeModal } from "./support/welcome-modal";
 
 const BASE = "/progression/";
 
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => {
-    localStorage.setItem("cppWelcomed", "1");
-  });
+  await dismissWelcomeModal(page);
 });
 
 test("play - starts playback, then pause and stop unwind it cleanly", async ({ page }) => {
