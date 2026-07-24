@@ -3,7 +3,7 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests",
   snapshotDir: "./tests/snapshots",
-  snapshotPathTemplate: "{snapshotDir}/{projectName}/{arg}{ext}",
+  snapshotPathTemplate: "{snapshotDir}/{projectName}/{testFileBaseName}/{arg}{ext}",
   use: {
     baseURL: "http://localhost:4173",
   },
