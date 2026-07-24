@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { makePlaybackPillsPage } from "./pages/playback-pills-page";
+import { makeKeyPickerPage } from "./pages/key-picker-page";
 
 const BASE = "/progression/";
 const SCREENSHOT_OPTS = { animations: "disabled" } as const;
@@ -58,4 +59,29 @@ test("cycle pill - opens the cycle flyout", async ({ page }) => {
 
   expect(await pills.isOpen("cycle")).toBe(true);
   await expect(page).toHaveScreenshot("cycle-picker-open.png", SCREENSHOT_OPTS);
+});
+
+test("key pill - opens the key picker", async ({ page }) => {
+  await page.goto(`${BASE}?key=C&section=I%20ii%20V%20I`);
+  const keyPicker = makeKeyPickerPage(page);
+
+  await keyPicker.open();
+
+  expect(await keyPicker.isOpen()).toBe(true);
+  await expect(page).toHaveScreenshot("key-picker-open.png", SCREENSHOT_OPTS);
+});
+
+test("key pill - custom cycle sequence builds up as keys are tapped", async ({ page }) => {
+  await page.goto(`${BASE}?key=C&section=I%20ii%20V%20I`);
+  const pills = makePlaybackPillsPage(page);
+  const keyPicker = makeKeyPickerPage(page);
+
+  await pills.open("cycle");
+  await pills.select("cycle", "Custom");
+  await keyPicker.open();
+  await keyPicker.tapKey("C");
+  await keyPicker.tapKey("G");
+
+  expect(await keyPicker.isOpen()).toBe(true);
+  await expect(page).toHaveScreenshot("key-picker-custom-sequence.png", SCREENSHOT_OPTS);
 });
