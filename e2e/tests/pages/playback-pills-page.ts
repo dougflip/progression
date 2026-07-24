@@ -1,6 +1,7 @@
 import { Locator, Page } from "@playwright/test";
 
 type FlyoutPill = "style" | "voicing" | "bars" | "tempo" | "cycle";
+type TogglePill = "bass" | "drums" | "advance";
 
 export function makePlaybackPillsPage(page: Page) {
   const flyouts: Record<FlyoutPill, { trigger: Locator; flyout: Locator; rows?: Locator }> = {
@@ -30,6 +31,17 @@ export function makePlaybackPillsPage(page: Page) {
     },
   };
 
+  const toggles: Record<TogglePill, Locator> = {
+    bass: page.locator("#readout-bass"),
+    drums: page.locator("#readout-drums"),
+    advance: page.locator("#readout-advance"),
+  };
+
+  const tempoStep = {
+    up: page.locator("#tempo-up"),
+    down: page.locator("#tempo-down"),
+  };
+
   return {
     locators: flyouts,
     async open(pill: FlyoutPill) {
@@ -40,6 +52,12 @@ export function makePlaybackPillsPage(page: Page) {
     },
     async select(pill: FlyoutPill, label: string) {
       await flyouts[pill].rows!.filter({ hasText: label }).click();
+    },
+    async toggle(pill: TogglePill) {
+      await toggles[pill].click();
+    },
+    async bumpTempo(times = 1) {
+      for (let i = 0; i < times; i++) await tempoStep.up.click();
     },
   };
 }

@@ -12,6 +12,9 @@ export function makeKeyPickerPage(page: Page) {
     async open() {
       await locators.trigger.click();
     },
+    async close() {
+      await locators.trigger.click();
+    },
     async isOpen() {
       return locators.flyout.isVisible();
     },

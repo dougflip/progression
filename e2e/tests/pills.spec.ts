@@ -85,3 +85,34 @@ test("key pill - custom cycle sequence builds up as keys are tapped", async ({ p
   expect(await keyPicker.isOpen()).toBe(true);
   await expect(page).toHaveScreenshot("key-picker-custom-sequence.png", SCREENSHOT_OPTS);
 });
+
+test("all playback pills - every option is changed from its default", async ({ page }) => {
+  await page.goto(`${BASE}?key=C&section=I%20ii%20V%20I`);
+  const pills = makePlaybackPillsPage(page);
+  const keyPicker = makeKeyPickerPage(page);
+
+  await pills.open("style");
+  await pills.select("style", "Rock");
+
+  await pills.open("voicing");
+  await pills.select("voicing", "Root");
+
+  await pills.open("bars");
+  await pills.select("bars", "4 bars");
+
+  await pills.open("tempo");
+  await pills.bumpTempo(5);
+
+  await pills.open("cycle");
+  await pills.select("cycle", "Custom");
+  await keyPicker.open();
+  await keyPicker.tapKey("C");
+  await keyPicker.tapKey("G");
+  await keyPicker.close();
+
+  await pills.toggle("bass");
+  await pills.toggle("drums");
+  await pills.toggle("advance");
+
+  await expect(page).toHaveScreenshot("playback-all-changed.png", SCREENSHOT_OPTS);
+});
