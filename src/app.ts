@@ -801,7 +801,6 @@ const PAUSE_ICON =
   '<svg width="17" height="20" viewBox="0 0 17 20" fill="currentColor" aria-hidden="true"><rect x="0" y="0" width="6" height="20" rx="1.5"/><rect x="11" y="0" width="6" height="20" rx="1.5"/></svg>';
 
 function onPlaybackChange(playing: boolean): void {
-  stopBtn.hidden = !app.isPaused();
   playBtn.innerHTML = playing ? PAUSE_ICON : "▶";
   playBtn.classList.toggle("playing", playing);
   playBtn.setAttribute("aria-label", playing ? "Pause" : "Play");
