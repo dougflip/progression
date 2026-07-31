@@ -688,6 +688,7 @@ function renderPresetIndicator(): void {
   presetSaveBtn.disabled = !loaded || !dirty;
   presetRevertBtn.disabled = !dirty;
   renderPresetDropdownList();
+  updateMediaSessionMetadata();
 }
 
 function renderPresetDropdownList(): void {
@@ -804,6 +805,7 @@ function onPlaybackChange(playing: boolean): void {
   playBtn.innerHTML = playing ? PAUSE_ICON : "▶";
   playBtn.classList.toggle("playing", playing);
   playBtn.setAttribute("aria-label", playing ? "Pause" : "Play");
+  updateMediaSessionState(playing);
   if (playing) {
     stripEl.classList.add("playing");
     statusEl.textContent = "";
@@ -872,6 +874,40 @@ document.addEventListener("visibilitychange", () => {
     void acquireWakeLock();
   }
 });
+
+// ── Media Session (lock screen controls) ────────────────────────────────
+
+function setupMediaSession(): void {
+  if (!("mediaSession" in navigator)) return;
+  updateMediaSessionMetadata();
+  navigator.mediaSession.setActionHandler("play", () => {
+    app.togglePlay().catch((e: Error) => {
+      statusEl.textContent = "Error: " + e.message;
+    });
+  });
+  navigator.mediaSession.setActionHandler("pause", () => {
+    app.togglePlay().catch((e: Error) => {
+      statusEl.textContent = "Error: " + e.message;
+    });
+  });
+}
+
+function updateMediaSessionMetadata(): void {
+  if (!("mediaSession" in navigator)) return;
+  navigator.mediaSession.metadata = new MediaMetadata({
+    title: "Progression",
+    artist: app.getLoadedPreset()?.name ?? app.getLoadedBuiltinName() ?? "",
+    artwork: [
+      { src: `${import.meta.env.BASE_URL}icons/icon-192.png`, sizes: "192x192", type: "image/png" },
+      { src: `${import.meta.env.BASE_URL}icons/icon-512.png`, sizes: "512x512", type: "image/png" },
+    ],
+  });
+}
+
+function updateMediaSessionState(playing: boolean): void {
+  if (!("mediaSession" in navigator)) return;
+  navigator.mediaSession.playbackState = playing ? "playing" : "paused";
+}
 
 // ── UI helpers ───────────────────────────────────────────────────────────
 
@@ -1670,6 +1706,8 @@ keepAwakeEl.checked = localStorage.getItem("keep-awake") === "1";
 keepAwakeEl.addEventListener("change", () =>
   localStorage.setItem("keep-awake", keepAwakeEl.checked ? "1" : "0"),
 );
+
+setupMediaSession();
 
 looperEnabledEl.checked = localStorage.getItem("looper-enabled") === "1";
 syncLoopBtnVisibility(app.getState());
