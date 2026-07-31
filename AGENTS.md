@@ -6,17 +6,19 @@ Make sure all proposed plans and changes adhere to the guidelines in ARCHITECTUR
 
 1. Run both `npm run check` AND `npm run test:quiet` before commits and report/fix any errors.
 2. Ensure no updates to README or ARCHITECTURE are necessary as part of the change.
-3. Ask the user if we should run the end to end tests.
+3. Ask the user if we should run the end to end tests (do not run yourself unless told to do so).
 
 ## Before Pull Request
 
 1. Ask the user if e2e tests have been run
 2. Ensure HTML documentation is up to date. If it is not, suggest updating and invoke the `docs-authoring` skill before editing `docs.html`.
+3. _Suggest_ a major/minor/patch version bump to the app version number based on significance of changes.
+  - If asked to bump the version use NPM to do so For example: `npm version patch`.
 
 ## Manual Testing
 
 The **user** will handle all manual testing.
-If a feature requires manual testing prompt the user to test manually.
+If a feature requires manual testing then prompt the user to test manually.
 Provide them with a numbered list of the most important use cases to test.
 
 ## Installing Packages

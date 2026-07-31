@@ -4,7 +4,7 @@ Progression is a backing-track tool for musicians.
 Enter a chord progression, set your key and tempo,
 and loop it while you practice scales, solos, or chord shapes.
 
-![Progression App Screenshot](./e2e/tests/snapshots/chromium-desktop/multi-section.png)
+![Progression App Screenshot](./e2e/tests/snapshots/chromium-desktop/progression.spec/multi-section.png)
 
 App: https://dougflip.github.io/progression  
 Docs: https://dougflip.github.io/progression/docs.html
@@ -30,7 +30,7 @@ npm run format
 
 ## Tests
 
-Unit tests cover music theory logic and run via Vitest:
+Unit tests run via Vitest:
 
 ```sh
 npm test
