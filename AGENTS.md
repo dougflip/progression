@@ -13,7 +13,8 @@ Make sure all proposed plans and changes adhere to the guidelines in ARCHITECTUR
 1. Ask the user if e2e tests have been run
 2. Ensure HTML documentation is up to date. If it is not, suggest updating and invoke the `docs-authoring` skill before editing `docs.html`.
 3. _Suggest_ a major/minor/patch version bump to the app version number based on significance of changes.
-  - If asked to bump the version use NPM to do so For example: `npm version patch`.
+
+- If asked to bump the version use NPM to do so For example: `npm version patch`.
 
 ## Manual Testing
 
