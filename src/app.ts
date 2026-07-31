@@ -806,6 +806,7 @@ function onPlaybackChange(playing: boolean): void {
   playBtn.classList.toggle("playing", playing);
   playBtn.setAttribute("aria-label", playing ? "Pause" : "Play");
   updateMediaSessionState(playing);
+  updateSilentAudioAnchor(playing);
   if (playing) {
     stripEl.classList.add("playing");
     statusEl.textContent = "";
@@ -907,6 +908,49 @@ function updateMediaSessionMetadata(): void {
 function updateMediaSessionState(playing: boolean): void {
   if (!("mediaSession" in navigator)) return;
   navigator.mediaSession.playbackState = playing ? "playing" : "paused";
+}
+
+// Android Chrome only grants background playback / lock-screen media controls to pages with an
+// actual <audio>/<video> element playing — a Web Audio API graph alone (which is all Tone.js
+// uses) isn't recognized as a real media session. This silent, looping element exists purely to
+// anchor that recognition; the audible mix still goes entirely through Tone.js as before.
+function makeSilentAudioUrl(): string {
+  const sampleRate = 8000;
+  const numSamples = sampleRate; // 1s, looped
+  const headerSize = 44;
+  const buffer = new ArrayBuffer(headerSize + numSamples);
+  const view = new DataView(buffer);
+  const writeString = (offset: number, str: string) => {
+    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+  };
+  writeString(0, "RIFF");
+  view.setUint32(4, 36 + numSamples, true);
+  writeString(8, "WAVE");
+  writeString(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate, true);
+  view.setUint16(32, 1, true);
+  view.setUint16(34, 8, true);
+  writeString(36, "data");
+  view.setUint32(40, numSamples, true);
+  new Uint8Array(buffer, headerSize).fill(128);
+  return URL.createObjectURL(new Blob([buffer], { type: "audio/wav" }));
+}
+
+const silentAudioAnchor = new Audio(makeSilentAudioUrl());
+silentAudioAnchor.loop = true;
+
+function updateSilentAudioAnchor(playing: boolean): void {
+  if (playing) {
+    void silentAudioAnchor.play().catch(() => {
+      /* ignore */
+    });
+  } else {
+    silentAudioAnchor.pause();
+  }
 }
 
 // ── UI helpers ───────────────────────────────────────────────────────────
