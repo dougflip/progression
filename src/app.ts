@@ -147,6 +147,8 @@ const styleEditorGridEl = $("style-editor-grid") as HTMLDivElement;
 const styleEditorSaveEl = $("style-editor-save") as HTMLButtonElement;
 const styleEditorDeleteEl = $("style-editor-delete") as HTMLButtonElement;
 const styleEditorPreviewEl = $("style-editor-preview") as HTMLButtonElement;
+const styleEditorCopyJsonEl = $("style-editor-copy-json") as HTMLButtonElement;
+const styleEditorCopyTabEl = $("style-editor-copy-tab") as HTMLButtonElement;
 
 $("app-version").textContent = `v${__APP_VERSION__} build-${__APP_SHA__}`;
 
@@ -1238,7 +1240,27 @@ function renderStyleEditorTabs(): void {
   // fillBlankVariantFromOther mirror only helps when at least one side has
   // real content to mirror from.
   styleEditorSaveEl.disabled = simpleBlank && busyBlank;
+  const otherTab = _styleEditorTab === "simple" ? "Busy" : "Simple";
+  styleEditorCopyTabEl.textContent = `⇄ Copy to ${otherTab}`;
 }
+
+// Explicit, on-demand alternative to the removed continuous auto-mirror (see
+// docs-internal/custom-styles.html): a player who wants Simple and Busy to
+// stay identical clicks this whenever they've edited one, rather than the
+// editor inferring and silently re-syncing the other on every save.
+styleEditorCopyTabEl.addEventListener("click", () => {
+  if (!_styleEditorDraft) return;
+  const from = _styleEditorTab;
+  const to = from === "simple" ? "busy" : "simple";
+  const fromLabel = from === "simple" ? "Simple" : "Busy";
+  const toLabel = to === "simple" ? "Simple" : "Busy";
+  if (!window.confirm(`Copy ${fromLabel} into ${toLabel}? This overwrites ${toLabel}.`)) return;
+  // The active tab (and any running preview, which always plays the active
+  // tab) is the source and is untouched — only the inactive tab's draft
+  // changes, so nothing on screen needs to re-render besides its tab label.
+  _styleEditorDraft[to] = cloneStyleVariantDraft(_styleEditorDraft[from]);
+  renderStyleEditorTabs();
+});
 
 function appendDrumRow(instrument: DrumInstrumentName, pattern: DrumPattern): void {
   styleEditorGridEl.appendChild(
@@ -1317,24 +1339,49 @@ async function switchStyleEditorTab(tab: "simple" | "busy"): Promise<void> {
 styleEditorTabSimpleEl.addEventListener("click", () => void switchStyleEditorTab("simple"));
 styleEditorTabBusyEl.addEventListener("click", () => void switchStyleEditorTab("busy"));
 
-styleEditorSaveEl.addEventListener("click", () => {
-  if (!_styleEditorDraft || !_styleEditorOriginal) return;
-  // Whichever variant was linked (blank, or equal to its twin) when this
-  // editing session started and wasn't itself edited this session mirrors
-  // the other one, rather than drifting out of sync — see
-  // docs-internal/custom-styles.html.
-  const { simple, busy } = resolveLinkedVariants(_styleEditorDraft, _styleEditorOriginal);
-  const def = {
+// Shared by Save and Copy JSON — both need the same linked-variant resolution
+// (see docs-internal/custom-styles.html) so Copy JSON reflects exactly what
+// Save would persist, not the raw unmirrored draft.
+//
+// The mirror only runs for a brand-new style's first save (_styleEditorEditingId
+// is still null) — that's the "silent blank variant" trap it exists to prevent.
+// Once a style has an id, simple/busy are separate for good: re-opening it and
+// touching only one side must never drag the other side along, even if they
+// happen to be equal (e.g. because the first save just mirrored them).
+function buildStyleEditorDef(): Omit<CustomStyleDef, "id"> | null {
+  if (!_styleEditorDraft || !_styleEditorOriginal) return null;
+  const { simple, busy } = _styleEditorEditingId
+    ? _styleEditorDraft
+    : resolveLinkedVariants(_styleEditorDraft, _styleEditorOriginal);
+  return {
     name: styleEditorNameEl.value.trim() || "Untitled Style",
     stepsPerBar: 16,
     bars: 1,
     simple: draftToStyleVariant(simple),
     busy: draftToStyleVariant(busy),
   };
+}
+
+styleEditorSaveEl.addEventListener("click", () => {
+  const def = buildStyleEditorDef();
+  if (!def) return;
   if (_styleEditorEditingId) app.updateCustomStyle(_styleEditorEditingId, def);
   else app.saveCustomStyle(def);
   styleEditorSheetEl.close();
   renderCustomStyleRows();
+});
+
+// Dev convenience for promoting a custom style to a built-in: copies the def
+// as JSON so it can be pasted into styles.ts's STYLES table.
+styleEditorCopyJsonEl.addEventListener("click", async () => {
+  const def = buildStyleEditorDef();
+  if (!def) return;
+  await navigator.clipboard.writeText(JSON.stringify(def, null, 2));
+  const original = styleEditorCopyJsonEl.textContent;
+  styleEditorCopyJsonEl.textContent = "Copied!";
+  setTimeout(() => {
+    styleEditorCopyJsonEl.textContent = original;
+  }, 1200);
 });
 
 styleEditorDeleteEl.addEventListener("click", () => {

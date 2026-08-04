@@ -663,6 +663,44 @@ style: resolveStyleDef(_state.playback.style, _getCustomStyles(), STYLES, STYLES
       lives in the editor's save step. Existing custom styles aren't migrated — this only governs
       saves made after the fix landed.
     </div>
+    <div class="decided">
+      <strong
+        >Bug found in manual testing: the "re-sync on every save" behavior above also fired on
+        already-saved styles, not just new ones.</strong
+      >
+      Workflow: create a style, fill in only Simple, save (mirrors into Busy per the fix above —
+      both now equal) — then re-open the same style later and tweak only Busy. At open time Simple
+      and Busy are still equal (from the mirror), so <code>resolveLinkedVariants()</code> reads that
+      as "still linked" and re-synced Simple to match the new Busy edit, silently discarding the
+      divergence the player was trying to create. The only sanctioned escape hatch — edit both tabs
+      in the same sitting — isn't discoverable and doesn't match how anyone actually revisits a
+      style across separate sessions. Fixed by scoping the mirror to a style's <em>first</em> save
+      only: the editor's save handler now calls <code>resolveLinkedVariants()</code> exclusively
+      when <code>editingId</code> is still null (no id assigned yet). Once a style has been saved
+      once, Simple and Busy are permanently independent — editing one on a later visit never touches
+      the other, even if they happen to be equal. <code>resolveLinkedVariants()</code> itself is
+      unchanged (and still exercises the "re-sync while linked" path in its unit tests, simulating a
+      first save); only the app-level call site gates when it runs.
+    </div>
+    <div class="decided">
+      <strong
+        >Follow-up: gating the mirror to first-save-only reopened the "single pattern forever" case
+        the earlier tradeoff above was written for.</strong
+      >
+      A player who only ever touches Simple, across many separate sessions, now sees Busy freeze at
+      whatever it was mirrored to on the very first save — it no longer tracks later Simple-only
+      edits. On inspection, "diverge them" and "keep them identical forever" are genuinely
+      indistinguishable from state alone: both look like "one tab touched this session, other tab
+      currently equal to it" at save time, and no snapshot-comparison heuristic can tell which one
+      the player means, since the difference is future intent, not present state. Rather than add a
+      persisted "keep in sync" flag (a schema/migration change) or a confirm-dialog that nags anyone
+      who saves often, this was resolved by making the sync <em>explicit and on-demand</em>: a
+      <code>⇄ Copy to Busy</code>/<code>⇄ Copy to Simple</code> button next to the tab switcher
+      (label flips to name whichever tab is currently inactive) clones the active tab's draft over
+      the other one, in-memory, right there in <code>app.ts</code> — no core/schema involvement. A
+      single-pattern player clicks it after every edit session before saving; a two-pattern player
+      never clicks it. No inference, no ambiguity, no case where the editor guesses wrong.
+    </div>
     <div class="note">
       <strong>Storage size is a non-issue.</strong> Each <code>CustomStyleDef</code> is a handful of
       16-element arrays — a few hundred bytes of JSON. Even a few hundred custom styles stay well
