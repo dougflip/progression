@@ -82,6 +82,21 @@ Background and goals: `version-2.md`.
 - Don't use Tone containers that snapshot data at construction (`Tone.Sequence` captures step values once).
 - Timing logic (song + position → events for a bar) is a pure function, unit-tested without Tone.
 
+## Transport
+
+- Playback position is always a bar: `{ arrIdx, lap, bar }`. Pause, resume and every jump land on a bar start.
+- **Pause** stops sound and keeps the position; ▶ resumes from the start of that bar.
+- **Stop** stops sound and clears the position; ▶ starts from the top.
+- **Jumps:** tap a chord chip (→ that chord's bar) or a section in the SONG scrubber / arrangement (→ its first bar).
+  - While playing: queued, lands at the next bar.
+  - While paused/stopped: moves where ▶ starts.
+  - A chord jump lands on its bar, so the cue outlines every chord in that bar. Later option (engine-only): land on the chord's own beat by switching mid-bar at the same in-bar offset.
+- **Key jumps** (KEY scrubber, shown whenever a cycle is on) are the one exception: they land at the end of the current lap (end of the section in manual advance).
+  - Tapping the current key repeats it; any other key skips to it.
+- SONG and KEY scrubbers sit above the transport, as in v1; the SONG scrubber is hidden while looping a single section.
+- Edits that make a saved position invalid clamp it (missing section → first, bar past the end → bar 1) rather than discarding it.
+- Position is local playback state: never shared, never stored in the song.
+
 ## Looper
 
 - Loops belong to sections. A section holds a list of takes, so overdub = add a take.

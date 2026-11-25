@@ -61,7 +61,7 @@
         font-family: system-ui, sans-serif;
         color: var(--text);
         margin: 0;
-        padding-bottom: calc(88px + env(safe-area-inset-bottom));
+        padding-bottom: calc(170px + env(safe-area-inset-bottom));
         font-size: 15px;
       }
       main {
@@ -366,10 +366,17 @@
         line-height: 1.3;
         margin-top: 0.15rem;
       }
+      .chip {
+        cursor: pointer;
+      }
       .chip.active {
         background: var(--accent);
         color: var(--accent-text);
         border-color: var(--accent);
+      }
+      .chip.cued {
+        outline: 2px dashed var(--queued);
+        outline-offset: 2px;
       }
       .bar-progress {
         position: absolute;
@@ -645,6 +652,50 @@
         padding: 0.6rem 1rem calc(0.6rem + env(safe-area-inset-bottom));
         z-index: 10;
       }
+      .action-bar .col {
+        max-width: 760px;
+        margin: 0 auto;
+      }
+      .scrub {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.45rem;
+      }
+      .scrub-lbl {
+        flex: 0 0 2.6rem;
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--text-3);
+      }
+      .scrub-track {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        gap: 4px;
+        overflow-x: auto;
+        scrollbar-width: none;
+        padding: 3px;
+      }
+      .seg-btn {
+        flex: 0 0 auto;
+        border: none;
+        background: var(--surface-alt);
+        border-radius: 0.4rem;
+        padding: 0.3rem 0.65rem;
+        font-size: 0.82rem;
+        cursor: pointer;
+      }
+      .seg-btn.current {
+        background: var(--accent);
+        color: var(--accent-text);
+        font-weight: 600;
+      }
+      .seg-btn.queued {
+        outline: 2px dashed var(--queued);
+        outline-offset: 1px;
+      }
       .action-bar .inner {
         max-width: 760px;
         margin: 0 auto;
@@ -742,7 +793,7 @@
         position: fixed;
         left: 50%;
         transform: translateX(-50%);
-        bottom: calc(96px + env(safe-area-inset-bottom));
+        bottom: calc(170px + env(safe-area-inset-bottom));
         background: var(--surface-alt-active);
         border: 1px solid var(--queued);
         color: var(--text);
@@ -1062,6 +1113,8 @@
         // Volume levels: local to this device, never shared.
         mix: { chords: 50, bass: 100, drums: 100, loops: 100, master: 100 },
         play: { on: false, tick: 0, arrIdx: 0, lap: 0, jump: null, snapshot: null, dirty: false, last: 0 },
+        // Where ▶ starts when not playing: null = from the top. Set by pause or by tapping a section/chord.
+        cue: null, // { arrIdx, lap, bar, paused }
       };
       let nextId = 1;
       const uid = (p) => p + nextId++;
@@ -1099,6 +1152,7 @@
         document.getElementById("sheet").innerHTML = S.sheet ? renderSheet() : "";
         const tl2 = document.querySelector(".timeline");
         if (tl2) tl2.scrollLeft = scroll;
+        if (document.querySelectorAll) centerScrubbers();
         updatePlayUI();
         if (S.sheet && S.sheet.type === "share") computeShare();
       }
@@ -1190,37 +1244,58 @@
       }
 
       function renderArrangement(arr, lookup, prefix) {
-        const nowIdx = S.play.on ? S.play.arrIdx : -1;
+        const nowIdx = S.play.on ? S.play.arrIdx : S.cue ? clampPos(liveSong(), S.cue).arrIdx : -1;
         const secs = prefix === "r" ? S.recipe.sections : S.song.sections;
         return `
         <div class="arr">
           ${arr
             .map((id, i) => {
               const s = lookup(id);
-              const queued = S.play.on && S.play.jump === i;
-              return `<span class="chip-sm ${i === nowIdx ? "now" : ""} ${queued ? "queued" : ""}"><button class="chip-name" data-act="arrJump" data-i="${i}" title="${S.play.on ? "Jump here at the next bar" : ""}">${esc(s ? s.name : "?")}</button><button class="x" data-act="arrDel" data-p="${prefix}" data-i="${i}">✕</button></span>`;
+              const queued = S.play.on && S.play.jump && S.play.jump.section && S.play.jump.arrIdx === i;
+              return `<span class="chip-sm ${i === nowIdx ? "now" : ""} ${queued ? "queued" : ""}"><button class="chip-name" data-act="arrJump" data-i="${i}" title="${S.play.on ? "Jump here at the next bar" : "Start here"}">${esc(s ? s.name : "?")}</button><button class="x" data-act="arrDel" data-p="${prefix}" data-i="${i}">✕</button></span>`;
             })
             .join("")}
           <span class="muted" style="margin:0 .2rem">add:</span>
           ${secs.map((s) => `<button class="btn small" data-act="arrAdd" data-p="${prefix}" data-id="${s.id}">+ ${esc(s.name)}</button>`).join("")}
         </div>
-        ${S.play.on ? `<div class="muted" style="margin-top:.35rem;font-size:.78rem">Tap a section to jump there at the next bar.</div>` : ""}`;
+        <div class="muted" style="margin-top:.35rem;font-size:.78rem">${
+          S.play.on
+            ? "Tap a section (or a chord above) to jump there at the next bar."
+            : "Tap a section (or a chord above) to choose where ▶ starts."
+        }</div>`;
       }
 
       // Practice strip: identical in both modes. Not part of the song.
       // ── Player header: identical on every screen ─────────────────────────
       // Shows the section that's playing (or would play), its chords resolved in
       // the current key with numerals, and the settings that section actually uses.
+      // Playback position is always a bar: { arrIdx, lap, bar }. Pause, resume and
+      // every jump land on a bar start. A saved position that edits made invalid is
+      // clamped (missing section → first, bar past the end → bar 1), never discarded.
+      function clampPos(doc, pos) {
+        const loopId = loopingSectionId();
+        const arrIdx = pos.arrIdx < doc.arrangement.length ? pos.arrIdx : 0;
+        const sec = findSec(doc, loopId || doc.arrangement[arrIdx]);
+        const bar = sec && pos.bar < sec.bars ? pos.bar : 0;
+        return { arrIdx, lap: pos.lap || 0, bar };
+      }
+
       function playerContext() {
         if (S.play.on && S.play.snapshot) {
-          return { doc: S.play.snapshot, sec: playSection(), key: playKey() };
+          return { doc: S.play.snapshot, sec: playSection(), key: playKey(), lap: S.play.lap, cueBar: null };
         }
-        const doc = S.mode === "backing" ? generateSong(S.recipe) : S.song;
+        const doc = liveSong();
+        const pos = S.cue ? clampPos(doc, S.cue) : null;
         const sec =
-          S.mode === "composer" && S.view.screen === "section"
-            ? curSec()
-            : findSec(doc, doc.arrangement[0]) || doc.sections[0];
-        return { doc, sec, key: doc.key };
+          loopingSectionId() ? curSec() : findSec(doc, doc.arrangement[pos ? pos.arrIdx : 0]) || doc.sections[0];
+        const keys = lapKeys(doc, S.practice);
+        return {
+          doc,
+          sec,
+          key: pos ? keys[pos.lap % keys.length] : doc.key,
+          lap: pos ? pos.lap : 0,
+          cueBar: pos ? pos.bar : null,
+        };
       }
 
       // What the shown section really plays; overridden values are marked.
@@ -1248,14 +1323,26 @@
       }
 
       function renderPlayer() {
-        const { doc, sec, key } = playerContext();
+        const { doc, sec, key, lap, cueBar } = playerContext();
         if (!sec) return "";
         const ci = S.play.on ? currentChordIndex() : -1;
+        // Dashed outline: where a queued jump will land (playing) or where ▶ will start (paused/stopped).
+        // Jumps land on a bar, so outline every chord that sounds in the target bar,
+        // not just the one tapped (a mid-bar chord means you'll hear what precedes it first).
+        let targetBar = null;
+        if (S.play.on && S.play.jump && S.play.jump.chord != null) targetBar = S.play.jump.bar;
+        if (!S.play.on && cueBar != null) targetBar = cueBar;
+        const cued = new Set();
+        if (targetBar != null) {
+          const a = targetBar * barTicks();
+          const b = a + barTicks();
+          sec.chords.forEach((c, i) => c.start < b && c.start + c.duration > a && cued.add(i));
+        }
         const keys = lapKeys(doc, S.practice);
-        const cycling = S.play.on && keys.length > 1;
+        const cycling = (S.play.on || S.cue) && keys.length > 1;
         const keyField = S.mode === "backing" ? "recipe.key" : "song.key";
         const keyEl = cycling
-          ? `<span class="key-pill">${esc(key)}</span><span class="key-label">major</span><span class="key-lap">${(S.play.lap % keys.length) + 1}/${keys.length}</span>`
+          ? `<span class="key-pill">${esc(key)}</span><span class="key-label">major</span><span class="key-lap">${(lap % keys.length) + 1}/${keys.length}</span>`
           : `<select class="key-pill" data-field="${keyField}">${opts(KEYS.map((k) => [k, k]), doc.key)}</select><span class="key-label">major</span>`;
         const chips = sec.chords
           .map((c, i) => {
@@ -1264,7 +1351,8 @@
               bars > 1
                 ? `<div class="bar-progress">${Array.from({ length: bars }, () => `<span class="bar-dot"></span>`).join("")}</div>`
                 : "";
-            return `<div class="chip ${i === ci ? "active" : ""}" data-ci="${i}"><span class="numeral">${esc(numeral(c))}</span><span class="name">${esc(chordName(c, key))}</span>${dots}</div>`;
+            return `<div class="chip ${i === ci ? "active" : ""} ${cued.has(i) ? "cued" : ""}" data-ci="${i}" data-act="chipJump"
+              title="${S.play.on ? "Jump to this chord's bar at the next bar" : "Start here"}"><span class="numeral">${esc(numeral(c))}</span><span class="name">${esc(chordName(c, key))}</span>${dots}</div>`;
           })
           .join("");
         const eff = effectiveSettings(doc, sec)
@@ -1520,13 +1608,67 @@
       // ── Bottom action bar ───────────────────────────────────────────────
       function renderBar() {
         const canPlay = S.mode === "backing" || !!S.song;
+        let posText = canPlay ? "Stopped" : "";
+        if (canPlay && !S.play.on && S.cue) {
+          const { sec } = playerContext();
+          const pos = clampPos(liveSong(), S.cue);
+          posText = `${S.cue.paused ? "Paused" : "Starts at"} · <b>${esc(sec ? sec.name : "")}</b> · bar ${pos.bar + 1}`;
+        }
         return `
-        <div class="action-bar"><div class="inner">
+        <div class="action-bar"><div class="col">
+          ${canPlay ? renderScrubbers() : ""}
+          <div class="inner">
           <button class="btn" data-act="sheet" data-type="mix" ${canPlay ? "" : "disabled"}>🎚 Mix</button>
-          <button class="play ${S.play.on ? "on" : ""}" data-act="play" ${canPlay ? "" : "disabled"}>${S.play.on ? "■" : "▶"}</button>
-          <div class="pos" id="pos">${canPlay ? "Stopped" : ""}</div>
+          <button class="btn" data-act="stop" title="Stop: back to the beginning" ${S.play.on || S.cue ? "" : "disabled"}>■</button>
+          <button class="play ${S.play.on ? "on" : ""}" data-act="play" title="${S.play.on ? "Pause" : "Play"}" ${canPlay ? "" : "disabled"}>${S.play.on ? "❚❚" : "▶"}</button>
+          <div class="pos" id="pos">${posText}</div>
           <button class="btn" data-act="sheet" data-type="share" ${canPlay ? "" : "disabled"}>Share</button>
+          </div>
         </div></div>`;
+      }
+
+      // v1-style scrubbers above the transport. SONG: arrangement positions (hidden when
+      // looping one section). KEY: the cycle's keys, shown whenever a cycle is on.
+      function renderScrubbers() {
+        const doc = S.play.on && S.play.snapshot ? S.play.snapshot : liveSong();
+        if (!doc) return "";
+        const pos = S.play.on ? { arrIdx: S.play.arrIdx, lap: S.play.lap } : S.cue ? clampPos(doc, S.cue) : null;
+        let out = "";
+        if (!loopingSectionId() && doc.arrangement.length > 1) {
+          const segs = doc.arrangement
+            .map((id, i) => {
+              const s = findSec(doc, id);
+              const cur = pos && pos.arrIdx === i;
+              const q = S.play.on && S.play.jump && S.play.jump.section && S.play.jump.arrIdx === i;
+              return `<button class="seg-btn ${cur ? "current" : ""} ${q ? "queued" : ""}" data-act="arrJump" data-i="${i}">${esc(s ? s.name : "?")}</button>`;
+            })
+            .join("");
+          out += `<div class="scrub"><span class="scrub-lbl">Song</span><div class="scrub-track">${segs}</div></div>`;
+        }
+        if (S.practice.cycle !== "none") {
+          const keys = lapKeys(doc, S.practice);
+          const curIdx = pos ? pos.lap % keys.length : -1;
+          const segs = keys
+            .map((k, i) => {
+              const q = S.play.on && S.play.keyJump === i;
+              return `<button class="seg-btn ${i === curIdx ? "current" : ""} ${q ? "queued" : ""}" data-act="keyJump" data-i="${i}"
+                title="${S.play.on ? (i === curIdx ? "Repeat this key next lap" : "Play this key next lap") : "Start in this key"}">${esc(k)}</button>`;
+            })
+            .join("");
+          out += `<div class="scrub"><span class="scrub-lbl">Key</span><div class="scrub-track">${segs}</div></div>`;
+        }
+        return out;
+      }
+
+      // Keep the current scrubber segment centred.
+      function centerScrubbers() {
+        document.querySelectorAll(".scrub-track").forEach((track) => {
+          const cur = track.querySelector(".current");
+          if (!cur) return;
+          const t = track.getBoundingClientRect();
+          const c = cur.getBoundingClientRect();
+          track.scrollLeft += c.left + c.width / 2 - (t.left + t.width / 2);
+        });
       }
 
       // ── Sheets ──────────────────────────────────────────────────────────
@@ -1758,15 +1900,19 @@
         return (sec && sec.overrides && sec.overrides.tempo) || snap.defaults.tempo;
       }
 
+      // ▶: resume from the cued/paused bar if there is one, else from the top.
       function startPlay() {
         const song = liveSong();
         if (!song || !song.sections.length) return;
+        const pos = S.cue ? clampPos(song, S.cue) : { arrIdx: 0, lap: 0, bar: 0 };
+        S.cue = null;
         S.play = {
           on: true,
-          tick: 0,
-          arrIdx: 0,
-          lap: 0,
+          tick: pos.bar * barTicks(),
+          arrIdx: pos.arrIdx,
+          lap: pos.lap,
           jump: null,
+          keyJump: null,
           snapshot: structuredClone(song),
           dirty: false,
           last: performance.now(),
@@ -1774,9 +1920,26 @@
         render();
         requestAnimationFrame(step);
       }
-      function stopPlay() {
+      // ❚❚: stop sound, remember the bar we were in.
+      function pausePlay() {
+        S.cue = { arrIdx: S.play.arrIdx, lap: S.play.lap, bar: Math.floor(S.play.tick / barTicks()), paused: true };
         S.play.on = false;
         render();
+      }
+      // ■: stop sound, forget the position.
+      function stopPlay() {
+        S.play.on = false;
+        S.cue = null;
+        render();
+      }
+
+      // Key jumps are the one exception to "next bar": they land at the end of the
+      // current lap, so tapping the current key repeats it and any other key skips to it.
+      function nextLap(p) {
+        if (p.keyJump != null) {
+          p.lap = p.keyJump;
+          p.keyJump = null;
+        } else p.lap++;
       }
 
       function step(now) {
@@ -1801,20 +1964,26 @@
           p.tick -= len;
           crossed = true;
           if (loopingSectionId()) {
-            p.lap++; // looping one section: each pass is a cycle lap
+            nextLap(p); // looping one section: each pass is a cycle lap
           } else if (S.practice.advance === "auto") {
             p.arrIdx++;
             if (p.arrIdx >= p.snapshot.arrangement.length) {
               p.arrIdx = 0;
-              p.lap++; // arrangement finished → next key in the cycle
+              nextLap(p); // arrangement finished → next key in the cycle
             }
+          } else if (p.keyJump != null) {
+            // manual: the arrangement never finishes, so a queued key lands at the end of this section
+            nextLap(p);
           } // manual: repeat this arrangement position until a jump is queued
         }
-        // Queued arrangement jumps land on the next bar.
-        if (crossed && p.jump != null && !loopingSectionId()) {
-          p.arrIdx = p.jump;
+        // Queued jumps (section or chord) land on the next bar, at the start of the target bar.
+        if (crossed && p.jump) {
+          const over = p.tick % barTicks();
+          if (!loopingSectionId()) p.arrIdx = Math.min(p.jump.arrIdx, p.snapshot.arrangement.length - 1);
+          p.tick = p.jump.bar * barTicks() + over;
           p.jump = null;
-          p.tick %= barTicks();
+          const target = playSection();
+          if (target && p.tick >= sectionTicks(target, p.snapshot)) p.tick = over;
         }
         // The engine only looks at new data at bar boundaries.
         if (crossed && p.dirty) {
@@ -2182,11 +2351,44 @@
           S.practice.advance = S.practice.advance === "auto" ? "manual" : "auto";
           edited();
         },
+        // Jumps: while playing they're queued for the next bar; otherwise they move the cue.
         arrJump(d) {
-          if (!S.play.on) return;
           const i = Number(d.i);
-          S.play.jump = S.play.jump === i ? null : i;
+          if (S.play.on) {
+            const same = S.play.jump && S.play.jump.section && S.play.jump.arrIdx === i;
+            S.play.jump = same ? null : { arrIdx: i, bar: 0, section: true };
+          } else {
+            S.cue = { arrIdx: i, lap: S.cue ? S.cue.lap : 0, bar: 0, paused: S.cue ? S.cue.paused : false };
+          }
           render();
+        },
+        chipJump(d) {
+          const ci = Number(d.ci);
+          const { sec } = playerContext();
+          const chord = sec && sec.chords[ci];
+          if (!chord) return;
+          const bar = Math.floor(chord.start / barTicks());
+          if (S.play.on) {
+            const same = S.play.jump && S.play.jump.chord === ci;
+            S.play.jump = same ? null : { arrIdx: S.play.arrIdx, bar, chord: ci };
+          } else {
+            const cur = S.cue ? clampPos(liveSong(), S.cue) : { arrIdx: 0, lap: 0 };
+            S.cue = { arrIdx: cur.arrIdx, lap: cur.lap, bar, paused: S.cue ? S.cue.paused : false };
+          }
+          render();
+        },
+        keyJump(d) {
+          const i = Number(d.i);
+          if (S.play.on) {
+            S.play.keyJump = S.play.keyJump === i ? null : i;
+          } else {
+            const cur = S.cue ? clampPos(liveSong(), S.cue) : { arrIdx: 0, bar: 0 };
+            S.cue = { arrIdx: cur.arrIdx, lap: i, bar: cur.bar, paused: S.cue ? S.cue.paused : false };
+          }
+          render();
+        },
+        stop() {
+          stopPlay();
         },
         sharePractice() {
           S.sharePractice = !includePractice();
@@ -2204,7 +2406,7 @@
         },
 
         play() {
-          S.play.on ? stopPlay() : startPlay();
+          S.play.on ? pausePlay() : startPlay();
         },
       };
 
