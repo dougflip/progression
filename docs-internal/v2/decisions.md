@@ -29,6 +29,15 @@ Background and goals: `version-2.md`.
 - **Practice** (separate `Practice` object, works the same in both modes): cycle + custom keys, advance (auto/manual), channel mutes.
   - Room to grow: new practice-time settings go here, not into the song.
 - **Local only**: volume levels, playback position, theme, keep-awake.
+- Resolution: a section override always wins; otherwise the section uses the song value.
+  - Changing a song-level setting affects every section without an override, from the next bar. Sections with an override are unaffected.
+  - The UI labels song-level controls as "Song", and the player shows what the current section actually plays, with overrides marked.
+- Mixer changes (mutes, levels) apply instantly, not at the next bar; they're channel gains, not scheduled notes. Both live in one Mix sheet despite being stored separately.
+
+## Player UI
+
+- One player header on every screen (backing, song, section editor): key, section name + its resolved settings, chord chips (numeral + resolved name, v1 highlighting with bar-progress dots), beat dots.
+- Mode-specific controls sit below it. Practice controls appear on the backing and song screens, not in the section editor.
 
 ## Practice
 

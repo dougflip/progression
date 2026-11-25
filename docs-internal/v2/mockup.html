@@ -229,13 +229,88 @@
         font-size: 0.85rem;
       }
 
-      /* ── backing track screen ── */
+      /* ── player header (shared by every screen; chips copied from v1) ── */
+      .player {
+        margin: 0.9rem 0 0.6rem;
+      }
       .key-row {
         display: flex;
         justify-content: center;
         align-items: center;
         gap: 0.6rem;
-        margin: 1.1rem 0 0.9rem;
+        margin: 0.4rem 0 0.7rem;
+      }
+      .key-lap {
+        font-size: 0.8rem;
+        color: var(--text-3);
+        align-self: flex-end;
+        margin-bottom: 0.35rem;
+      }
+      .player-sec {
+        text-align: center;
+        font-size: 0.85rem;
+        color: var(--text-2);
+        margin-bottom: 0.5rem;
+        line-height: 1.6;
+      }
+      .player-sec .eff {
+        color: var(--text-3);
+        margin-left: 0.35rem;
+        white-space: nowrap;
+      }
+      .player-sec .eff.ovr {
+        color: var(--text);
+        font-weight: 600;
+      }
+      .player-sec .eff.ovr::after {
+        content: "•";
+        color: var(--queued);
+        margin-left: 0.1rem;
+      }
+      .beats {
+        display: flex;
+        justify-content: center;
+        gap: 0.7rem;
+        min-height: 0.75rem;
+        align-items: center;
+      }
+      .beat-dot {
+        width: 0.5rem;
+        height: 0.5rem;
+        border-radius: 50%;
+        background: var(--surface-alt);
+        transition:
+          background 0.08s,
+          transform 0.08s;
+      }
+      .beat-dot.active {
+        background: var(--accent);
+        transform: scale(1.5);
+      }
+      select.text.set,
+      input.text.set {
+        border-color: var(--queued);
+        font-weight: 600;
+      }
+      .mix-row {
+        display: grid;
+        grid-template-columns: minmax(6rem, 1fr) 2fr 2.5rem;
+        gap: 0.75rem;
+        align-items: center;
+        padding: 0.7rem 0;
+        border-bottom: 1px solid var(--border-faint);
+      }
+      .mix-row label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 600;
+      }
+      .mix-row .val {
+        font-variant-numeric: tabular-nums;
+        color: var(--text-3);
+        font-size: 0.85rem;
+        text-align: right;
       }
       .key-pill {
         font-size: 2.3rem;
@@ -255,29 +330,78 @@
       }
       .chips {
         display: flex;
-        gap: 0.4rem;
         flex-wrap: wrap;
         justify-content: center;
-        margin-bottom: 0.9rem;
+        gap: 0.5rem;
+        margin-bottom: 0.8rem;
+        min-height: 4.5rem;
       }
       .chip {
-        min-width: 3.6rem;
-        text-align: center;
+        flex: 1 1 4.5rem;
+        min-width: 4.5rem;
+        max-width: 8rem;
+        min-height: 3.8rem;
+        padding: 0.6rem 0.5rem;
+        border-radius: 0.5rem;
         background: var(--surface);
         border: 1px solid var(--border);
-        border-radius: 0.5rem;
-        padding: 0.45rem 0.6rem;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        position: relative;
+        transition:
+          background 0.1s,
+          color 0.1s,
+          border-color 0.1s;
       }
-      .chip b {
-        display: block;
-        font-size: 1.15rem;
-      }
-      .chip span {
+      .chip .numeral {
         font-size: 0.75rem;
         color: var(--text-3);
+        line-height: 1;
       }
-      .chip.now {
-        border-color: var(--playing);
+      .chip .name {
+        font-size: 1.25rem;
+        font-weight: 600;
+        line-height: 1.3;
+        margin-top: 0.15rem;
+      }
+      .chip.active {
+        background: var(--accent);
+        color: var(--accent-text);
+        border-color: var(--accent);
+      }
+      .bar-progress {
+        position: absolute;
+        left: 0.4rem;
+        right: 0.4rem;
+        bottom: 0.3rem;
+        display: flex;
+        justify-content: center;
+        gap: 0.25rem;
+        pointer-events: none;
+      }
+      .chip:not(.active) .bar-progress {
+        display: none;
+      }
+      .bar-dot {
+        flex: 0 1 0.6rem;
+        min-width: 0;
+        height: 0.2rem;
+        border-radius: 0.1rem;
+        background: var(--accent-text);
+        opacity: 0.3;
+      }
+      .bar-dot.active {
+        opacity: 1;
+      }
+      .readout-lbl {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--text-3);
+        align-self: center;
+        margin-right: 0.2rem;
       }
       .readout {
         display: flex;
@@ -935,6 +1059,8 @@
         sheet: null, // {type, ...}
         dataScope: "auto",
         sharePractice: null, // null = default (on when practice differs from defaults)
+        // Volume levels: local to this device, never shared.
+        mix: { chords: 50, bass: 100, drums: 100, loops: 100, master: 100 },
         play: { on: false, tick: 0, arrIdx: 0, lap: 0, jump: null, snapshot: null, dirty: false, last: 0 },
       };
       let nextId = 1;
@@ -993,27 +1119,12 @@
       // ── Backing track mode ──────────────────────────────────────────────
       function renderBacking() {
         const r = S.recipe;
-        const nowSecId = S.play.on && S.play.snapshot ? S.play.snapshot.arrangement[S.play.arrIdx] : null;
-        const shownSec = r.sections.find((s) => s.id === nowSecId) || r.sections[0];
-        const nowChord = S.play.on ? currentChordIndex() : -1;
-        const shownKey = S.play.on && S.play.snapshot ? playKey() : r.key;
-        const chips = shownSec
-          ? parseProgression(shownSec.progression)
-              .map(
-                (c, i) =>
-                  `<div class="chip ${i === nowChord ? "now" : ""}"><b>${esc(chordName(c, shownKey))}</b><span>${esc(numeral(c))}</span></div>`,
-              )
-              .join("")
-          : "";
+        const set = (v) => (v ? "set" : "");
         return `
         <div class="mock-note">Mockup — no audio. Backing-track mode edits a small <b>recipe</b>; the generator turns it into a full <b>Song</b> for the engine. Play, then edit: changes land on the next bar.</div>
-        <div class="key-row">
-          <select class="key-pill" data-field="recipe.key">${opts(KEYS.map((k) => [k, k]), r.key)}</select>
-          <span class="key-label">major</span>
-        </div>
-        <div class="muted" style="text-align:center;margin-bottom:.4rem">${esc(shownSec ? shownSec.name : "")}</div>
-        <div class="chips">${chips}</div>
+        ${renderPlayer()}
         <div class="readout">
+          <span class="readout-lbl" title="Every section uses these unless it overrides them">Song</span>
           <label class="pill">⭐ <select data-field="recipe.style">${styleOpts(r.style)}</select></label>
           <label class="pill">🥁 <select data-field="recipe.drums">${opts(VARIANTS, r.drums)}</select></label>
           <label class="pill">🎸 <select data-field="recipe.bass">${opts(VARIANTS, r.bass)}</select></label>
@@ -1040,16 +1151,16 @@
             </div>
             <div class="row" style="margin-top:.45rem">
               <span class="muted">Overrides</span>
-              <select class="text" data-field="rsec.style" data-i="${i}" title="Style">${styleOpts(s.style, true)}</select>
-              <select class="text" data-field="rsec.drums" data-i="${i}" title="Drums">${opts(
-                [["", "🥁 default"], ...VARIANTS.map(([k, l]) => [k, "🥁 " + l])],
+              <select class="text ${set(s.style)}" data-field="rsec.style" data-i="${i}" title="Style">${styleOpts(s.style, true)}</select>
+              <select class="text ${set(s.drums)}" data-field="rsec.drums" data-i="${i}" title="Drums">${opts(
+                [["", "🥁 Song default"], ...VARIANTS.map(([k, l]) => [k, "🥁 " + l])],
                 s.drums || "",
               )}</select>
-              <select class="text" data-field="rsec.bass" data-i="${i}" title="Bass">${opts(
-                [["", "🎸 default"], ...VARIANTS.map(([k, l]) => [k, "🎸 " + l])],
+              <select class="text ${set(s.bass)}" data-field="rsec.bass" data-i="${i}" title="Bass">${opts(
+                [["", "🎸 Song default"], ...VARIANTS.map(([k, l]) => [k, "🎸 " + l])],
                 s.bass || "",
               )}</select>
-              <input class="text" type="number" style="width:5.5rem" placeholder="♩ ${r.tempo}" value="${s.tempo || ""}" data-field="rsec.tempo" data-i="${i}" title="Tempo" />
+              <input class="text ${set(s.tempo)}" type="number" style="width:5.5rem" placeholder="♩ ${r.tempo}" value="${s.tempo || ""}" data-field="rsec.tempo" data-i="${i}" title="Tempo (blank = song tempo)" />
               ${parseProgression(s.progression).length === 0 ? `<span class="badge" style="color:var(--playing)">no valid chords</span>` : ""}
             </div>
           </div>`,
@@ -1097,12 +1208,79 @@
       }
 
       // Practice strip: identical in both modes. Not part of the song.
+      // ── Player header: identical on every screen ─────────────────────────
+      // Shows the section that's playing (or would play), its chords resolved in
+      // the current key with numerals, and the settings that section actually uses.
+      function playerContext() {
+        if (S.play.on && S.play.snapshot) {
+          return { doc: S.play.snapshot, sec: playSection(), key: playKey() };
+        }
+        const doc = S.mode === "backing" ? generateSong(S.recipe) : S.song;
+        const sec =
+          S.mode === "composer" && S.view.screen === "section"
+            ? curSec()
+            : findSec(doc, doc.arrangement[0]) || doc.sections[0];
+        return { doc, sec, key: doc.key };
+      }
+
+      // What the shown section really plays; overridden values are marked.
+      function effectiveSettings(doc, sec) {
+        if (S.mode === "backing") {
+          const r = S.recipe;
+          const rs = r.sections.find((s) => s.id === sec.id) || {};
+          return [
+            ["⭐", STYLES[rs.style || r.style].label, !!rs.style],
+            ["🥁", rs.drums || r.drums, !!rs.drums],
+            ["🎸", rs.bass || r.bass, !!rs.bass],
+            ["♩", rs.tempo || r.tempo, !!rs.tempo],
+          ];
+        }
+        const o = sec.overrides || {};
+        const d = doc.defaults;
+        const swing = { 0: "straight", 0.33: "light swing", 0.66: "heavy swing" };
+        const voicing = (v) => VOICINGS.find((x) => x[0] === v)[1];
+        return [
+          ["♩", o.tempo || d.tempo, o.tempo != null],
+          ["", swing[o.swing ?? d.swing], o.swing != null],
+          ["🎵", voicing(o.voicing || d.voicing), !!o.voicing],
+          ["🎹", patchLabel((o.instruments && o.instruments.chords) || doc.instruments.chords).replace(/ \(.*\)$/, ""), !!(o.instruments && o.instruments.chords)],
+        ];
+      }
+
+      function renderPlayer() {
+        const { doc, sec, key } = playerContext();
+        if (!sec) return "";
+        const ci = S.play.on ? currentChordIndex() : -1;
+        const keys = lapKeys(doc, S.practice);
+        const cycling = S.play.on && keys.length > 1;
+        const keyField = S.mode === "backing" ? "recipe.key" : "song.key";
+        const keyEl = cycling
+          ? `<span class="key-pill">${esc(key)}</span><span class="key-label">major</span><span class="key-lap">${(S.play.lap % keys.length) + 1}/${keys.length}</span>`
+          : `<select class="key-pill" data-field="${keyField}">${opts(KEYS.map((k) => [k, k]), doc.key)}</select><span class="key-label">major</span>`;
+        const chips = sec.chords
+          .map((c, i) => {
+            const bars = Math.max(1, Math.round(c.duration / barTicks()));
+            const dots =
+              bars > 1
+                ? `<div class="bar-progress">${Array.from({ length: bars }, () => `<span class="bar-dot"></span>`).join("")}</div>`
+                : "";
+            return `<div class="chip ${i === ci ? "active" : ""}" data-ci="${i}"><span class="numeral">${esc(numeral(c))}</span><span class="name">${esc(chordName(c, key))}</span>${dots}</div>`;
+          })
+          .join("");
+        const eff = effectiveSettings(doc, sec)
+          .map(([icon, v, ovr]) => `<span class="eff ${ovr ? "ovr" : ""}" title="${ovr ? "Section override" : "Song default"}">${icon} ${esc(v)}</span>`)
+          .join("");
+        return `
+        <div class="player" id="player" data-sec="${esc(sec.id)}">
+          <div class="key-row">${keyEl}</div>
+          <div class="player-sec"><b>${esc(sec.name)}</b>${eff}</div>
+          <div class="chips">${chips || `<span class="muted" style="align-self:center">No chords in this section</span>`}</div>
+          <div class="beats">${Array.from({ length: 4 }, () => `<span class="beat-dot"></span>`).join("")}</div>
+        </div>`;
+      }
+
       function renderPractice() {
         const p = S.practice;
-        const mutes = CHANNELS.map(
-          ([ch, icon]) =>
-            `<button class="pill ${p.mutes[ch] ? "off" : ""}" data-act="mute" data-ch="${ch}" title="${p.mutes[ch] ? "Unmute" : "Mute"} ${ch}">${icon}</button>`,
-        ).join("");
         return `
         <div class="practice">
           <span class="practice-lbl">Practice</span>
@@ -1113,7 +1291,6 @@
               : ""
           }
           <button class="pill" data-act="advance">⏭️ ${p.advance === "manual" ? "Manual" : "Auto"}</button>
-          ${mutes}
         </div>`;
       }
 
@@ -1167,8 +1344,9 @@
         <div class="row" style="margin-top:.6rem">
           <input class="text" style="font-size:1.25rem;font-weight:700;flex:1;min-width:10rem" value="${esc(g.title)}" data-field="song.title" />
         </div>
-        <div class="readout" style="justify-content:flex-start;margin-top:.6rem">
-          <label class="pill">Key <select data-field="song.key">${opts(KEYS.map((k) => [k, k]), g.key)}</select></label>
+        ${renderPlayer()}
+        <div class="readout">
+          <span class="readout-lbl" title="Every section uses these unless it overrides them">Song</span>
           <label class="pill">♩ <input type="number" min="40" max="240" value="${g.defaults.tempo}" data-field="song.tempo" /> bpm</label>
           <span class="pill">4/4</span>
           <label class="pill">Swing <select data-field="song.swing">${opts(
@@ -1245,8 +1423,7 @@
           <b style="font-size:1.15rem;flex:1">${esc(sec.name)}</b>
           <button class="btn small" data-act="sheet" data-type="sectionSettings">⚙ Section settings</button>
         </div>
-        <div style="margin-top:.4rem">${overrideBadges(sec)}</div>
-        ${renderPractice()}
+        ${renderPlayer()}
 
         <div class="row" style="margin-top:.6rem">
           <span class="muted">Bars</span>
@@ -1345,6 +1522,7 @@
         const canPlay = S.mode === "backing" || !!S.song;
         return `
         <div class="action-bar"><div class="inner">
+          <button class="btn" data-act="sheet" data-type="mix" ${canPlay ? "" : "disabled"}>🎚 Mix</button>
           <button class="play ${S.play.on ? "on" : ""}" data-act="play" ${canPlay ? "" : "disabled"}>${S.play.on ? "■" : "▶"}</button>
           <div class="pos" id="pos">${canPlay ? "Stopped" : ""}</div>
           <button class="btn" data-act="sheet" data-type="share" ${canPlay ? "" : "disabled"}>Share</button>
@@ -1359,7 +1537,29 @@
         if (t === "instruments") body = renderInstrumentsSheet();
         if (t === "sectionSettings") body = renderSectionSettings();
         if (t === "share") body = renderShareSheet();
+        if (t === "mix") body = renderMixSheet();
         return `<div class="backdrop" data-act="closeSheet"></div><div class="sheet"><div class="inner">${body}</div></div>`;
+      }
+
+      // One mixer UI, two homes for the data: mutes → practice (shareable intent),
+      // levels → this device only. Both are channel gains, so they apply instantly.
+      function renderMixSheet() {
+        const row = (ch, label, mutable) => `
+          <div class="mix-row">
+            <label>${mutable ? `<input type="checkbox" ${S.practice.mutes[ch] ? "" : "checked"} data-field="mix.on" data-ch="${ch}" />` : ""}${label}</label>
+            <input type="range" min="0" max="100" value="${S.mix[ch]}" data-field="mix.vol" data-ch="${ch}" />
+            <span class="val">${S.mix[ch]}</span>
+          </div>`;
+        return `
+        <div class="row"><h3 style="flex:1">Mix</h3><button class="btn small" data-act="closeSheet">Close</button></div>
+        <div class="muted" style="margin-top:.3rem">Mutes are saved with practice settings (they can be shared). Levels stay on this device. Changes are instant.</div>
+        <div style="margin-top:.4rem">
+          ${row("chords", "Chords", true)}
+          ${row("bass", "Bass", true)}
+          ${row("drums", "Drums", true)}
+          ${S.mode === "composer" ? row("loops", "Loops", false) : ""}
+          ${row("master", "Master", false)}
+        </div>`;
       }
 
       function renderDataSheet() {
@@ -1373,7 +1573,8 @@
                 ["song", "Whole song"],
                 ...(curSec() && S.view.screen === "section" ? [["section", "This section"]] : []),
               ];
-        if (S.mode === "backing" || S.song) scopes.push(["practice", "Practice"], ["envelope", "Share envelope"]);
+        if (S.mode === "backing" || S.song)
+          scopes.push(["practice", "Practice"], ["mix", "Mix (this device)"], ["envelope", "Share envelope"]);
         let scope = S.dataScope;
         if (!scopes.find((s) => s[0] === scope)) scope = scopes[S.mode === "backing" ? 1 : 0][0];
         const obj = {
@@ -1382,6 +1583,7 @@
           section: () => curSec(),
           song: () => S.song,
           practice: () => S.practice,
+          mix: () => S.mix,
           envelope: () => shareEnvelope(),
         }[scope]();
         return `
@@ -1632,6 +1834,7 @@
       function updatePlayUI() {
         const pos = document.getElementById("pos");
         const ph = document.getElementById("playhead");
+        const player = document.getElementById("player");
         if (!S.play.on || !S.play.snapshot) {
           if (ph) ph.hidden = true;
           return;
@@ -1642,6 +1845,17 @@
         const beat = Math.floor((S.play.tick % barTicks()) / PPQ) + 1;
         const ci = currentChordIndex();
         const chord = ci >= 0 ? sec.chords[ci] : null;
+        // Player header: active chip, bar-progress within it, beat dots (cheap DOM toggles, no re-render).
+        if (player && player.dataset.sec === sec.id) {
+          player.querySelectorAll(".chip").forEach((el, i) => {
+            el.classList.toggle("active", i === ci);
+            if (i === ci) {
+              const barInChord = Math.floor((S.play.tick - chord.start) / barTicks());
+              el.querySelectorAll(".bar-dot").forEach((d, b) => d.classList.toggle("active", b === barInChord));
+            }
+          });
+          player.querySelectorAll(".beat-dot").forEach((d, b) => d.classList.toggle("active", b === beat - 1));
+        }
         const keys = lapKeys(S.play.snapshot, S.practice);
         const key = playKey();
         const muted = CHANNELS.filter(([ch]) => S.practice.mutes[ch]).map(([ch]) => ch);
@@ -1968,10 +2182,6 @@
           S.practice.advance = S.practice.advance === "auto" ? "manual" : "auto";
           edited();
         },
-        mute(d) {
-          S.practice.mutes[d.ch] = !S.practice.mutes[d.ch];
-          edited();
-        },
         arrJump(d) {
           if (!S.play.on) return;
           const i = Number(d.i);
@@ -2028,6 +2238,13 @@
             if (value === "") delete sec.overrides.voicing;
             else sec.overrides.voicing = value;
             break;
+          // Mixer: channel gains apply instantly, so these skip the "queued for next bar" path.
+          case "mix.on":
+            S.practice.mutes[d.ch] = !value;
+            return render();
+          case "mix.vol":
+            S.mix[d.ch] = Number(value);
+            return render();
           case "practice.cycle":
             S.practice.cycle = value;
             break;
@@ -2103,7 +2320,12 @@
       });
       document.addEventListener("change", (e) => {
         const el = e.target.closest("[data-field]");
-        if (el) onField(el.dataset.field, el.value, el.dataset);
+        if (el) onField(el.dataset.field, el.type === "checkbox" ? el.checked : el.value, el.dataset);
+      });
+      // Live readout while dragging a mix slider (the change event commits it).
+      document.addEventListener("input", (e) => {
+        const el = e.target;
+        if (el.dataset && el.dataset.field === "mix.vol") el.nextElementSibling.textContent = el.value;
       });
       document.addEventListener("keydown", (e) => {
         if (e.key === "Escape" && S.sheet) ACTIONS.closeSheet();
