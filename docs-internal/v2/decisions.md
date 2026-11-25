@@ -20,6 +20,24 @@ Background and goals: `version-2.md`.
 - Clean break from v1: no v1 URL/preset import.
 - Settings cascade: song defaults → section overrides (style, tempo, meter, instruments). Finer-grained overrides can come later.
 
+## Where settings live
+
+- **Generator inputs** (`BackingTrack`, with per-section overrides): progression, bars per chord, style, drums simple/busy, bass simple/busy.
+  - In composer they're only the `seed` a section remembers for "Regenerate"; drums and bass are stored note by note.
+- **Rendering** (`Song.defaults`, with section overrides): tempo, meter, swing, voicing, instruments.
+  - Voicing is applied by the engine at play time (voice-lead-loop depends on playback order), never stored as notes.
+- **Practice** (separate `Practice` object, works the same in both modes): cycle + custom keys, advance (auto/manual), channel mutes.
+  - Room to grow: new practice-time settings go here, not into the song.
+- **Local only**: volume levels, playback position, theme, keep-awake.
+
+## Practice
+
+- `cycle`: `none | 4ths | 5ths | custom`. 4ths/5ths start from the song key.
+- `custom` plays the listed keys as given (absolute keys). The song key is ignored while cycling, so v1's "key must equal `customCycleKeys[0]`" invariant goes away.
+- A cycle lap ends when the arrangement completes; the engine picks the next lap's key at that boundary (just-in-time, no lap bookkeeping).
+- `advance: manual` repeats the current arrangement position until a jump is queued. Jumps take effect at the next bar.
+- Mutes are intent ("play without drums"), so they're shareable. Levels are device-specific, so they aren't.
+
 ## Time
 
 - Model supports any meter; build 4/4 straight first.
@@ -76,10 +94,16 @@ Background and goals: `version-2.md`.
 - A script validates the JSON and encodes it into a URL that opens the app in that state.
 - The app also accepts pasted/imported JSON as a fallback for long URLs.
 
-## URL state
+## Library and URL state
 
-- Whole state goes in one compressed param: JSON → deflate (`CompressionStream`) → base64url.
-- Not in the URL: loop audio, cached samples, device/app preferences (theme, keep-awake).
+- Working state lives in a local library of recipes and songs (replaces v1 presets; survives refresh).
+- The URL is for sharing only: generated on Share, read on open. It doesn't mirror state while you edit.
+- Opening a link adds a new library item; it never overwrites what you were working on.
+- A link carries a versioned envelope: `{ version, doc, practice? }`.
+  - `practice` is optional; the Share sheet shows a summary and a toggle (on by default when it differs from defaults).
+  - New blocks (e.g. `mix`) can be added to the envelope later without touching the song format.
+- Encoding: one param, JSON → deflate (`CompressionStream`) → base64url.
+- Never shared: loop audio, cached samples, volume levels, playback position, app preferences.
 
 ## Deployment
 
@@ -95,3 +119,5 @@ Background and goals: `version-2.md`.
 - Export format and order (recording vs project bundle).
 - Practical URL size limit and when to fall back to JSON import.
 - Where an edit takes effect (next bar vs next downbeat vs next section) for each kind of change.
+- Whether practice settings are stored per library item or app-wide.
+- Custom styles (reusable drum + bass patterns) in v2: kept for backing tracks? How do they relate to composer sections?
