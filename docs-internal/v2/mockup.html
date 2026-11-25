@@ -233,6 +233,37 @@
       .player {
         margin: 0.9rem 0 0.6rem;
       }
+      .player.stage {
+        margin: 1.6rem 0 1.4rem;
+      }
+      .player.stage .key-pill,
+      .player.stage .key-label {
+        font-size: 3rem;
+      }
+      .player.stage .player-sec {
+        font-size: 0.95rem;
+        margin-bottom: 0.9rem;
+      }
+      .player.stage .chip {
+        min-height: 4.8rem;
+        max-width: 9rem;
+      }
+      .player.stage .chip .name {
+        font-size: 1.6rem;
+      }
+      .player.stage .chip .numeral {
+        font-size: 0.85rem;
+      }
+      .view-head {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 0.8rem;
+      }
+      .view-title {
+        font-weight: 600;
+        color: var(--text-2);
+      }
       .key-row {
         display: flex;
         justify-content: center;
@@ -1106,7 +1137,8 @@
         song: null,
         // Practice settings: separate from the document, same in both modes.
         practice: structuredClone(DEFAULT_PRACTICE),
-        view: { screen: "song", sectionId: null, selChord: null, confirm: null },
+        // screen: 'play' (home, both modes) | 'edit' (backing) | 'song' | 'section' (composer)
+        view: { screen: "play", sectionId: null, selChord: null, confirm: null },
         sheet: null, // {type, ...}
         dataScope: "auto",
         sharePractice: null, // null = default (on when practice differs from defaults)
@@ -1171,22 +1203,59 @@
       }
 
       // ── Backing track mode ──────────────────────────────────────────────
-      function renderBacking() {
+      // ── Play view: the home screen in both modes ────────────────────────
+      // Orientation first (key, section, chips, scrubbers); only the controls you
+      // touch while practising. Everything else is behind ✎ Edit.
+      function renderPlayView() {
+        const backing = S.mode === "backing";
         const r = S.recipe;
-        const set = (v) => (v ? "set" : "");
-        return `
-        <div class="mock-note">Mockup — no audio. Backing-track mode edits a small <b>recipe</b>; the generator turns it into a full <b>Song</b> for the engine. Play, then edit: changes land on the next bar.</div>
-        ${renderPlayer()}
-        <div class="readout">
-          <span class="readout-lbl" title="Every section uses these unless it overrides them">Song</span>
+        const g = S.song;
+        const pills = backing
+          ? `
           <label class="pill">⭐ <select data-field="recipe.style">${styleOpts(r.style)}</select></label>
           <label class="pill">🥁 <select data-field="recipe.drums">${opts(VARIANTS, r.drums)}</select></label>
           <label class="pill">🎸 <select data-field="recipe.bass">${opts(VARIANTS, r.bass)}</select></label>
           <label class="pill">🎵 <select data-field="recipe.voicing">${opts(VOICINGS, r.voicing)}</select></label>
-          <label class="pill">♩ <input type="number" min="40" max="240" value="${r.tempo}" data-field="recipe.tempo" /> bpm</label>
+          <label class="pill">♩ <input type="number" min="40" max="240" value="${r.tempo}" data-field="recipe.tempo" /> bpm</label>`
+          : `
+          <label class="pill">♩ <input type="number" min="40" max="240" value="${g.defaults.tempo}" data-field="song.tempo" /> bpm</label>
+          <label class="pill">Swing <select data-field="song.swing">${opts(
+            [["0", "Straight"], ["0.33", "Light"], ["0.66", "Heavy"]],
+            String(g.defaults.swing),
+          )}</select></label>
+          <label class="pill">🎵 <select data-field="song.voicing">${opts(VOICINGS, g.defaults.voicing)}</select></label>`;
+        return `
+        <div class="view-head">
+          <span class="view-title">${esc(backing ? "Backing track" : g.title)}</span>
+          <span class="spacer"></span>
+          <button class="btn" data-act="edit">✎ Edit</button>
+        </div>
+        ${renderPlayer(true)}
+        <div class="readout">
+          <span class="readout-lbl" title="Every section uses these unless it overrides them">Song</span>
+          ${pills}
           <span class="pill" title="Time signature (4/4 only for now)">4/4</span>
         </div>
         ${renderPractice()}
+        <div class="mock-note" style="margin-top:1.2rem">Play view (home). ✎ Edit opens ${
+          backing ? "sections, overrides and arrangement" : "the song overview and section editor"
+        }; playback keeps going while you edit.</div>`;
+      }
+
+      function renderBacking() {
+        return S.view.screen === "edit" ? renderBackingEdit() : renderPlayView();
+      }
+
+      function renderBackingEdit() {
+        const r = S.recipe;
+        const set = (v) => (v ? "set" : "");
+        return `
+        <div class="view-head">
+          <b>Edit backing track</b>
+          <span class="spacer"></span>
+          <button class="btn primary" data-act="done">Done</button>
+        </div>
+        <div class="mock-note">Backing-track mode edits a small <b>recipe</b>; the generator turns it into a full <b>Song</b> for the engine. Edits made while playing land on the next bar.</div>
 
         <h2>Sections</h2>
         ${r.sections
@@ -1322,7 +1391,8 @@
         ];
       }
 
-      function renderPlayer() {
+      // stage = the play view's larger, calmer presentation of the same header.
+      function renderPlayer(stage) {
         const { doc, sec, key, lap, cueBar } = playerContext();
         if (!sec) return "";
         const ci = S.play.on ? currentChordIndex() : -1;
@@ -1359,7 +1429,7 @@
           .map(([icon, v, ovr]) => `<span class="eff ${ovr ? "ovr" : ""}" title="${ovr ? "Section override" : "Song default"}">${icon} ${esc(v)}</span>`)
           .join("");
         return `
-        <div class="player" id="player" data-sec="${esc(sec.id)}">
+        <div class="player ${stage ? "stage" : ""}" id="player" data-sec="${esc(sec.id)}">
           <div class="key-row">${keyEl}</div>
           <div class="player-sec"><b>${esc(sec.name)}</b>${eff}</div>
           <div class="chips">${chips || `<span class="muted" style="align-self:center">No chords in this section</span>`}</div>
@@ -1408,7 +1478,9 @@
             </div>
           </div>`;
         }
-        return S.view.screen === "section" && curSec() ? renderSectionEditor() : renderSongScreen();
+        if (S.view.screen === "section" && curSec()) return renderSectionEditor();
+        if (S.view.screen === "song") return renderSongScreen();
+        return renderPlayView();
       }
 
       function overrideBadges(sec) {
@@ -1428,23 +1500,14 @@
         const g = S.song;
         const nowId = S.play.on && S.play.snapshot ? S.play.snapshot.arrangement[S.play.arrIdx] : null;
         return `
-        <div class="mock-note">Song overview. Song-level settings are defaults; a section can override them. Tap a section to edit it.</div>
-        <div class="row" style="margin-top:.6rem">
-          <input class="text" style="font-size:1.25rem;font-weight:700;flex:1;min-width:10rem" value="${esc(g.title)}" data-field="song.title" />
+        <div class="view-head">
+          <input class="text" style="font-size:1.15rem;font-weight:700;flex:1;min-width:8rem" value="${esc(g.title)}" data-field="song.title" />
+          <button class="btn primary" data-act="done">Done</button>
         </div>
-        ${renderPlayer()}
-        <div class="readout">
-          <span class="readout-lbl" title="Every section uses these unless it overrides them">Song</span>
-          <label class="pill">♩ <input type="number" min="40" max="240" value="${g.defaults.tempo}" data-field="song.tempo" /> bpm</label>
-          <span class="pill">4/4</span>
-          <label class="pill">Swing <select data-field="song.swing">${opts(
-            [["0", "Straight"], ["0.33", "Light"], ["0.66", "Heavy"]],
-            String(g.defaults.swing),
-          )}</select></label>
-          <label class="pill">🎵 <select data-field="song.voicing">${opts(VOICINGS, g.defaults.voicing)}</select></label>
+        <div class="mock-note">Song overview. Song-level settings are defaults; a section can override them. Tap a section to edit it.</div>
+        <div class="row">
           <button class="pill" data-act="sheet" data-type="instruments">🎛 Instruments</button>
         </div>
-        ${renderPractice()}
 
         <h2>Sections</h2>
         ${g.sections
@@ -1509,7 +1572,8 @@
         <div class="row" style="margin-top:.6rem">
           <button class="btn ghost small" data-act="backToSong">← Song</button>
           <b style="font-size:1.15rem;flex:1">${esc(sec.name)}</b>
-          <button class="btn small" data-act="sheet" data-type="sectionSettings">⚙ Section settings</button>
+          <button class="btn small" data-act="sheet" data-type="sectionSettings">⚙ Settings</button>
+          <button class="btn small primary" data-act="done">Done</button>
         </div>
         ${renderPlayer()}
 
@@ -2099,8 +2163,17 @@
       const ACTIONS = {
         mode(d) {
           S.mode = d.mode;
-          S.view.confirm = null;
-          if (S.play.on) stopPlay();
+          S.view = { screen: "play", sectionId: null, selChord: null, confirm: null };
+          if (S.play.on || S.cue) stopPlay();
+          render();
+        },
+        // Play view ⇄ edit. Playback is unaffected by navigation.
+        edit() {
+          S.view = { screen: S.mode === "backing" ? "edit" : "song", sectionId: null, selChord: null, confirm: null };
+          render();
+        },
+        done() {
+          S.view = { screen: "play", sectionId: null, selChord: null, confirm: null };
           render();
         },
         theme() {
@@ -2170,6 +2243,7 @@
             sections: [{ id: "A", name: "Section 1", progression: "I", barsPerChord: 4, style: null, tempo: null }],
             arrangement: ["A"],
           });
+          S.view = { screen: "song", sectionId: null, selChord: null, confirm: null };
           render();
         },
 

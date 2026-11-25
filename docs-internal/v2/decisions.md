@@ -34,10 +34,18 @@ Background and goals: `version-2.md`.
   - The UI labels song-level controls as "Song", and the player shows what the current section actually plays, with overrides marked.
 - Mixer changes (mutes, levels) apply instantly, not at the next bar; they're channel gains, not scheduled notes. Both live in one Mix sheet despite being stored separately.
 
+## Screens
+
+- **Play view is home** in both modes, stopped or playing. No automatic view switching.
+  - Player header (larger "stage" presentation), song-level pills (backing: style, drums, bass, voicing, tempo; composer: tempo, swing, voicing), practice (cycle, advance), ✎ Edit.
+- **Edit** holds everything else. Backing: sections, overrides, arrangement, "Open in composer". Composer: song overview (instruments, sections, arrangement) → section editor.
+  - **Done** returns to the play view. Pills live only on the play view (no duplicate controls).
+- The action bar (Mix, transport, SONG/KEY scrubbers, Share) is on every screen; playback continues across navigation.
+- "Open in composer" and "Blank song" land on the song overview.
+
 ## Player UI
 
-- One player header on every screen (backing, song, section editor): key, section name + its resolved settings, chord chips (numeral + resolved name, v1 highlighting with bar-progress dots), beat dots.
-- Mode-specific controls sit below it. Practice controls appear on the backing and song screens, not in the section editor.
+- The same player header appears on the play view and the section editor: key, section name + its resolved settings, chord chips (numeral + resolved name, v1 highlighting with bar-progress dots), beat dots.
 
 ## Practice
 
