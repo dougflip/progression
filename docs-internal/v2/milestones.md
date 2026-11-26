@@ -2,11 +2,11 @@
 
 Engine first. Build only the UI needed to **see and hear** the engine; songs come from hand-written fixtures (written by agents or by hand), not editing screens. Editing UI comes last, once the engine is full-featured. The mockup (`mockup.html`) stays the UI spec.
 
-Related: `decisions.md`, `data-model.md`, `model.ts`.
+Related: `decisions.md`, `data-model.md`, `v2/src/model/schema.ts`.
 
 ## Ground rules (every milestone)
 
-- **Fixtures are the input.** `v2/fixtures/*.json` are `ShareEnvelope`s. Every fixture is validated by the Zod schema in tests, and each one says what it exercises (a top-level `"$comment"` the schema ignores).
+- **Fixtures are the input.** `v2/fixtures/*.json` are `ShareEnvelope`s. Every fixture is validated by the Zod schema in tests, and each one says what it exercises (a top-level `"$comment"` the schema ignores). Fixtures are frozen once committed (hash in `v2/fixtures/frozen.json`): add a new one rather than editing an old one.
 - **Pure first.** Anything that turns data into data (generator, `scheduleBar`, transport rules) is a pure function with unit tests, before it is wired to Tone.
 - **Golden tests.** Each fixture has stored expected output (e.g. the `ScheduledBar`s for its first N bars). A change that alters them must be deliberate.
 - **Timing tests.** Engine timing is verified by rendering offline (`Tone.Offline`, faster than real time) and measuring when notes actually start: no drift over long runs, edits land on the next bar.
@@ -21,9 +21,9 @@ Related: `decisions.md`, `data-model.md`, `model.ts`.
 
 - `v2/index.html` as a second Vite entry → `/progression/v2/`. v1's service worker excludes `/v2/` (`navigateFallbackDenylist`).
 - React + TypeScript (strict, same settings as v1), sharing v1's tooling (Vite, Vitest, oxlint, oxfmt).
-- Zod 4 schema from `model.ts`; types inferred from it. `model.ts` is retired.
+- Zod 4 schema (`v2/src/model/schema.ts`); types inferred from it. Runtime-only types in `runtime.ts`. `model.ts` is retired.
 - `encodeEnvelope` / `decodeEnvelope` / `validateEnvelope`.
-- First fixtures: the four starters, plus a song with overrides, slash chords and every pitch kind.
+- First fixtures: v1's five starters, plus a song with overrides, slash chords and every pitch kind.
 
 **Tests:** every fixture validates; invalid docs are rejected with readable errors; encode → decode round-trips; additive-evolution guard (old fixtures must keep validating).
 **You'll check:** `/progression/v2/` loads on GitHub Pages while v1 still works and still installs as an app.

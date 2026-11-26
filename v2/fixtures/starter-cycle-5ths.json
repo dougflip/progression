@@ -1,0 +1,39 @@
+{
+  "$comment": "Starter (v1 preset 'Cycle 5ths'): a one-chord drill with a fifths cycle in practice.",
+  "version": 2,
+  "doc": {
+    "version": 2,
+    "kind": "backingTrack",
+    "key": "C",
+    "tempo": 85,
+    "style": {
+      "kind": "builtin",
+      "id": "funk"
+    },
+    "drums": "simple",
+    "bass": "busy",
+    "voicing": "voice-lead-loop",
+    "title": "Cycle 5ths",
+    "sections": [
+      {
+        "id": "a",
+        "name": "A",
+        "progression": "I",
+        "barsPerChord": 2
+      }
+    ],
+    "arrangement": ["a"]
+  },
+  "practice": {
+    "cycle": {
+      "kind": "fifths"
+    },
+    "advance": "auto",
+    "mutes": {
+      "chords": false,
+      "bass": false,
+      "drums": false,
+      "loops": false
+    }
+  }
+}

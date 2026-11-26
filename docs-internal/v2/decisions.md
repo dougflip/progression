@@ -15,10 +15,10 @@ Background and goals: `version-2.md`.
 ## Data model
 
 - The whole app state is plain, serializable data, described by one schema.
-- The schema is the single source for TS types, runtime validation, and agent-facing docs. Draft types: `model.ts`; data flow and screen trace: `data-model.md`.
+- The schema is the single source for TS types, runtime validation, and agent-facing docs. Schema: `v2/src/model/schema.ts`; data flow and screen trace: `data-model.md`.
 - The format carries a version field (`version: 2`) from day one. Within a version, changes are additive only (see `data-model.md`).
 - Schema: Zod 4.
-- TypeScript patterns first: discriminated unions for every "kind" (never `isX` booleans), branded ids, non-empty tuples where empty is invalid, immutable values (`DeepReadonly`), exhaustive switches. Details: `model.ts` header.
+- TypeScript patterns first: discriminated unions for every "kind" (never `isX` booleans), branded ids, non-empty tuples where empty is invalid, immutable values (`DeepReadonly`), exhaustive switches. Details: `schema.ts` header.
 - Clean break from v1: no v1 URL/preset import.
 - Settings cascade: song defaults → section overrides (style, tempo, meter, instruments). Finer-grained overrides can come later.
 

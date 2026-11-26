@@ -1,0 +1,27 @@
+{
+  "$comment": "Starter (v1 preset '12-bar blues'): per-token bar counts (':4') and dom7 numerals; rock at 120.",
+  "version": 2,
+  "doc": {
+    "version": 2,
+    "kind": "backingTrack",
+    "key": "C",
+    "tempo": 120,
+    "style": {
+      "kind": "builtin",
+      "id": "rock"
+    },
+    "drums": "simple",
+    "bass": "busy",
+    "voicing": "voice-lead-loop",
+    "title": "12-bar blues",
+    "sections": [
+      {
+        "id": "a",
+        "name": "A",
+        "progression": "I7:4 IV7:2 I7:2 V7:1 IV7:1 I7:1 V7:1",
+        "barsPerChord": 2
+      }
+    ],
+    "arrangement": ["a"]
+  }
+}

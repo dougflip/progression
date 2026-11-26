@@ -7,7 +7,7 @@ Make sure all proposed plans and changes adhere to the guidelines in ARCHITECTUR
 ARCHITECTURE.md describes v1. For any v2 work, first read (in order):
 
 1. `docs-internal/v2/decisions.md`: current decisions
-2. `docs-internal/v2/data-model.md` (+ `model.ts` until Milestone 1 replaces it with the Zod schema): data model and data flow
+2. `docs-internal/v2/data-model.md` (+ the schema in `v2/src/model/schema.ts`, runtime types in `v2/src/model/runtime.ts`): data model and data flow
 3. `docs-internal/v2/milestones.md`: the build plan and ground rules
 
 `docs-internal/v2/mockup.html` is the UI spec (open it in a browser). Keep v2 docs concise and rewrite them to reflect current understanding rather than appending history.

@@ -1,0 +1,39 @@
+{
+  "$comment": "Starter (v1 preset 'Cycle 4ths'): a one-chord drill with a fourths cycle in practice.",
+  "version": 2,
+  "doc": {
+    "version": 2,
+    "kind": "backingTrack",
+    "key": "C",
+    "tempo": 85,
+    "style": {
+      "kind": "builtin",
+      "id": "funk"
+    },
+    "drums": "simple",
+    "bass": "busy",
+    "voicing": "voice-lead-loop",
+    "title": "Cycle 4ths",
+    "sections": [
+      {
+        "id": "a",
+        "name": "A",
+        "progression": "I",
+        "barsPerChord": 2
+      }
+    ],
+    "arrangement": ["a"]
+  },
+  "practice": {
+    "cycle": {
+      "kind": "fourths"
+    },
+    "advance": "auto",
+    "mutes": {
+      "chords": false,
+      "bass": false,
+      "drums": false,
+      "loops": false
+    }
+  }
+}
