@@ -1,0 +1,338 @@
+{
+  "$comment": "Composer song. Verse: slash chords (V/7, IV/1), a flat-seven chord, sub-bar chord changes, a gap with no chord, bass using all three pitch kinds (chordTone, scaleDegree, chromatic) with octave shifts, 8th-note hats. Bridge: overrides for tempo, 3/4 meter, swing, voicing and the chords instrument, triplet bass, and a generator seed. Practice: custom cycle, manual advance, drums muted.",
+  "version": 2,
+  "doc": {
+    "version": 2,
+    "kind": "song",
+    "title": "Overrides, slash chords and pitches",
+    "key": "Eb",
+    "ppq": 48,
+    "defaults": {
+      "tempo": 92,
+      "meter": {
+        "beatsPerBar": 4,
+        "beatUnit": 4
+      },
+      "swing": 0,
+      "voicing": "voice-lead"
+    },
+    "instruments": {
+      "chords": {
+        "kind": "builtin",
+        "id": "pad-v1"
+      },
+      "bass": {
+        "kind": "builtin",
+        "id": "bass-v1"
+      },
+      "drums": {
+        "kind": "builtin",
+        "id": "kit-v1"
+      }
+    },
+    "patches": {},
+    "sections": [
+      {
+        "id": "verse",
+        "name": "Verse",
+        "bars": 4,
+        "overrides": {},
+        "chords": [
+          {
+            "start": 0,
+            "duration": 192,
+            "root": {
+              "degree": 1
+            },
+            "quality": "maj7"
+          },
+          {
+            "start": 192,
+            "duration": 192,
+            "root": {
+              "degree": 5
+            },
+            "quality": "major",
+            "bass": {
+              "degree": 7
+            }
+          },
+          {
+            "start": 384,
+            "duration": 96,
+            "root": {
+              "degree": 6
+            },
+            "quality": "m7"
+          },
+          {
+            "start": 480,
+            "duration": 96,
+            "root": {
+              "degree": 7,
+              "accidental": -1
+            },
+            "quality": "dom7"
+          },
+          {
+            "start": 576,
+            "duration": 120,
+            "root": {
+              "degree": 4
+            },
+            "quality": "major",
+            "bass": {
+              "degree": 1
+            }
+          }
+        ],
+        "drums": {
+          "kick": [0, 96, 192, 288, 384, 480, 576, 672],
+          "snare": [48, 144, 240, 336, 432, 528, 624, 720],
+          "hat": [
+            0, 24, 48, 72, 96, 120, 144, 168, 192, 216, 240, 264, 288, 312, 336, 360, 384, 408, 432,
+            456, 480, 504, 528, 552, 576, 600, 624, 648, 672, 696, 720, 744
+          ],
+          "crash": [0]
+        },
+        "parts": {
+          "bass": [
+            {
+              "start": 0,
+              "duration": 48,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 48,
+              "duration": 48,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            },
+            {
+              "start": 96,
+              "duration": 48,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 144,
+              "duration": 48,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 7,
+                "octave": -1
+              }
+            },
+            {
+              "start": 192,
+              "duration": 96,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 384,
+              "duration": 48,
+              "pitch": {
+                "kind": "scaleDegree",
+                "step": {
+                  "degree": 6
+                }
+              }
+            },
+            {
+              "start": 432,
+              "duration": 48,
+              "pitch": {
+                "kind": "scaleDegree",
+                "step": {
+                  "degree": 3,
+                  "accidental": -1
+                },
+                "octave": 1
+              }
+            },
+            {
+              "start": 480,
+              "duration": 96,
+              "pitch": {
+                "kind": "chromatic",
+                "semitones": 10
+              }
+            },
+            {
+              "start": 576,
+              "duration": 144,
+              "pitch": {
+                "kind": "chromatic",
+                "semitones": 0,
+                "octave": -1
+              }
+            },
+            {
+              "start": 720,
+              "duration": 96,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 9
+              }
+            }
+          ]
+        },
+        "loops": []
+      },
+      {
+        "id": "bridge",
+        "name": "Bridge",
+        "bars": 2,
+        "overrides": {
+          "tempo": 100,
+          "meter": {
+            "beatsPerBar": 3,
+            "beatUnit": 4
+          },
+          "swing": 0.5,
+          "voicing": "root",
+          "instruments": {
+            "chords": {
+              "kind": "builtin",
+              "id": "pad-v1"
+            }
+          }
+        },
+        "chords": [
+          {
+            "start": 0,
+            "duration": 144,
+            "root": {
+              "degree": 2
+            },
+            "quality": "m7"
+          },
+          {
+            "start": 144,
+            "duration": 144,
+            "root": {
+              "degree": 5
+            },
+            "quality": "dom7sus4"
+          }
+        ],
+        "drums": {
+          "kick": [0, 144],
+          "snare": [48, 96, 192, 240],
+          "ride": [0, 24, 48, 72, 96, 120, 144, 168, 192, 216, 240, 264]
+        },
+        "parts": {
+          "bass": [
+            {
+              "start": 0,
+              "duration": 16,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 16,
+              "duration": 16,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            },
+            {
+              "start": 32,
+              "duration": 16,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 48,
+              "duration": 16,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 64,
+              "duration": 16,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            },
+            {
+              "start": 80,
+              "duration": 16,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 96,
+              "duration": 16,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 112,
+              "duration": 16,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            },
+            {
+              "start": 128,
+              "duration": 16,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            }
+          ]
+        },
+        "loops": [],
+        "seed": {
+          "progression": "ii7 V7sus4",
+          "barsPerChord": 1,
+          "style": {
+            "kind": "builtin",
+            "id": "ballad"
+          },
+          "drums": "simple",
+          "bass": "busy"
+        }
+      }
+    ],
+    "arrangement": ["verse", "bridge", "verse"]
+  },
+  "practice": {
+    "cycle": {
+      "kind": "custom",
+      "keys": ["Eb", "Ab", "F#"]
+    },
+    "advance": "manual",
+    "mutes": {
+      "chords": false,
+      "bass": false,
+      "drums": true,
+      "loops": false
+    }
+  }
+}

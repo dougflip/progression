@@ -1,0 +1,39 @@
+{
+  "$comment": "Starter (v1 preset 'Otherside'): three sections and an arrangement with repeats (v1 '1 1 2:2 1:2 3:2'). v1's mix levels are device-only, so not carried.",
+  "version": 2,
+  "doc": {
+    "version": 2,
+    "kind": "backingTrack",
+    "key": "C",
+    "tempo": 100,
+    "style": {
+      "kind": "builtin",
+      "id": "rock"
+    },
+    "drums": "simple",
+    "bass": "simple",
+    "voicing": "voice-lead-loop",
+    "title": "Otherside",
+    "sections": [
+      {
+        "id": "verse",
+        "name": "Verse",
+        "progression": "vi IV I V",
+        "barsPerChord": 1
+      },
+      {
+        "id": "chorus",
+        "name": "Chorus",
+        "progression": "vi iii vi iii vi iii V vi:2",
+        "barsPerChord": 1
+      },
+      {
+        "id": "bridge",
+        "name": "Bridge",
+        "progression": "iii:2 I:2",
+        "barsPerChord": 1
+      }
+    ],
+    "arrangement": ["verse", "verse", "chorus", "chorus", "verse", "verse", "bridge", "bridge"]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "$comment": "Starter (v1 preset 'I vi ii V'): v1 defaults, one section, no practice block.",
+  "version": 2,
+  "doc": {
+    "version": 2,
+    "kind": "backingTrack",
+    "key": "C",
+    "tempo": 85,
+    "style": {
+      "kind": "builtin",
+      "id": "funk"
+    },
+    "drums": "simple",
+    "bass": "busy",
+    "voicing": "voice-lead-loop",
+    "title": "I vi ii V",
+    "sections": [
+      {
+        "id": "a",
+        "name": "A",
+        "progression": "I vi ii V",
+        "barsPerChord": 2
+      }
+    ],
+    "arrangement": ["a"]
+  }
+}

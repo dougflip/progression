@@ -1,6 +1,6 @@
 # Progression v2 — Data Model
 
-Types: `model.ts` (draft spec, type-checked, including the engine contract). Decisions behind it: `decisions.md`.
+Schema: `v2/src/model/schema.ts` (Zod 4; persisted types are inferred from it). Runtime-only types and the engine contract: `v2/src/model/runtime.ts`. Decisions behind it: `decisions.md`.
 
 ## Layers
 
@@ -50,7 +50,7 @@ Mixer levels and mutes bypass the loop: `setLevels` / `setMutes` change channel 
 
 ## Validation rules
 
-Field-level ranges are in `model.ts` comments. Cross-field rules the Zod schema enforces (`.superRefine`):
+Field-level ranges are in `schema.ts`. Objects are strict (unknown keys are rejected, so agent typos fail loudly). Cross-field rules the Zod schema enforces (`.superRefine`):
 
 - **Ids**: unique within their collection (section ids per doc, take ids per section).
 - **Arrangement**: every entry references an existing section.
@@ -58,8 +58,8 @@ Field-level ranges are in `model.ts` comments. Cross-field rules the Zod schema 
 - **Drums**: per instrument, sorted, unique, every tick `<` section length.
 - **Parts**: every note `start <` section length (a note may ring past the end).
 - **Loops**: `take.bars ≤ section.bars`.
-- **Instruments**: every `PatchRef` with `kind: "custom"` resolves to a key in `song.patches`; each patch's `role` matches the role it's used for.
-- **BackingTrack**: every `progression` parses to ≥ 1 chord.
+- **Instruments**: every `PatchRef` with `kind: "custom"` resolves to a key in `song.patches`; each patch's `role` matches the role it's used for (Milestone 5; until then `patches` is `{}`).
+- **Progressions** (`BackingSection`, `SectionSeed`): every whitespace-separated token is a Roman-numeral chord (`[b#]numeral[suffix][/numeral][:bars]`). Today this checks the token shape; the quality-suffix vocabulary belongs to Milestone 2's parser.
 - **Ticks** are integers ≥ 0; durations > 0. Any tick is valid (the UI snaps; triplets need e.g. 16).
 - **Strings** are trimmed and non-empty.
 - **LibraryStore**: exactly one `scratch` item; `currentItemId` exists.
@@ -103,7 +103,7 @@ Field-level ranges are in `model.ts` comments. Cross-field rules the Zod schema 
   - drum hits widen from `Tick` to `Tick | { start, velocity }`
   - new keys in `Section.parts` (melody, second line), widening `Role`
   - `LoopTake.offset?`; `BackingTrack.meter?` / `swing?`; `register?`; swing widening to `{ amount, subdivision }`
-- **TypeScript patterns** (see the header of `model.ts`): discriminated unions for every "kind" (`LibraryItem.kind`, `PatchRef`, `StyleRef`, `Cycle`, `Jump`, `PlayScope`, `Transport.status`, `Pitch`); branded ids; `NonEmpty` where empty is invalid; `DeepReadonly` inputs; exhaustive switches.
+- **TypeScript patterns** (see the header of `schema.ts`): discriminated unions for every "kind" (`LibraryItem.kind`, `PatchRef`, `StyleRef`, `Cycle`, `Jump`, `PlayScope`, `Transport.status`, `Pitch`); branded ids; `NonEmpty` where empty is invalid; `DeepReadonly` inputs; exhaustive switches.
 - **`Cycle` carries its custom keys**, so "custom with no keys" can't exist. Trade-off: switching the cycle away from custom drops the list from the saved data; the editing UI can remember it for the session.
 - **`Transport` is a union on `status`**: paused always has a position, playing may have queued jumps, stopped may have a cue. `scope` (whole arrangement vs one section) survives pause/stop.
 - **The engine pulls** its source at bar boundaries rather than being pushed edits.
