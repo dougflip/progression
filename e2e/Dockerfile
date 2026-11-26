@@ -22,6 +22,10 @@ RUN npm run build
 
 RUN chmod 777 /app/e2e
 
+# vite preview (run by Playwright as that same uid) bundles vite.config.mjs into
+# node_modules/.vite-temp, which the root-run build above created.
+RUN mkdir -p /app/node_modules/.vite-temp && chmod 777 /app/node_modules/.vite-temp
+
 WORKDIR /app/e2e
 
 CMD ["npm", "test"]

@@ -55,9 +55,9 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        main: resolve(__dirname, "index.html"),
-        docs: resolve(__dirname, "docs.html"),
-        v2: resolve(__dirname, "v2/index.html"),
+        main: resolve(import.meta.dirname, "index.html"),
+        docs: resolve(import.meta.dirname, "docs.html"),
+        v2: resolve(import.meta.dirname, "v2/index.html"),
       },
       output: {
         manualChunks: (id) => {
