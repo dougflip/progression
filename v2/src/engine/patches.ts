@@ -191,13 +191,20 @@ function synthDrums(out: Tone.InputNode) {
     }).connect(highpass(5000)),
   );
   crash.volume.value = -14;
-  const ride = keep(
-    new Tone.NoiseSynth({
-      noise: { type: "white" },
-      envelope: { attack: 0.001, decay: 0.15, sustain: 0, release: 0.2 },
-    }).connect(highpass(6000)),
-  );
-  ride.volume.value = -22;
+  // One synth per drum: a Tone source can't be started twice at the same instant, so
+  // two drums sharing a synth (v1's ride and ride bell) would fail on the same tick.
+  const rideSynth = () => {
+    const r = keep(
+      new Tone.NoiseSynth({
+        noise: { type: "white" },
+        envelope: { attack: 0.001, decay: 0.15, sustain: 0, release: 0.2 },
+      }).connect(highpass(6000)),
+    );
+    r.volume.value = -22;
+    return r;
+  };
+  const ride = rideSynth();
+  const rideBell = rideSynth();
   const tom = (note: string) => {
     const t = keep(
       new Tone.MembraneSynth({
@@ -224,7 +231,7 @@ function synthDrums(out: Tone.InputNode) {
     hatOpen: (t) => hatOpen.triggerAttackRelease(0.25, t),
     crash: (t) => crash.triggerAttackRelease(0.5, t),
     ride: (t) => ride.triggerAttackRelease(0.0625, t),
-    rideBell: (t) => ride.triggerAttackRelease(0.0625, t), // v1: the bell shares the ride synth
+    rideBell: (t) => rideBell.triggerAttackRelease(0.0625, t), // v1's bell fallback sounds like the ride
     tom: tom("A1"),
     tom2: tom("D2"),
     clap: (t) => clap.triggerAttackRelease(0.125, t),

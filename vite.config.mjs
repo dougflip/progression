@@ -10,6 +10,10 @@ const commitSha = execSync("git rev-parse --short HEAD").toString().trim();
 export default defineConfig({
   test: {
     environment: "node",
+    // The on-disk transform cache keeps a test's expanded import.meta.glob even after
+    // files are added (v2's fixtures), so new fixtures would go unseen. Tests are fast
+    // without it.
+    fsModuleCache: false,
     exclude: ["e2e/**", "node_modules/**"],
   },
   base: "/progression/",

@@ -100,7 +100,7 @@ Background and goals: `version-2.md`.
   - v1 lesson: disposing the synth on rebuild cut off ringing notes (`c43e200`).
   - Pause and stop fade the session out and dispose it: that's how notes already handed to Web Audio are cancelled.
 - The engine captures Tone's context once and takes its instruments and UI-event scheduler as options, so tests render offline on Node (`node-web-audio-api`) with recording instruments.
-- Tone caveats found: `MetalSynth` can't hold more than one future trigger (v1's fallback closed hat is now filtered noise); `Tone.Reverb` renders its impulse with `Tone.Offline`, which swaps the global context (the pad reverb builds its impulse synchronously instead).
+- Tone caveats found: a Tone source can't start twice at the same instant, so drums never share a synth (v1's ride bell did); `MetalSynth` can't hold more than one future trigger (v1's fallback closed hat is now filtered noise); `Tone.Reverb` renders its impulse with `Tone.Offline`, which swaps the global context (the pad reverb builds its impulse synchronously instead).
 - Don't use Tone containers that snapshot data at construction (`Tone.Sequence` captures step values once).
 - Timing logic (song + position → events for a bar) is a pure function, unit-tested without Tone.
 

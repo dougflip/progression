@@ -1,0 +1,11 @@
+# song-six-eight: player view at the start of each arrangement entry
+
+Six-eight (song) · keys A
+arrangement: 0:Main
+
+[arr 0] Main · lap 0 key A · 4 bars of 144 ticks
+  settings: tempo=90 meter=6/8 swing=0 voicing=voice-lead instruments(chords=pad-v1 bass=bass-v1 drums=kit-v1)
+  chip #0 vi       F#m       bars 0
+  chip #1 IV       D         bars 1
+  chip #2 I        A         bars 2
+  chip #3 V        E         bars 3

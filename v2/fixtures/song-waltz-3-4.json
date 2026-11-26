@@ -1,0 +1,119 @@
+{
+  "$comment": "3/4 meter as the song default: bars are 144 ticks (three quarter notes). Kick on 1, hats on 2 and 3, bass on 1, one chord per bar.",
+  "version": 2,
+  "doc": {
+    "version": 2,
+    "kind": "song",
+    "title": "Waltz in 3/4",
+    "key": "G",
+    "ppq": 48,
+    "defaults": {
+      "swing": 0,
+      "voicing": "voice-lead",
+      "tempo": 120,
+      "meter": {
+        "beatsPerBar": 3,
+        "beatUnit": 4
+      }
+    },
+    "instruments": {
+      "chords": {
+        "kind": "builtin",
+        "id": "pad-v1"
+      },
+      "bass": {
+        "kind": "builtin",
+        "id": "bass-v1"
+      },
+      "drums": {
+        "kind": "builtin",
+        "id": "kit-v1"
+      }
+    },
+    "patches": {},
+    "sections": [
+      {
+        "id": "waltz",
+        "name": "Waltz",
+        "bars": 4,
+        "overrides": {},
+        "drums": {
+          "kick": [0, 144, 288, 432],
+          "hat": [48, 96, 192, 240, 336, 384, 480, 528]
+        },
+        "parts": {
+          "bass": [
+            {
+              "start": 0,
+              "duration": 48,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 144,
+              "duration": 48,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 288,
+              "duration": 48,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 432,
+              "duration": 48,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            }
+          ]
+        },
+        "loops": [],
+        "chords": [
+          {
+            "start": 0,
+            "duration": 144,
+            "root": {
+              "degree": 1
+            },
+            "quality": "major"
+          },
+          {
+            "start": 144,
+            "duration": 144,
+            "root": {
+              "degree": 6
+            },
+            "quality": "minor"
+          },
+          {
+            "start": 288,
+            "duration": 144,
+            "root": {
+              "degree": 2
+            },
+            "quality": "minor"
+          },
+          {
+            "start": 432,
+            "duration": 144,
+            "root": {
+              "degree": 5
+            },
+            "quality": "dom7"
+          }
+        ]
+      }
+    ],
+    "arrangement": ["waltz"]
+  }
+}

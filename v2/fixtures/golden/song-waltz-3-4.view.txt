@@ -1,0 +1,11 @@
+# song-waltz-3-4: player view at the start of each arrangement entry
+
+Waltz in 3/4 (song) · keys G
+arrangement: 0:Waltz
+
+[arr 0] Waltz · lap 0 key G · 4 bars of 144 ticks
+  settings: tempo=120 meter=3/4 swing=0 voicing=voice-lead instruments(chords=pad-v1 bass=bass-v1 drums=kit-v1)
+  chip #0 I        G         bars 0
+  chip #1 vi       Em        bars 1
+  chip #2 ii       Am        bars 2
+  chip #3 V7       D7        bars 3

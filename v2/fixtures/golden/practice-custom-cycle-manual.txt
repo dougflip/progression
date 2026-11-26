@@ -1,0 +1,82 @@
+# practice-custom-cycle-manual: 8 bars from the top (advance forced to auto)
+
+bar 1 · A [arr 0] bar 1/2 · lap 0 key G · 96 bpm 4/4 (192 ticks)
+  chord  0       +192     #0 I           G         G3 G4 B4 D5        pad-v1
+  bass   0       +24      G2    bass-v1
+  bass   48      +24      G2    bass-v1
+  bass   96      +24      D3    bass-v1
+  bass   144     +24      G2    bass-v1
+  kick     0 96                                     kit-v1
+  hat      0 24 48 72 96 120 144 168                kit-v1
+  snare    48 144                                   kit-v1
+  voicing → G4 B4 D5
+bar 2 · A [arr 0] bar 2/2 · lap 0 key G · 96 bpm 4/4 (192 ticks)
+  chord  0       +192     #1 IV          C         C3 G4 C5 E5        pad-v1
+  bass   0       +24      C2    bass-v1
+  bass   48      +24      C2    bass-v1
+  bass   96      +24      G2    bass-v1
+  bass   144     +24      C2    bass-v1
+  kick     0 96                                     kit-v1
+  hat      0 24 48 72 96 120 144 168                kit-v1
+  snare    48 144                                   kit-v1
+  voicing → G4 C5 E5
+bar 3 · B [arr 1] bar 1/2 · lap 0 key G · 96 bpm 4/4 (192 ticks)
+  chord  0       +192     #0 vi          Em        E3 G4 B4 E5        pad-v1
+  bass   0       +24      E2    bass-v1
+  bass   48      +24      E2    bass-v1
+  bass   96      +24      E2    bass-v1
+  bass   144     +24      E2    bass-v1
+  kick     0 96                                     kit-v1
+  hat      0 24 48 72 96 120 144 168                kit-v1
+  snare    48 144                                   kit-v1
+  voicing → G4 B4 E5
+bar 4 · B [arr 1] bar 2/2 · lap 0 key G · 96 bpm 4/4 (192 ticks)
+  chord  0       +192     #1 V           D         D3 F#4 A4 D5       pad-v1
+  bass   0       +24      D2    bass-v1
+  bass   48      +24      D2    bass-v1
+  bass   96      +24      A2    bass-v1
+  bass   144     +24      D2    bass-v1
+  kick     0 96                                     kit-v1
+  hat      0 24 48 72 96 120 144 168                kit-v1
+  snare    48 144                                   kit-v1
+  voicing → F#4 A4 D5
+bar 5 · A [arr 0] bar 1/2 · lap 1 key D · 96 bpm 4/4 (192 ticks)
+  chord  0       +192     #0 I           D         D3 F#4 A4 D5       pad-v1
+  bass   0       +24      D2    bass-v1
+  bass   48      +24      D2    bass-v1
+  bass   96      +24      A2    bass-v1
+  bass   144     +24      D2    bass-v1
+  kick     0 96                                     kit-v1
+  hat      0 24 48 72 96 120 144 168                kit-v1
+  snare    48 144                                   kit-v1
+  voicing → F#4 A4 D5
+bar 6 · A [arr 0] bar 2/2 · lap 1 key D · 96 bpm 4/4 (192 ticks)
+  chord  0       +192     #1 IV          G         G3 G4 B4 D5        pad-v1
+  bass   0       +24      G2    bass-v1
+  bass   48      +24      G2    bass-v1
+  bass   96      +24      D3    bass-v1
+  bass   144     +24      G2    bass-v1
+  kick     0 96                                     kit-v1
+  hat      0 24 48 72 96 120 144 168                kit-v1
+  snare    48 144                                   kit-v1
+  voicing → G4 B4 D5
+bar 7 · B [arr 1] bar 1/2 · lap 1 key D · 96 bpm 4/4 (192 ticks)
+  chord  0       +192     #0 vi          Bm        B2 F#4 B4 D5       pad-v1
+  bass   0       +24      B1    bass-v1
+  bass   48      +24      B1    bass-v1
+  bass   96      +24      B1    bass-v1
+  bass   144     +24      B1    bass-v1
+  kick     0 96                                     kit-v1
+  hat      0 24 48 72 96 120 144 168                kit-v1
+  snare    48 144                                   kit-v1
+  voicing → F#4 B4 D5
+bar 8 · B [arr 1] bar 2/2 · lap 1 key D · 96 bpm 4/4 (192 ticks)
+  chord  0       +192     #1 V           A         A3 E4 A4 C#5       pad-v1
+  bass   0       +24      A2    bass-v1
+  bass   48      +24      A2    bass-v1
+  bass   96      +24      E3    bass-v1
+  bass   144     +24      A2    bass-v1
+  kick     0 96                                     kit-v1
+  hat      0 24 48 72 96 120 144 168                kit-v1
+  snare    48 144                                   kit-v1
+  voicing → E4 A4 C#5

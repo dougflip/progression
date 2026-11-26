@@ -4,14 +4,21 @@ Engine first. Build only the UI needed to **see and hear** the engine; songs com
 
 Related: `decisions.md`, `data-model.md`, `v2/src/model/schema.ts`.
 
+## Status
+
+- **Done (merged):** 1 Foundation (#55), 2 Pure core (#56), 3 Engine + bench (#57).
+- **In progress:** 4 Engine complete, on branch `v2-m4-engine-complete`: fixtures, timing tests, practice row and Mix sheet are built; listen checks pending, then PR.
+- Update this section when a milestone merges.
+
 ## Ground rules (every milestone)
 
 - **Fixtures are the input.** `v2/fixtures/*.json` are `ShareEnvelope`s. Every fixture is validated by the Zod schema in tests, and each one says what it exercises (a top-level `"$comment"` the schema ignores). Fixtures are frozen once committed (hash in `v2/fixtures/frozen.json`): add a new one rather than editing an old one.
+  - Adding one: write the JSON (check it with `validateEnvelope`), add its hash to `frozen.json` (the failing test prints the line to add), then write its goldens with `npx vitest run -u`, read them, and commit them. Tests that loop over fixtures (validation, goldens, engine timing, player rendering) pick it up automatically.
 - **Pure first.** Anything that turns data into data (generator, `scheduleBar`, transport rules) is a pure function with unit tests, before it is wired to Tone.
 - **Golden tests.** Each fixture has stored expected output (e.g. the `ScheduledBar`s for its first N bars). A change that alters them must be deliberate.
-- **Timing tests.** Engine timing is verified by rendering offline (`Tone.Offline`, faster than real time) and measuring when notes actually start: no drift over long runs, edits land on the next bar.
+- **Timing tests.** Engine timing is verified by rendering offline (faster than real time) on `node-web-audio-api` (`v2/src/engine/offline.ts`; `Tone.Offline` itself fails on Node) and measuring when notes actually start: no drift over long runs, edits land on the next bar.
 - **Listen checks.** Tests can't judge sound. Each milestone ends with a short numbered list for you to listen to (per AGENTS.md: you do manual testing).
-- **Performance budget.** The engine bench shows how much is scheduled ahead and how long each bar takes to schedule. Target: about one bar of lookahead, and scheduling a bar costs a few ms on a phone.
+- **Performance budget.** The engine bench shows how much is scheduled ahead and how long each bar takes to schedule. Target: each bar scheduled 0.2 s ahead with no late bars, and scheduling a bar costs a few ms on a phone (measured: well under 1 ms).
 - **Player UI is real.** The chips, scrubbers and transport built for the bench are the play view's components, not throwaway.
 - **Shipping.** Each milestone is a PR into `main`. v2 lives in `v2/` and is served at `/progression/v2/`, so v1 is unaffected. `npm run check` and `npm run test:quiet` pass before every commit.
 

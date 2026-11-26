@@ -1,0 +1,48 @@
+# song-tempo-changes: 10 bars from the top (advance forced to auto)
+
+bar 1 · Intro [arr 0] bar 1/2 · lap 0 key D · 70 bpm 4/4 (192 ticks)
+  chord  0       +384     #0 I           D         D3 D4 F#4 A4       pad-v1
+  kick     0 48 96 144                              kit-v1
+  voicing → D4 F#4 A4
+bar 2 · Intro [arr 0] bar 2/2 · lap 0 key D · 70 bpm 4/4 (192 ticks)
+  chord  0       +192     #0 I           D         D3 D4 F#4 A4       pad-v1  (held)
+  kick     0 48 96 144                              kit-v1
+  voicing → D4 F#4 A4
+bar 3 · Verse [arr 1] bar 1/2 · lap 0 key D · 100 bpm 4/4 (192 ticks)
+  chord  0       +192     #0 I           D         D3 D4 F#4 A4       pad-v1
+  kick     0 48 96 144                              kit-v1
+  snare    48 144                                   kit-v1
+  voicing → D4 F#4 A4
+bar 4 · Verse [arr 1] bar 2/2 · lap 0 key D · 100 bpm 4/4 (192 ticks)
+  chord  0       +192     #1 IV          G         G3 D4 G4 B4        pad-v1
+  kick     0 48 96 144                              kit-v1
+  snare    48 144                                   kit-v1
+  voicing → D4 G4 B4
+bar 5 · Chorus [arr 2] bar 1/2 · lap 0 key D · 140 bpm 4/4 (192 ticks)
+  chord  0       +192     #0 V           A         A3 C#4 E4 A4       pad-v1
+  kick     0 48 96 144                              kit-v1
+  snare    48 144                                   kit-v1
+  voicing → C#4 E4 A4
+bar 6 · Chorus [arr 2] bar 2/2 · lap 0 key D · 140 bpm 4/4 (192 ticks)
+  chord  0       +192     #1 I           D         D3 D4 F#4 A4       pad-v1
+  kick     0 48 96 144                              kit-v1
+  snare    48 144                                   kit-v1
+  voicing → D4 F#4 A4
+bar 7 · Verse [arr 3] bar 1/2 · lap 0 key D · 100 bpm 4/4 (192 ticks)
+  chord  0       +192     #0 I           D         D3 D4 F#4 A4       pad-v1
+  kick     0 48 96 144                              kit-v1
+  snare    48 144                                   kit-v1
+  voicing → D4 F#4 A4
+bar 8 · Verse [arr 3] bar 2/2 · lap 0 key D · 100 bpm 4/4 (192 ticks)
+  chord  0       +192     #1 IV          G         G3 D4 G4 B4        pad-v1
+  kick     0 48 96 144                              kit-v1
+  snare    48 144                                   kit-v1
+  voicing → D4 G4 B4
+bar 9 · Intro [arr 0] bar 1/2 · lap 0 key D · 70 bpm 4/4 (192 ticks)
+  chord  0       +384     #0 I           D         D3 D4 F#4 A4       pad-v1
+  kick     0 48 96 144                              kit-v1
+  voicing → D4 F#4 A4
+bar 10 · Intro [arr 0] bar 2/2 · lap 0 key D · 70 bpm 4/4 (192 ticks)
+  chord  0       +192     #0 I           D         D3 D4 F#4 A4       pad-v1  (held)
+  kick     0 48 96 144                              kit-v1
+  voicing → D4 F#4 A4

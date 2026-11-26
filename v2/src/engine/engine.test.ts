@@ -7,13 +7,33 @@ import { onsets, renderOffline } from "./offline"; // first: installs Web Audio 
 import * as Tone from "tone";
 import { describe, expect, it, vi } from "vitest";
 import otherside from "../../fixtures/starter-otherside.json";
+import { validateEnvelope } from "../model/envelope";
 import { generateSong } from "../core/generate";
 import { DEFAULT_PRACTICE } from "../core/settings";
 import { STYLES } from "../core/styles";
 import type { EngineEvent, EngineSource } from "../model/runtime";
-import { BackingTrack, Song, type Practice, type Role } from "../model/schema";
+import { BackingTrack, DrumInstrument, Song, type Practice, type Role } from "../model/schema";
 import { makeEngine, type EngineOptions, type ScheduledBarInfo } from "./engine";
 import { builtinPatches, type PatchFactory } from "./patches";
+
+const fixtureFiles = import.meta.glob<unknown>("../../fixtures/*.json", {
+  import: "default",
+  eager: true,
+});
+const FIXTURES = Object.entries(fixtureFiles)
+  .filter(([p]) => !p.endsWith("/frozen.json"))
+  .map(([p, raw]) => {
+    const r = validateEnvelope(raw);
+    if (!r.ok) throw new Error(`${p}: ${r.errors.join("; ")}`);
+    return {
+      name: p
+        .split("/")
+        .pop()!
+        .replace(/\.json$/, ""),
+      env: r.value,
+    };
+  });
+const fixture = (name: string) => FIXTURES.find((f) => f.name === name)!.env;
 
 type Note = {
   role: Role;
@@ -38,8 +58,13 @@ const clicks: PatchFactory = ((role: Role, _ref: unknown, out: Tone.InputNode) =
   const synth = new Tone.Synth({
     envelope: { attack: 0.001, decay: 0.01, sustain: 0, release: 0.005 },
   }).connect(out);
+  let lastHit = -1; // one synth for every drum: simultaneous hits make one click
   return {
-    hit: (_d: string, time: number) => synth.triggerAttackRelease(2000, 0.01, time),
+    hit: (_d: string, time: number) => {
+      if (time === lastHit) return;
+      lastHit = time;
+      synth.triggerAttackRelease(2000, 0.01, time);
+    },
     dispose: () => synth.dispose(),
   };
 }) as unknown as PatchFactory;
@@ -155,12 +180,19 @@ describe("bar timing", () => {
     }
   });
 
-  it("schedules every event at its tick time (swing, triplets, sub-bar chords)", async () => {
-    const env = (await import("../../fixtures/song-overrides-slash-pitches.json")).default;
-    const s = Song.parse(env.doc);
-    const { bars, notes } = await run(30, source(s));
+  // Every fixture: each scheduled note lands at its bar's start + ticks × seconds per tick
+  // (swing, triplets, sub-bar chords, tempo and meter changes), and each bar lasts its
+  // length at its own tempo. Fixtures added later are covered automatically.
+  it.each(FIXTURES)("schedules every event of $name at its tick time", async ({ env }) => {
+    const song = env.doc.kind === "song" ? env.doc : generateSong(env.doc, STYLES);
+    const { bars, notes } = await run(40, () => ({
+      song,
+      practice: env.practice ?? DEFAULT_PRACTICE,
+    }));
+    expect(bars.length).toBeGreaterThan(4);
     for (const b of bars) {
       const spt = 60 / (b.bar.tempo * 48);
+      expect(b.end - b.start).toBeCloseTo(b.bar.length * spt, 9);
       const inBar = notes.filter((n) => n.time >= b.start - 1e-9 && n.time < b.end - 1e-9);
       const expected = [
         ...b.bar.chords.filter((c) => b.fresh || !c.continued).map((c) => b.start + c.time * spt),
@@ -183,6 +215,39 @@ describe("audio", () => {
     });
   });
 
+  it("swing moves rendered off-beats to two thirds of the beat; a straight section doesn't", async () => {
+    // song-swing: 110 bpm, Swung (swing 1) then Straight (swing 0), 2 bars each, 8th hats.
+    const s = fixture("song-swing").doc as Song;
+    const beat = 60 / 110;
+    const { audio } = await run(
+      4 * 4 * beat + 0.1,
+      () => ({ song: s, practice: DEFAULT_PRACTICE }),
+      {
+        patches: clicks,
+      },
+    );
+    const expected = Array.from({ length: 16 }, (_, b) => {
+      const off = b < 8 ? (2 / 3) * beat : beat / 2; // swung bars, then straight bars
+      return [0.05 + b * beat, 0.05 + b * beat + off];
+    }).flat();
+    const found = onsets(audio).slice(0, expected.length); // the render runs into the next lap
+    expect(found).toHaveLength(expected.length);
+    found.forEach((t, i) =>
+      expect(Math.abs(t - expected[i]!), `onset ${i} at ${t}`).toBeLessThan(0.002),
+    );
+  });
+
+  it("6/8 bars have six 8th-note beats", async () => {
+    const s = fixture("song-six-eight").doc as Song;
+    const eighth = 60 / (90 * 2); // tempo counts quarter notes
+    const { bars, events } = await run(3, () => ({ song: s, practice: DEFAULT_PRACTICE }));
+    expect(bars[0]!.end - bars[0]!.start).toBeCloseTo(6 * eighth, 9);
+    const beats = events.filter((x) => x.e.type === "beat" && x.time < bars[0]!.end - 1e-9);
+    expect(beats.map((x) => +(x.time - 0.05).toFixed(9))).toEqual(
+      Array.from({ length: 6 }, (_, i) => +(i * eighth).toFixed(9)),
+    );
+  });
+
   it("mutes apply instantly", async () => {
     const { audio } = await run(4, source(song(120)), {
       patches: clicks,
@@ -191,6 +256,23 @@ describe("audio", () => {
     const found = onsets(audio);
     expect(found.filter((t) => t < 1.2)).toHaveLength(3); // 0.05, 0.55, 1.05
     expect(found.filter((t) => t > 1.2)).toEqual([]);
+  });
+
+  it("the built-in kit plays every drum on the same tick", async () => {
+    // A Tone source can't start twice at one instant, so drums must not share a synth.
+    const s = structuredClone(song(120, [{ bars: 1 }])) as Song;
+    const all = DrumInstrument.options;
+    s.sections[0].drums = Object.fromEntries(all.map((d) => [d, [0, 96]]));
+    const { events, audio } = await run(
+      2.2,
+      () => ({ song: Song.parse(s), practice: DEFAULT_PRACTICE }),
+      {
+        patches: builtinPatches,
+      },
+    );
+    expect(events.filter((x) => x.e.type === "error")).toEqual([]);
+    const rms = Math.sqrt(audio.reduce((sum, x) => sum + x * x, 0) / audio.length);
+    expect(rms).toBeGreaterThan(0.005); // the crash rings across both hits, so check level, not onsets
   });
 
   it("built-in patches build and make sound", async () => {

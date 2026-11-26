@@ -1,0 +1,129 @@
+{
+  "$comment": "Tempo changes per section: Intro 70 bpm (override), Verse 100 (song default), Chorus 140 (override), then the Verse again. A kick on every beat makes the tempo audible; each section holds one chord per bar.",
+  "version": 2,
+  "doc": {
+    "version": 2,
+    "kind": "song",
+    "title": "Tempo changes",
+    "key": "D",
+    "ppq": 48,
+    "defaults": {
+      "swing": 0,
+      "voicing": "voice-lead",
+      "tempo": 100,
+      "meter": {
+        "beatsPerBar": 4,
+        "beatUnit": 4
+      }
+    },
+    "instruments": {
+      "chords": {
+        "kind": "builtin",
+        "id": "pad-v1"
+      },
+      "bass": {
+        "kind": "builtin",
+        "id": "bass-v1"
+      },
+      "drums": {
+        "kind": "builtin",
+        "id": "kit-v1"
+      }
+    },
+    "patches": {},
+    "sections": [
+      {
+        "id": "intro",
+        "name": "Intro",
+        "bars": 2,
+        "overrides": {
+          "tempo": 70
+        },
+        "drums": {
+          "kick": [0, 48, 96, 144, 192, 240, 288, 336]
+        },
+        "parts": {
+          "bass": []
+        },
+        "loops": [],
+        "chords": [
+          {
+            "start": 0,
+            "duration": 384,
+            "root": {
+              "degree": 1
+            },
+            "quality": "major"
+          }
+        ]
+      },
+      {
+        "id": "verse",
+        "name": "Verse",
+        "bars": 2,
+        "overrides": {},
+        "drums": {
+          "kick": [0, 48, 96, 144, 192, 240, 288, 336],
+          "snare": [48, 144, 240, 336]
+        },
+        "parts": {
+          "bass": []
+        },
+        "loops": [],
+        "chords": [
+          {
+            "start": 0,
+            "duration": 192,
+            "root": {
+              "degree": 1
+            },
+            "quality": "major"
+          },
+          {
+            "start": 192,
+            "duration": 192,
+            "root": {
+              "degree": 4
+            },
+            "quality": "major"
+          }
+        ]
+      },
+      {
+        "id": "chorus",
+        "name": "Chorus",
+        "bars": 2,
+        "overrides": {
+          "tempo": 140
+        },
+        "drums": {
+          "kick": [0, 48, 96, 144, 192, 240, 288, 336],
+          "snare": [48, 144, 240, 336]
+        },
+        "parts": {
+          "bass": []
+        },
+        "loops": [],
+        "chords": [
+          {
+            "start": 0,
+            "duration": 192,
+            "root": {
+              "degree": 5
+            },
+            "quality": "major"
+          },
+          {
+            "start": 192,
+            "duration": 192,
+            "root": {
+              "degree": 1
+            },
+            "quality": "major"
+          }
+        ]
+      }
+    ],
+    "arrangement": ["intro", "verse", "chorus", "verse"]
+  }
+}
