@@ -16,7 +16,6 @@ import type {
   ItemId,
   PatchRef,
   Practice,
-  Section,
   SectionId,
   SectionSeed,
   Song,
@@ -71,6 +70,12 @@ export interface ScheduledChord {
   chordIndex: number; // index into Section.chords (chip highlight)
   midi: number[]; // voiced notes, low → high
   instrument: PatchRef;
+  /**
+   * Started in an earlier bar and still sounding (time 0, remaining duration).
+   * Strike it only when playback starts or jumps into this bar; otherwise it's
+   * already ringing.
+   */
+  continued: boolean;
 }
 
 export interface ScheduledNote {
@@ -102,6 +107,8 @@ export interface ScheduledBar {
   parts: { bass: ScheduledNote[] }; // mirrors Section.parts
   drums: ScheduledHit[];
   loops: { takeId: TakeId; gain: number; startsThisBar: boolean }[];
+  /** Upper voicing of the last chord; pass as `prevVoicing` for the next bar. */
+  voicing?: number[];
 }
 
 /** Fired at audible time (Tone.Draw), so the UI matches what you hear. */
@@ -134,7 +141,7 @@ export interface Engine {
   subscribe(listener: (e: EngineEvent) => void): () => void; // returns unsubscribe
 }
 
-// ── Transformations (all pure). Signatures only until Milestone 2. ───────────
+// ── Transformations (all pure). Implemented in src/core/ (core/index.ts checks the match). ─
 
 type R<T> = DeepReadonly<T>;
 type Styles = R<Record<BuiltinStyleId, StyleDef>>;
@@ -143,13 +150,18 @@ type Playing = Extract<Transport, { status: "playing" }>;
 export interface Transforms {
   /** Recipe → song. Runs at each bar while a backing track plays, and once for "Open in composer". */
   generateSong(bt: R<BackingTrack>, styles: Styles): Song;
-  /** Rebuild one section from a seed ("Regenerate"). Keeps id, name, loops. */
-  regenerateSection(section: R<Section>, seed: R<SectionSeed>, styles: Styles): Section;
+  /** Rebuild one section from a seed ("Regenerate"). Keeps id, name, overrides, loops. */
+  regenerateSection(
+    song: R<Song>,
+    sectionId: SectionId,
+    seed: R<SectionSeed>,
+    styles: Styles,
+  ): Song;
   /** Section override ?? song default, per setting. Drives the player's "• override" marks. */
   effectiveSettings(
     song: R<Song>,
     sectionId: SectionId,
-  ): SongDefaults & { instruments: InstrumentMap };
+  ): R<SongDefaults & { instruments: InstrumentMap }>;
   /** Keys each cycle lap plays in. */
   lapKeys(song: R<Song>, practice: R<Practice>): NonEmpty<KeyName>;
   /** song + practice + position → one bar of events. `prevVoicing` feeds voice-leading. */

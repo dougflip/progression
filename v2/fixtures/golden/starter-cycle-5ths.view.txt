@@ -1,0 +1,12 @@
+# starter-cycle-5ths: player view at the start of each arrangement entry
+
+Cycle 5ths (backingTrack) · keys C G D A E B F# C# G# D# A# F
+arrangement: 0:A
+
+[arr 0] A · lap 0 key C · 2 bars of 192 ticks
+  settings: style=funk drums=simple bass=busy tempo=85 voicing=voice-lead-loop
+  chip #0 I        C         bars 0,1
+
+[arr 0] A · lap 1 key G · 2 bars of 192 ticks
+  settings: style=funk drums=simple bass=busy tempo=85 voicing=voice-lead-loop
+  chip #0 I        G         bars 0,1

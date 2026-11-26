@@ -79,7 +79,7 @@ describe("invalid docs are rejected with readable errors", () => {
       "bad numeral",
       BT,
       (e) => (e.doc.sections[0].progression = "I Q vi"),
-      '"Q" is not a Roman-numeral chord',
+      'doc.sections[0].progression: "Q" is not a chord',
     ],
     [
       "duplicate section id",
@@ -148,6 +148,12 @@ describe("invalid docs are rejected with readable errors", () => {
       SONG,
       (e) => (e.doc.sections[0].parts.bass[0].start = 768),
       "doc.sections[0].parts.bass[0].start: tick 768 is past",
+    ],
+    [
+      "bass notes out of order (parts are monophonic)",
+      SONG,
+      (e) => e.doc.sections[0].parts.bass.reverse(),
+      "doc.sections[0].parts.bass[1].start: notes must be sorted by start, one note per start",
     ],
     [
       "take longer than section",

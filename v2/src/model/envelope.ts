@@ -5,14 +5,14 @@
 
 import { z } from "zod";
 import { ShareEnvelope } from "./schema";
-import type { DeepReadonly } from "./types";
+import { freezeInDev, type DeepReadonly } from "./types";
 
 export type ValidationResult = { ok: true; value: ShareEnvelope } | { ok: false; errors: string[] };
 
 /** Schema validation with one readable line per problem, e.g. `doc.sections[0].bars: …`. */
 export function validateEnvelope(input: unknown): ValidationResult {
   const result = ShareEnvelope.safeParse(input);
-  if (result.success) return { ok: true, value: result.data };
+  if (result.success) return { ok: true, value: freezeInDev(result.data) };
   return { ok: false, errors: result.error.issues.map(formatIssue) };
 }
 

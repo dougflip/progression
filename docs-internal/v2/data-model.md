@@ -24,7 +24,7 @@ Schema: `v2/src/model/schema.ts` (Zod 4; persisted types are inferred from it). 
 1. Source: `song = item.doc` (a `Song`), or `generateSong(item.doc, styles)` (a `BackingTrack`), plus `item.practice`. With immutable values this is a reference, not a copy.
 2. `effectiveSettings(song, sectionId)`: section override ?? song default.
 3. `key = lapKeys(song, practice)[lap % n]`.
-4. `scheduleBar(source, position, scope, prevVoicing)` → `ScheduledBar`: numerals, chord tones, scale degrees and chromatic notes become MIDI (see Semantics), voicing and swing are applied. **Mutes are not applied here.**
+4. `scheduleBar(source, position, scope, prevVoicing)` → `ScheduledBar`: numerals, chord tones, scale degrees and chromatic notes become MIDI (see Semantics), voicing and swing are applied. The bar's `voicing` is the next bar's `prevVoicing`. **Mutes are not applied here.**
 5. `nextPosition(source, transport)`: advance mode, a queued `Jump` (next bar), a queued key jump (end of lap).
 6. Engine: hands the bar to Tone with about a bar of lookahead. Instruments and channels are long-lived; only events are scheduled. Emits `EngineEvent`s at audible time (`Tone.Draw`) for the UI.
 
@@ -32,7 +32,9 @@ Mixer levels and mutes bypass the loop: `setLevels` / `setMutes` change channel 
 
 **Opening in composer.** `generateSong(recipe, styles)` → new saved `LibraryItem` (`origin: "created"`). Nothing links back.
 
-**Regenerate.** `regenerateSection(section, seed, styles)` keeps id, name and loops; replaces chords, drums and `parts`.
+**Regenerate.** `regenerateSection(song, sectionId, seed, styles)` → new `Song`. Keeps the section's id, name, overrides and loops; replaces chords, drums and `parts`. The result is 4/4 (a meter override is set or dropped to match), and takes longer than the new section are shortened to fit.
+
+**Showing.** Screens read view functions (`core/view.ts`): `playerView(doc, practice, position, scope, styles)` gives the key, laps, arrangement, section, settings with their source (`song` or `section`), and chips (numeral, name, bars). They take the doc because a generated song can't tell which backing-track settings were overridden.
 
 **Sharing.** `{ version, doc, practice? }` → `encodeEnvelope`. On open: `decodeEnvelope` → `validateEnvelope` → new saved `LibraryItem` (`origin: "shared"`). Imports are the same with `origin: "imported"`.
 
@@ -43,10 +45,16 @@ Mixer levels and mutes bypass the loop: `setLevels` / `setMutes` change channel 
 - **Swing** (0–1) delays off-beat 8th notes: 0 = straight, 1 = triplet feel (off-beat at tick 32 of each beat, not 24). Events between the beat and the off-beat scale proportionally. Applied in `scheduleBar`; `ScheduledBar` times may be fractional ticks.
 - **Registers** (fixed, v1 parity):
   - Chords: root at or above MIDI 48 (C3), lowered by octaves until the top note is ≤ 76 (E5) for triads / ≤ 72 (C5) for 4-note chords. Voice-leading picks the inversion closest to the previous chord.
-  - Bass: two octaves below that chord root. `chordTone` / `scaleDegree` / `chromatic` resolve relative to it; `octave` shifts by 12 per step.
-- **Slash chords** (`ChordEvent.bass`): the bass part's root becomes that scale step; the chord voicing is unchanged.
+  - Chord notes = the register root an octave down, plus the upper voicing. 7th chords are shell voicings (no 5th), as in v1.
+  - Bass: two octaves below that chord root. `chordTone` resolves relative to it. `scaleDegree` / `chromatic` resolve relative to the tonic in the bass register (where tone 1 of a I chord lands), so they don't move with the chord. `octave` shifts by 12 per step.
+  - Cycle laps stay within a tritone of the first lap's key (−5…+6 semitones), as in v1.
+- **Chord tones**: 1/3/5/7 come from the quality (sus chords: 3 = the suspended note; triads: 7 = maj7 for major, ♭7 for minor/aug/sus, °7 for dim); 9/11/13 are natural extensions. A `chordTone` note where no chord sounds is skipped. _Differs from v1:_ v1's bass read "5" from the shell voicing, so it played the 7th on maj7/m7/dom7 chords; v2 plays the fifth.
+- **Slash chords** (`ChordEvent.bass`): bass tone 1 becomes the slash note, the nearest one to the chord's bass root (−5…+6 semitones); other tones and the chord voicing are unchanged.
+- **Held chords**: a chord is struck once and rings for its duration. A bar it continues into lists it with `continued: true`; the engine strikes it only when playback starts or jumps into that bar.
+- **Voicing modes**: `root` never voice-leads; `voice-lead` leads from the previous chord across laps; `voice-lead-loop` starts fresh on the first bar of each lap (v1).
 - **Bass phrases** in styles use `major` or `minor` by the sounding chord: minor, m7, dim, m7b5, dim7, mMaj7 → `minor`; everything else → `major`.
-- **Cycle laps**: `fourths` / `fifths` start from the song key (12 laps); `custom` plays its keys as given. A lap ends when the arrangement completes (or the section, when looping one section or in manual advance with a key jump queued).
+- **Cycle laps**: `fourths` / `fifths` start from the song key (12 laps), spelled with flats for fourths and sharps for fifths (v1); `custom` plays its keys as given. Chord names follow the lap key's spelling. A lap ends when the arrangement completes (or the section, when looping one section or in manual advance with a key jump queued). A queued jump lands at the next bar; if that bar also ended a lap, the lap still advances.
+- **Generator**: a section's chords last their `:bars` or bars-per-chord; each bar repeats the style's one-bar drums and the bass phrase for the chord sounding in that bar.
 
 ## Validation rules
 
@@ -56,44 +64,42 @@ Field-level ranges are in `schema.ts`. Objects are strict (unknown keys are reje
 - **Arrangement**: every entry references an existing section.
 - **Chords**: sorted by `start`; no overlaps; `start + duration ≤` section length (`bars ×` bar length of the section's effective meter).
 - **Drums**: per instrument, sorted, unique, every tick `<` section length.
-- **Parts**: every note `start <` section length (a note may ring past the end).
+- **Parts**: sorted by `start`, one note per start (parts are monophonic: a note is cut where the next starts); every note `start <` section length (a note may ring past the end).
 - **Loops**: `take.bars ≤ section.bars`.
 - **Instruments**: every `PatchRef` with `kind: "custom"` resolves to a key in `song.patches`; each patch's `role` matches the role it's used for (Milestone 5; until then `patches` is `{}`).
-- **Progressions** (`BackingSection`, `SectionSeed`): every whitespace-separated token is a Roman-numeral chord (`[b#]numeral[suffix][/numeral][:bars]`). Today this checks the token shape; the quality-suffix vocabulary belongs to Milestone 2's parser.
+- **Progressions** (`BackingSection`, `SectionSeed`): every token parses (`[b#]NUMERAL[suffix][/[b#]NUMERAL][:bars]`, grammar in `core/numerals.ts`), `:bars` is 1–16, and the generated section is ≤ 64 bars.
 - **Ticks** are integers ≥ 0; durations > 0. Any tick is valid (the UI snaps; triplets need e.g. 16).
 - **Strings** are trimmed and non-empty.
 - **LibraryStore**: exactly one `scratch` item; `currentItemId` exists.
 
 ## Screen → data trace
 
-| UI                                  | Fields                                                                                            |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------- |
-| Player: key                         | `doc.key`; while cycling `lapKeys(...)[position.lap]`                                             |
-| Player: section + settings, • marks | `arrangement[arrIdx]` → `Section.name`; `effectiveSettings` (override present → •)                |
-| Player: chord chips, active chip    | `Section.chords` (numeral + resolved name); active = `chord` event's `chordIndex`                 |
-| Player: bar dots / beat dots        | `ChordEvent.duration`, `Meter`; active = `bar` / `beat` events                                    |
-| Play pills (backing)                | `BackingTrack.style/drums/bass/voicing/tempo`                                                     |
-| Play pills (song)                   | `Song.defaults.tempo/swing/voicing`                                                               |
-| Practice row                        | `Practice.cycle` (custom keys inside it), `Practice.advance`                                      |
-| SONG scrubber                       | `doc.arrangement`; current = `Transport.at.arrIdx`; dashed = `Transport.jump` (`kind: "section"`) |
-| Chip cue outline                    | `Transport.jump` (`kind: "chord"`) or `Transport.cue` / paused `at` → every chord in that bar     |
-| KEY scrubber                        | `lapKeys(...)`; dashed = `Transport.keyJump`                                                      |
-| ■ / ▶ / ❚❚, "Paused · bar 3"        | `Transport.status`, `at` / `cue`                                                                  |
-| Mix sheet                           | checkboxes → `Practice.mutes`; sliders → `Mix.levels`                                             |
-| Backing edit: sections, overrides   | `BackingSection.*` (an override is a present field)                                               |
-| Backing edit: arrangement           | `BackingTrack.arrangement`                                                                        |
-| Song overview: cards                | `Section.name/bars/chords`, `overrides`, `loops.length`                                           |
-| Instruments sheet                   | `Song.instruments` (`PatchRef`s), `Song.patches`                                                  |
-| Section editor: chord lane          | `Section.chords[]` (ticks, snapped to 24)                                                         |
-| Section editor: drum lanes          | `Section.drums[instrument]` (ticks, snapped to 12)                                                |
-| Section editor: bass lane           | `Section.parts.bass[]` (`pitch.kind = "chordTone"`)                                               |
-| Section editor: loops               | `Section.loops[]`; audio = `LoopAudio` by take id                                                 |
-| Section editor: regenerate          | `Section.seed`                                                                                    |
-| Section editor: looping             | `Transport.scope` (`kind: "section"`)                                                             |
-| Section settings                    | `Section.overrides`                                                                               |
-| Library                             | `LibraryStore.items`; name = `doc.title`; badges = `doc.kind`, `origin`, `practice.cycle`         |
-| Scratch "replace?" confirm          | `LibraryItem.state` (`kind: "scratch"`)                                                           |
-| Share sheet                         | `ShareEnvelope`; toggle includes `practice`                                                       |
+| UI                                | Fields                                                                                                                 |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Player header, scrubbers (static) | `playerView(...)`: `key`, `keys`/`lap`, `arrangement`/`arrIdx`, `section`, `settings` (`from: "section"` → •), `chips` |
+| Player: active chip / bar / beat  | engine events: `chord` (`chordIndex`), `bar`, `beat`; dots = `chip.bars`, `meter`                                      |
+| Play pills (backing)              | `BackingTrack.style/drums/bass/voicing/tempo`                                                                          |
+| Play pills (song)                 | `Song.defaults.tempo/swing/voicing`                                                                                    |
+| Practice row                      | `Practice.cycle` (custom keys inside it), `Practice.advance`                                                           |
+| SONG scrubber                     | `doc.arrangement`; current = `Transport.at.arrIdx`; dashed = `Transport.jump` (`kind: "section"`)                      |
+| Chip cue outline                  | `Transport.jump` (`kind: "chord"`) or `Transport.cue` / paused `at` → every chord in that bar                          |
+| KEY scrubber                      | `lapKeys(...)`; dashed = `Transport.keyJump`                                                                           |
+| ■ / ▶ / ❚❚, "Paused · bar 3"      | `Transport.status`, `at` / `cue`                                                                                       |
+| Mix sheet                         | checkboxes → `Practice.mutes`; sliders → `Mix.levels`                                                                  |
+| Backing edit: sections, overrides | `BackingSection.*` (an override is a present field)                                                                    |
+| Backing edit: arrangement         | `BackingTrack.arrangement`                                                                                             |
+| Song overview: cards              | `Section.name/bars/chords`, `overrides`, `loops.length`                                                                |
+| Instruments sheet                 | `Song.instruments` (`PatchRef`s), `Song.patches`                                                                       |
+| Section editor: chord lane        | `Section.chords[]` (ticks, snapped to 24)                                                                              |
+| Section editor: drum lanes        | `Section.drums[instrument]` (ticks, snapped to 12)                                                                     |
+| Section editor: bass lane         | `Section.parts.bass[]` (`pitch.kind = "chordTone"`)                                                                    |
+| Section editor: loops             | `Section.loops[]`; audio = `LoopAudio` by take id                                                                      |
+| Section editor: regenerate        | `Section.seed`                                                                                                         |
+| Section editor: looping           | `Transport.scope` (`kind: "section"`)                                                                                  |
+| Section settings                  | `Section.overrides`                                                                                                    |
+| Library                           | `LibraryStore.items`; name = `doc.title`; badges = `doc.kind`, `origin`, `practice.cycle`                              |
+| Scratch "replace?" confirm        | `LibraryItem.state` (`kind: "scratch"`)                                                                                |
+| Share sheet                       | `ShareEnvelope`; toggle includes `practice`                                                                            |
 
 ## Choices made in the model
 
