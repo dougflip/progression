@@ -1,0 +1,11 @@
+# starter-i-vi-ii-v: player view at the start of each arrangement entry
+
+I vi ii V (backingTrack) · keys C
+arrangement: 0:A
+
+[arr 0] A · lap 0 key C · 8 bars of 192 ticks
+  settings: style=funk drums=simple bass=busy tempo=85 voicing=voice-lead-loop
+  chip #0 I        C         bars 0,1
+  chip #1 vi       Am        bars 2,3
+  chip #2 ii       Dm        bars 4,5
+  chip #3 V        G         bars 6,7

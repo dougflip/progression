@@ -1,0 +1,14 @@
+# starter-12-bar-blues: player view at the start of each arrangement entry
+
+12-bar blues (backingTrack) · keys C
+arrangement: 0:A
+
+[arr 0] A · lap 0 key C · 12 bars of 192 ticks
+  settings: style=rock drums=simple bass=busy tempo=120 voicing=voice-lead-loop
+  chip #0 I7       C7        bars 0,1,2,3
+  chip #1 IV7      F7        bars 4,5
+  chip #2 I7       C7        bars 6,7
+  chip #3 V7       G7        bars 8
+  chip #4 IV7      F7        bars 9
+  chip #5 I7       C7        bars 10
+  chip #6 V7       G7        bars 11

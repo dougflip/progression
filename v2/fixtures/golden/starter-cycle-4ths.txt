@@ -1,0 +1,106 @@
+# starter-cycle-4ths: 8 bars from the top (advance forced to auto)
+
+bar 1 · A [arr 0] bar 1/2 · lap 0 key C · 85 bpm 4/4 (192 ticks)
+  chord  0       +384     #0 I           C         C3 C4 E4 G4        pad-v1
+  bass   0       +24      C2    bass-v1
+  bass   36      +24      C2    bass-v1
+  bass   72      +24      C2    bass-v1
+  bass   108     +24      E2    bass-v1
+  bass   132     +24      C2    bass-v1
+  bass   156     +24      E2    bass-v1
+  bass   180     +12      G2    bass-v1
+  kick     0 72 120 168                             kit-v1
+  hat      0 24 48 72 84 96 120 144 168 180         kit-v1
+  snare    48 144                                   kit-v1
+  voicing → C4 E4 G4
+bar 2 · A [arr 0] bar 2/2 · lap 0 key C · 85 bpm 4/4 (192 ticks)
+  chord  0       +192     #0 I           C         C3 C4 E4 G4        pad-v1  (held)
+  bass   0       +24      C2    bass-v1
+  bass   36      +24      C2    bass-v1
+  bass   72      +24      C2    bass-v1
+  bass   108     +24      E2    bass-v1
+  bass   132     +24      C2    bass-v1
+  bass   156     +24      E2    bass-v1
+  bass   180     +24      G2    bass-v1
+  kick     0 72 120 168                             kit-v1
+  hat      0 24 48 72 84 96 120 144 168 180         kit-v1
+  snare    48 144                                   kit-v1
+  voicing → C4 E4 G4
+bar 3 · A [arr 0] bar 1/2 · lap 1 key F · 85 bpm 4/4 (192 ticks)
+  chord  0       +384     #0 I           F         F3 F4 A4 C5        pad-v1
+  bass   0       +24      F2    bass-v1
+  bass   36      +24      F2    bass-v1
+  bass   72      +24      F2    bass-v1
+  bass   108     +24      A2    bass-v1
+  bass   132     +24      F2    bass-v1
+  bass   156     +24      A2    bass-v1
+  bass   180     +12      C3    bass-v1
+  kick     0 72 120 168                             kit-v1
+  hat      0 24 48 72 84 96 120 144 168 180         kit-v1
+  snare    48 144                                   kit-v1
+  voicing → F4 A4 C5
+bar 4 · A [arr 0] bar 2/2 · lap 1 key F · 85 bpm 4/4 (192 ticks)
+  chord  0       +192     #0 I           F         F3 F4 A4 C5        pad-v1  (held)
+  bass   0       +24      F2    bass-v1
+  bass   36      +24      F2    bass-v1
+  bass   72      +24      F2    bass-v1
+  bass   108     +24      A2    bass-v1
+  bass   132     +24      F2    bass-v1
+  bass   156     +24      A2    bass-v1
+  bass   180     +24      C3    bass-v1
+  kick     0 72 120 168                             kit-v1
+  hat      0 24 48 72 84 96 120 144 168 180         kit-v1
+  snare    48 144                                   kit-v1
+  voicing → F4 A4 C5
+bar 5 · A [arr 0] bar 1/2 · lap 2 key Bb · 85 bpm 4/4 (192 ticks)
+  chord  0       +384     #0 I           Bb        Bb2 Bb3 D4 F4      pad-v1
+  bass   0       +24      Bb1   bass-v1
+  bass   36      +24      Bb1   bass-v1
+  bass   72      +24      Bb1   bass-v1
+  bass   108     +24      D2    bass-v1
+  bass   132     +24      Bb1   bass-v1
+  bass   156     +24      D2    bass-v1
+  bass   180     +12      F2    bass-v1
+  kick     0 72 120 168                             kit-v1
+  hat      0 24 48 72 84 96 120 144 168 180         kit-v1
+  snare    48 144                                   kit-v1
+  voicing → Bb3 D4 F4
+bar 6 · A [arr 0] bar 2/2 · lap 2 key Bb · 85 bpm 4/4 (192 ticks)
+  chord  0       +192     #0 I           Bb        Bb2 Bb3 D4 F4      pad-v1  (held)
+  bass   0       +24      Bb1   bass-v1
+  bass   36      +24      Bb1   bass-v1
+  bass   72      +24      Bb1   bass-v1
+  bass   108     +24      D2    bass-v1
+  bass   132     +24      Bb1   bass-v1
+  bass   156     +24      D2    bass-v1
+  bass   180     +24      F2    bass-v1
+  kick     0 72 120 168                             kit-v1
+  hat      0 24 48 72 84 96 120 144 168 180         kit-v1
+  snare    48 144                                   kit-v1
+  voicing → Bb3 D4 F4
+bar 7 · A [arr 0] bar 1/2 · lap 3 key Eb · 85 bpm 4/4 (192 ticks)
+  chord  0       +384     #0 I           Eb        Eb3 Eb4 G4 Bb4     pad-v1
+  bass   0       +24      Eb2   bass-v1
+  bass   36      +24      Eb2   bass-v1
+  bass   72      +24      Eb2   bass-v1
+  bass   108     +24      G2    bass-v1
+  bass   132     +24      Eb2   bass-v1
+  bass   156     +24      G2    bass-v1
+  bass   180     +12      Bb2   bass-v1
+  kick     0 72 120 168                             kit-v1
+  hat      0 24 48 72 84 96 120 144 168 180         kit-v1
+  snare    48 144                                   kit-v1
+  voicing → Eb4 G4 Bb4
+bar 8 · A [arr 0] bar 2/2 · lap 3 key Eb · 85 bpm 4/4 (192 ticks)
+  chord  0       +192     #0 I           Eb        Eb3 Eb4 G4 Bb4     pad-v1  (held)
+  bass   0       +24      Eb2   bass-v1
+  bass   36      +24      Eb2   bass-v1
+  bass   72      +24      Eb2   bass-v1
+  bass   108     +24      G2    bass-v1
+  bass   132     +24      Eb2   bass-v1
+  bass   156     +24      G2    bass-v1
+  bass   180     +24      Bb2   bass-v1
+  kick     0 72 120 168                             kit-v1
+  hat      0 24 48 72 84 96 120 144 168 180         kit-v1
+  snare    48 144                                   kit-v1
+  voicing → Eb4 G4 Bb4

@@ -1,0 +1,64 @@
+# starter-otherside: player view at the start of each arrangement entry
+
+Otherside (backingTrack) · keys C
+arrangement: 0:Verse 1:Verse 2:Chorus 3:Chorus 4:Verse 5:Verse 6:Bridge 7:Bridge
+
+[arr 0] Verse · lap 0 key C · 4 bars of 192 ticks
+  settings: style=rock drums=simple bass=simple tempo=100 voicing=voice-lead-loop
+  chip #0 vi       Am        bars 0
+  chip #1 IV       F         bars 1
+  chip #2 I        C         bars 2
+  chip #3 V        G         bars 3
+
+[arr 1] Verse · lap 0 key C · 4 bars of 192 ticks
+  settings: style=rock drums=simple bass=simple tempo=100 voicing=voice-lead-loop
+  chip #0 vi       Am        bars 0
+  chip #1 IV       F         bars 1
+  chip #2 I        C         bars 2
+  chip #3 V        G         bars 3
+
+[arr 2] Chorus · lap 0 key C · 9 bars of 192 ticks
+  settings: style=rock drums=simple bass=simple tempo=100 voicing=voice-lead-loop
+  chip #0 vi       Am        bars 0
+  chip #1 iii      Em        bars 1
+  chip #2 vi       Am        bars 2
+  chip #3 iii      Em        bars 3
+  chip #4 vi       Am        bars 4
+  chip #5 iii      Em        bars 5
+  chip #6 V        G         bars 6
+  chip #7 vi       Am        bars 7,8
+
+[arr 3] Chorus · lap 0 key C · 9 bars of 192 ticks
+  settings: style=rock drums=simple bass=simple tempo=100 voicing=voice-lead-loop
+  chip #0 vi       Am        bars 0
+  chip #1 iii      Em        bars 1
+  chip #2 vi       Am        bars 2
+  chip #3 iii      Em        bars 3
+  chip #4 vi       Am        bars 4
+  chip #5 iii      Em        bars 5
+  chip #6 V        G         bars 6
+  chip #7 vi       Am        bars 7,8
+
+[arr 4] Verse · lap 0 key C · 4 bars of 192 ticks
+  settings: style=rock drums=simple bass=simple tempo=100 voicing=voice-lead-loop
+  chip #0 vi       Am        bars 0
+  chip #1 IV       F         bars 1
+  chip #2 I        C         bars 2
+  chip #3 V        G         bars 3
+
+[arr 5] Verse · lap 0 key C · 4 bars of 192 ticks
+  settings: style=rock drums=simple bass=simple tempo=100 voicing=voice-lead-loop
+  chip #0 vi       Am        bars 0
+  chip #1 IV       F         bars 1
+  chip #2 I        C         bars 2
+  chip #3 V        G         bars 3
+
+[arr 6] Bridge · lap 0 key C · 4 bars of 192 ticks
+  settings: style=rock drums=simple bass=simple tempo=100 voicing=voice-lead-loop
+  chip #0 iii      Em        bars 0,1
+  chip #1 I        C         bars 2,3
+
+[arr 7] Bridge · lap 0 key C · 4 bars of 192 ticks
+  settings: style=rock drums=simple bass=simple tempo=100 voicing=voice-lead-loop
+  chip #0 iii      Em        bars 0,1
+  chip #1 I        C         bars 2,3

@@ -75,6 +75,11 @@ Background and goals: `version-2.md`.
   - scale degree (relative to the key)
   - chromatic semitone offset (relative to the key)
 - The UI may expose only chord tones at first; the model and engine support all three.
+- Resolution rules (details in `data-model.md` → Semantics):
+  - Chord tones are the chord's real tones: "5" is the fifth on 7th chords too (v1's bass played the 7th there).
+  - A slash chord's bass note is the one nearest the chord's bass root.
+  - Scale-degree and chromatic notes are measured from the tonic, not the chord.
+- Parts are monophonic: a new note cuts the previous one.
 
 ## Sound
 
@@ -107,6 +112,8 @@ Background and goals: `version-2.md`.
   - Tapping the current key repeats it; any other key skips to it.
 - SONG and KEY scrubbers sit above the transport, as in v1; the SONG scrubber is hidden while looping a single section.
 - Edits that make a saved position invalid clamp it (missing section → first, bar past the end → bar 1) rather than discarding it.
+- **Looping a section and back** (`changeScope`): entering a loop keeps the bar; leaving returns to the arrangement entry you were on if it's that section, else its first entry.
+- **Voice-leading** carries across pause (resume sounds continuous) and resets on stop.
 - Position is local playback state: never shared, never stored in the song.
 
 ## Looper
@@ -122,6 +129,8 @@ Background and goals: `version-2.md`.
 
 - A framework renders the UI from the state data (React likely; Preact if bytes matter).
 - Keep v1's headless pattern: core state + engine have no framework dependency.
+- **The core exposes view data.** Pure functions (`core/view.ts`, e.g. `playerView`) return what screens show: names, numerals, bar spans, and where each setting comes from (song or section override). Views take the doc, not the generated song, since a backing track's overrides only live in the recipe. The UI renders these and holds no music logic, so it can change freely.
+- Docs are immutable values; dev builds deep-freeze them as they enter (validation, generation) so in-place edits fail loudly.
 
 ## Agent workflow
 

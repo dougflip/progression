@@ -1,0 +1,46 @@
+# song-overrides-slash-pitches: player view at the start of each arrangement entry
+
+Overrides, slash chords and pitches (song) · keys Eb Ab F#
+arrangement: 0:Verse 1:Bridge 2:Verse
+
+[arr 0] Verse · lap 0 key Eb · 4 bars of 192 ticks
+  settings: tempo=92 meter=4/4 swing=0 voicing=voice-lead instruments(chords=pad-v1 bass=bass-v1 drums=kit-v1)
+  chip #0 Imaj7    Ebmaj7    bars 0
+  chip #1 V/VII    Bb/D      bars 1
+  chip #2 vi7      Cm7       bars 2
+  chip #3 bVII7    Db7       bars 2
+  chip #4 IV/I     Ab/Eb     bars 3
+
+[arr 1] Bridge · lap 0 key Eb · 2 bars of 144 ticks
+  settings: tempo=100 • meter=3/4 • swing=0.5 • voicing=root • instruments(chords=pad-v1 • bass=bass-v1 drums=kit-v1)
+  chip #0 ii7      Fm7       bars 0
+  chip #1 V7sus4   Bb7sus4   bars 1
+
+[arr 2] Verse · lap 0 key Eb · 4 bars of 192 ticks
+  settings: tempo=92 meter=4/4 swing=0 voicing=voice-lead instruments(chords=pad-v1 bass=bass-v1 drums=kit-v1)
+  chip #0 Imaj7    Ebmaj7    bars 0
+  chip #1 V/VII    Bb/D      bars 1
+  chip #2 vi7      Cm7       bars 2
+  chip #3 bVII7    Db7       bars 2
+  chip #4 IV/I     Ab/Eb     bars 3
+
+[arr 0] Verse · lap 1 key Ab · 4 bars of 192 ticks
+  settings: tempo=92 meter=4/4 swing=0 voicing=voice-lead instruments(chords=pad-v1 bass=bass-v1 drums=kit-v1)
+  chip #0 Imaj7    Abmaj7    bars 0
+  chip #1 V/VII    Eb/G      bars 1
+  chip #2 vi7      Fm7       bars 2
+  chip #3 bVII7    Gb7       bars 2
+  chip #4 IV/I     Db/Ab     bars 3
+
+[arr 1] Bridge · lap 1 key Ab · 2 bars of 144 ticks
+  settings: tempo=100 • meter=3/4 • swing=0.5 • voicing=root • instruments(chords=pad-v1 • bass=bass-v1 drums=kit-v1)
+  chip #0 ii7      Bbm7      bars 0
+  chip #1 V7sus4   Eb7sus4   bars 1
+
+[arr 2] Verse · lap 1 key Ab · 4 bars of 192 ticks
+  settings: tempo=92 meter=4/4 swing=0 voicing=voice-lead instruments(chords=pad-v1 bass=bass-v1 drums=kit-v1)
+  chip #0 Imaj7    Abmaj7    bars 0
+  chip #1 V/VII    Eb/G      bars 1
+  chip #2 vi7      Fm7       bars 2
+  chip #3 bVII7    Gb7       bars 2
+  chip #4 IV/I     Db/Ab     bars 3

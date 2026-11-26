@@ -35,10 +35,11 @@ Related: `decisions.md`, `data-model.md`, `v2/src/model/schema.ts`.
 - Numeral parsing (v1 syntax, all 13 qualities, slash chords), chord naming per key spelling.
 - `generateSong` / `regenerateSection` (styles, simple/busy variants).
 - `effectiveSettings`, `lapKeys`, voicings (root, voice-lead, voice-lead-loop).
-- `scheduleBar`: chords, chord-tone / scale-degree / chromatic notes, drums, mutes → `ScheduledBar`.
-- Transport rules: `nextPosition`, `clampPosition`, queued jumps (next bar), key jumps (end of lap), manual advance.
+- `scheduleBar`: chords, chord-tone / scale-degree / chromatic notes, drums, loops → `ScheduledBar` (mutes stay out: they're channel gains).
+- Transport rules: `nextPosition`, `clampPosition`, `changeScope`, queued jumps (next bar), key jumps (end of lap), manual advance.
+- View data for the UI (`playerView`, `sectionSettings`): everything the player shows, with override sources.
 
-**Tests:** golden `ScheduledBar`s for every fixture; parity checks against v1 where behaviour should match (chord names, voicings, bass patterns); transport rules as small, table-driven tests.
+**Tests:** golden `ScheduledBar`s and player views for every fixture (`v2/fixtures/golden/`); parity checks against v1 where behaviour should match (chord names, voicings, bass patterns); transport rules as small, table-driven tests.
 **You'll check:** nothing to hear yet. A short review of the golden output for one fixture.
 
 ## 3. Engine + bench

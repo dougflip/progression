@@ -28,6 +28,7 @@
  */
 
 import { z } from "zod";
+import { parseProgression, progressionBars } from "../core/numerals";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -40,6 +41,17 @@ const label = (max: number) =>
     .min(1, "must not be empty")
     .max(max, `must be at most ${max} characters`)
     .refine((s) => s.trim() === s, "must not have leading or trailing spaces");
+
+/**
+ * At least one element, typed `[T, ...T[]]`. Zod 4's `.nonempty()` validates but
+ * keeps `T[]`, and `z.tuple` types it but reports empty arrays badly, so this
+ * validates as an array and declares the tuple type.
+ */
+const nonEmpty = <T extends z.ZodType>(item: T) =>
+  z.array(item).nonempty() as unknown as z.ZodType<
+    [z.output<T>, ...z.output<T>[]],
+    [z.input<T>, ...z.input<T>[]]
+  >;
 
 const ID_RE = /^[A-Za-z0-9_-]{1,40}$/;
 const idString = () => z.string().regex(ID_RE, "ids are 1–40 of A–Z, a–z, 0–9, _ or -");
@@ -62,6 +74,8 @@ export type ItemId = z.infer<typeof ItemId>;
 // ─────────────────────────────────────────────────────────────────────────────
 // Primitives
 // ─────────────────────────────────────────────────────────────────────────────
+
+export const MAX_SECTION_BARS = 64;
 
 /** Ticks per quarter note. 8th = 24, 16th = 12, 8th triplet = 16, 16th triplet = 8. */
 export const PPQ = 48;
@@ -274,7 +288,16 @@ export type InstrumentMap = z.infer<typeof InstrumentMap>;
 // Styles: the generator's input data
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const BuiltinStyleId = z.enum(["pop", "funk", "ballad", "rock"]);
+/** v1's seven. */
+export const BuiltinStyleId = z.enum([
+  "pop",
+  "funk",
+  "ballad",
+  "rock",
+  "shuffle",
+  "funk16",
+  "britpop",
+]);
 export type BuiltinStyleId = z.infer<typeof BuiltinStyleId>;
 export const Variant = z.enum(["simple", "busy"]);
 export type Variant = z.infer<typeof Variant>;
@@ -292,7 +315,7 @@ export type StyleRef = z.infer<typeof StyleRef>;
  * One style: a one-bar 4/4 drum pattern and bass phrase per variant. Uses the same
  * shapes as songs (ticks, chord-tone pitches), so a generated section is these
  * patterns repeated per bar. Bass picks `major` or `minor` by the sounding chord's
- * quality. Ported from v1's STYLES in Milestone 2. Later (additive): `meter?`.
+ * quality. Built-ins: core/styles.ts. Later (additive): `meter?`.
  */
 export const StyleDef = z.strictObject({
   id: BuiltinStyleId,
@@ -302,33 +325,39 @@ export const StyleDef = z.strictObject({
 });
 export type StyleDef = z.infer<typeof StyleDef>;
 
-/**
- * A progression in v1's numeral syntax, e.g. "I V vi IV", "bVII:2", "IV/I", "V7:1".
- * Tokens are whitespace-separated: optional ♭/♯ (`b`/`#`), a Roman numeral, an
- * optional quality suffix, an optional `/bass` numeral and an optional `:bars`.
- * This checks the token shape only; the generator's parser (Milestone 2) owns the
- * quality-suffix vocabulary.
- */
-const NUMERAL = String.raw`[b#]?(?:VII|VI|IV|V|III|II|I|vii|vi|iv|v|iii|ii|i)`;
-const TOKEN_RE = new RegExp(
-  String.raw`^${NUMERAL}[A-Za-z0-9+°ø#b]*(?:/${NUMERAL})?(?::[1-9]\d*)?$`,
-);
+/** A progression in v1's numeral syntax, e.g. "I V vi IV", "I7:4 IV7:2", "IV/I". Grammar: core/numerals.ts. */
 export const Progression = label(400).superRefine((s, ctx) => {
-  for (const token of s.split(/\s+/)) {
-    if (!TOKEN_RE.test(token)) {
-      ctx.addIssue({ code: "custom", message: `"${token}" is not a Roman-numeral chord` });
-    }
-  }
+  const parsed = parseProgression(s);
+  if (!parsed.ok) for (const message of parsed.errors) ctx.addIssue({ code: "custom", message });
 });
 
+/** A generated section must fit `Section.bars` (≤ 64). */
+function checkProgressionBars(
+  value: { progression: string; barsPerChord: number },
+  ctx: z.RefinementCtx,
+) {
+  const parsed = parseProgression(value.progression);
+  if (!parsed.ok) return; // reported by Progression
+  const bars = progressionBars(parsed.chords, value.barsPerChord);
+  if (bars > MAX_SECTION_BARS) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["progression"],
+      message: `is ${bars} bars long; a section can be at most ${MAX_SECTION_BARS}`,
+    });
+  }
+}
+
 /** Everything the generator needs to (re)build a section. Kept on Song sections for "Regenerate". */
-export const SectionSeed = z.strictObject({
-  progression: Progression,
-  barsPerChord: BarsPerChord,
-  style: StyleRef,
-  drums: Variant,
-  bass: Variant,
-});
+export const SectionSeed = z
+  .strictObject({
+    progression: Progression,
+    barsPerChord: BarsPerChord,
+    style: StyleRef,
+    drums: Variant,
+    bass: Variant,
+  })
+  .superRefine(checkProgressionBars);
 export type SectionSeed = z.infer<typeof SectionSeed>;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -369,17 +398,19 @@ function checkArrangement(arrangement: readonly string[], ids: readonly string[]
 // Doc 1: BackingTrack (the recipe)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const BackingSection = z.strictObject({
-  id: SectionId,
-  name: label(40),
-  progression: Progression,
-  barsPerChord: BarsPerChord,
-  // Overrides: omitted = use the BackingTrack value.
-  style: StyleRef.optional(),
-  drums: Variant.optional(),
-  bass: Variant.optional(),
-  tempo: Bpm.optional(),
-});
+export const BackingSection = z
+  .strictObject({
+    id: SectionId,
+    name: label(40),
+    progression: Progression,
+    barsPerChord: BarsPerChord,
+    // Overrides: omitted = use the BackingTrack value.
+    style: StyleRef.optional(),
+    drums: Variant.optional(),
+    bass: Variant.optional(),
+    tempo: Bpm.optional(),
+  })
+  .superRefine(checkProgressionBars);
 export type BackingSection = z.infer<typeof BackingSection>;
 
 export const BackingTrack = z
@@ -393,8 +424,8 @@ export const BackingTrack = z
     drums: Variant,
     bass: Variant,
     voicing: Voicing,
-    sections: z.array(BackingSection).nonempty(),
-    arrangement: z.array(SectionId).nonempty(), // repeats allowed
+    sections: nonEmpty(BackingSection),
+    arrangement: nonEmpty(SectionId), // repeats allowed
     // Always 4/4, straight. Later (additive): meter?, swing?
   })
   .superRefine((bt, ctx) => {
@@ -439,11 +470,11 @@ export type LoopTake = z.infer<typeof LoopTake>;
 export const Section = z.strictObject({
   id: SectionId,
   name: label(40),
-  bars: z.int().min(1).max(64),
+  bars: z.int().min(1).max(MAX_SECTION_BARS),
   overrides: SectionOverrides,
   chords: z.array(ChordEvent), // sorted, non-overlapping, within the section; gaps = no chord
   drums: DrumHits,
-  parts: Parts,
+  parts: Parts, // each part is monophonic: sorted, unique starts
   loops: z.array(LoopTake), // several = overdub; layered in order
   seed: SectionSeed.optional(), // present if the generator made it
 });
@@ -486,7 +517,12 @@ function checkSection(section: Section, length: number, path: Path, ctx: Ctx) {
     });
   }
 
+  // A part plays one note at a time (a new note cuts the previous), so starts are
+  // sorted and unique.
   section.parts.bass.forEach((n, i) => {
+    if (i > 0 && n.start <= section.parts.bass[i - 1]!.start) {
+      issue(["parts", "bass", i, "start"], "notes must be sorted by start, one note per start");
+    }
     if (n.start >= length) {
       issue(["parts", "bass", i, "start"], `tick ${n.start} is past the section end (${length})`);
     }
@@ -515,8 +551,8 @@ export const Song = z
     defaults: SongDefaults,
     instruments: InstrumentMap,
     patches: z.record(PatchId, Patch), // custom patches; `{}` until Milestone 5
-    sections: z.array(Section).nonempty(),
-    arrangement: z.array(SectionId).nonempty(),
+    sections: nonEmpty(Section),
+    arrangement: nonEmpty(SectionId),
   })
   .superRefine((song, ctx) => {
     const ids = song.sections.map((s) => s.id);
@@ -554,7 +590,7 @@ export const Cycle = z.discriminatedUnion("kind", [
   z.strictObject({ kind: z.literal("fourths") }),
   z.strictObject({ kind: z.literal("fifths") }),
   /** Played as given (absolute keys). */
-  z.strictObject({ kind: z.literal("custom"), keys: z.array(KeyName).nonempty() }),
+  z.strictObject({ kind: z.literal("custom"), keys: nonEmpty(KeyName) }),
 ]);
 export type Cycle = z.infer<typeof Cycle>;
 
@@ -616,7 +652,7 @@ export type LibraryItem = z.infer<typeof LibraryItem>;
 export const LibraryStore = z
   .strictObject({
     version: z.literal(1),
-    items: z.array(LibraryItem).nonempty(), // exactly one `scratch`
+    items: nonEmpty(LibraryItem), // exactly one `scratch`
     currentItemId: ItemId,
   })
   .superRefine((store, ctx) => {
