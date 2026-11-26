@@ -15,8 +15,9 @@ Background and goals: `version-2.md`.
 ## Data model
 
 - The whole app state is plain, serializable data, described by one schema.
-- The schema is the single source for TS types, runtime validation, and agent-facing docs (Zod or JSON Schema — TBD).
-- The format carries a version field (`version: 2`) from day one.
+- The schema is the single source for TS types, runtime validation, and agent-facing docs. Draft types: `model.ts`; data flow and screen trace: `data-model.md`.
+- The format carries a version field (`version: 2`) from day one. Within a version, changes are additive only (see `data-model.md`).
+- Schema: Zod 4.
 - Clean break from v1: no v1 URL/preset import.
 - Settings cascade: song defaults → section overrides (style, tempo, meter, instruments). Finer-grained overrides can come later.
 
@@ -153,7 +154,6 @@ Background and goals: `version-2.md`.
 
 ## Open questions
 
-- Schema tooling: Zod vs JSON Schema.
 - Exact swing parameters (amount, which subdivision).
 - Export format and order (recording vs project bundle).
 - Practical URL size limit and when to fall back to JSON import.
