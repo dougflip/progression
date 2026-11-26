@@ -10,7 +10,7 @@ src/progression-audio.ts  — Tone.js engine: plays what core gives it
 src/styles.ts             — pure data: style/bass pattern definitions
 src/custom-styles.ts      — user-authored styles: CustomStyleDef, toStyleDef conversion (see docs-internal/custom-styles.html)
 public/favicon.svg        — static asset, copied to dist/ as-is
-vite.config.js            — build config: multi-page entry points, Tone vendor chunk, version/SHA injection
+vite.config.mjs           — build config: multi-page entry points, Tone vendor chunk, version/SHA injection
 src/vite-env.d.ts         — ambient types for build-time globals (__APP_VERSION__, __APP_SHA__)
 tsconfig.json             — strict TypeScript config (noEmit; Vite handles transpilation)
 ```
@@ -22,7 +22,7 @@ tsconfig.json             — strict TypeScript config (noEmit; Vite handles tra
 - **Audio engine is a swappable dep.** `makeProgressionAudio()` returns an `AudioEngine` (interface defined in core). Core is programmed to the interface, not to Tone.js directly. The engine is replaceable without touching core.
 - **Tone.js as an npm dependency.** Imported directly in `progression-audio.ts` (`import * as Tone from 'tone'`). Bundled as a separate vendor chunk by Vite so it caches independently from app code. Previously a CDN global — the bundler made the proper import pattern straightforward.
 - **Vite for dev and build.** Replaces the bare local server. Three HTML entry points (`index.html`, `docs.html`, and v2's `v2/index.html`) declared as Rollup inputs. v2 (React, see `docs-internal/v2/`) builds into `dist/v2/`, is excluded from the service worker's precache (`globIgnores`) and navigation fallback (`navigateFallbackDenylist`), so v1's offline app is unchanged. `npm run dev` serves at `/progression/` (matching the GitHub Pages subpath). `npm run typecheck` runs `tsc --noEmit` separately since Vite uses esbuild for transpilation.
-- **Version display combines a manual semver with an automatic git SHA.** `vite.config.js` injects `__APP_VERSION__` (from `package.json`) and `__APP_SHA__` (`git rev-parse --short HEAD` at build time) as `define` globals, shown in the Setup sheet. The semver is bumped by hand as desired; the SHA changes on every commit, so it's the reliable signal for "is this build current."
+- **Version display combines a manual semver with an automatic git SHA.** `vite.config.mjs` injects `__APP_VERSION__` (from `package.json`) and `__APP_SHA__` (`git rev-parse --short HEAD` at build time) as `define` globals, shown in the Setup sheet. The semver is bumped by hand as desired; the SHA changes on every commit, so it's the reliable signal for "is this build current."
 - **TypeScript with strict mode.** `strict`, `noUncheckedIndexedAccess`, `noImplicitReturns`, and `noFallthroughCasesInSwitch` all enabled. The `AudioEngine` interface in core formally enforces the contract between the player factory and the audio engine.
 - **Host receives only resolved display data.** `onChordTick` carries `resolvedChipNames` (chord names in the current key), `resolvedKey`, position/section indices, `bars`, and `sectionTokens` (raw tokens, only on section change) — no raw semitone shifts or music theory math reaches the host.
 - **Two callback tiers.** `onChordTick` fires once per chord; `onBarTick` fires for each bar after the first within a multi-bar chord; `onBeatTick` fires every quarter-note beat. All three are audio-timing-sensitive (fast, no DOM work). `onStateChange` fires on any state mutation and is unrestricted.
