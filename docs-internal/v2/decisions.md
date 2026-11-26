@@ -18,6 +18,7 @@ Background and goals: `version-2.md`.
 - The schema is the single source for TS types, runtime validation, and agent-facing docs. Draft types: `model.ts`; data flow and screen trace: `data-model.md`.
 - The format carries a version field (`version: 2`) from day one. Within a version, changes are additive only (see `data-model.md`).
 - Schema: Zod 4.
+- TypeScript patterns first: discriminated unions for every "kind" (never `isX` booleans), branded ids, non-empty tuples where empty is invalid, immutable values (`DeepReadonly`), exhaustive switches. Details: `model.ts` header.
 - Clean break from v1: no v1 URL/preset import.
 - Settings cascade: song defaults → section overrides (style, tempo, meter, instruments). Finer-grained overrides can come later.
 
@@ -50,8 +51,8 @@ Background and goals: `version-2.md`.
 
 ## Practice
 
-- `cycle`: `none | 4ths | 5ths | custom`. 4ths/5ths start from the song key.
-- `custom` plays the listed keys as given (absolute keys). The song key is ignored while cycling, so v1's "key must equal `customCycleKeys[0]`" invariant goes away.
+- `cycle`: `none | fourths | fifths | custom` (a tagged union; `custom` carries its non-empty key list). Fourths/fifths start from the song key.
+- `custom` plays its keys as given (absolute keys). The song key is ignored while cycling, so v1's "key must equal `customCycleKeys[0]`" invariant goes away.
 - A cycle lap ends when the arrangement completes; the engine picks the next lap's key at that boundary (just-in-time, no lap bookkeeping).
 - `advance: manual` repeats the current arrangement position until a jump is queued. Jumps take effect at the next bar.
 - Mutes are intent ("play without drums"), so they're shareable. Levels are device-specific, so they aren't.
@@ -62,7 +63,9 @@ Background and goals: `version-2.md`.
 - Meter lives on the section (`beatsPerBar`, `beatUnit`).
 - All positions and lengths are integer ticks at a fixed PPQ (48 per quarter: divisible by 2, 3, 4, 6 → 8ths, 16ths, triplets).
 - Chords are `{ start, duration }` in ticks, not grid slots. The first UI snaps chords to 8ths and drums to 16ths.
-- Swing is a playback setting applied at schedule time; the stored data stays straight.
+- Swing is a playback setting applied at schedule time; the stored data stays straight. It swings 8th notes, amount 0–1 (1 = triplet feel).
+- Tempo (BPM) always counts quarter notes, also in 6/8.
+- Registers are fixed per role (v1 parity: chords from C3, bass two octaves below the chord root). Not stored in docs.
 
 ## Pitch
 
@@ -154,7 +157,6 @@ Background and goals: `version-2.md`.
 
 ## Open questions
 
-- Exact swing parameters (amount, which subdivision).
 - Export format and order (recording vs project bundle).
 - Practical URL size limit and when to fall back to JSON import.
 - Where an edit takes effect (next bar vs next downbeat vs next section) for each kind of change.
