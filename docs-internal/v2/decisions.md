@@ -41,7 +41,7 @@ Background and goals: `version-2.md`.
 - **Edit** holds everything else. Backing: sections, overrides, arrangement, "Open in composer". Composer: song overview (instruments, sections, arrangement) → section editor.
   - **Done** returns to the play view. Pills live only on the play view (no duplicate controls).
 - The action bar (Mix, transport, SONG/KEY scrubbers, Share) is on every screen; playback continues across navigation.
-- "Open in composer" and "Blank song" land on the song overview.
+- "Open in composer" and "New song" open the new song item on its song overview.
 
 ## Player UI
 
@@ -128,9 +128,16 @@ Background and goals: `version-2.md`.
 
 ## Library and URL state
 
-- Working state lives in a local library of recipes and songs (replaces v1 presets; survives refresh).
+- Working state lives in a local library of items (survives refresh). Per device; no sync. Moving work between devices = share link (or project file later).
+- An item = one doc (`BackingTrack` or `Song`, which carries its `title`) + its own `Practice`. A song item owns its loop takes.
+- The item's kind decides the mode; there are no mode tabs. The library (📚, or tap the title on the play view) is how you switch.
+- Everything autosaves. Rename an item from its ✎ Edit screen (the doc's `title` is the item name); there's no separate rename in the library.
+- **Scratch**: one reusable backing-track item for quick jams. "Keep" names it into a new item and resets Scratch.
+- **Starters** (v1's built-in presets) load a copy into Scratch, with an inline confirm if Scratch has edits. First run opens Scratch pre-filled, so the app is never empty.
+- "Open in composer" and "New song" create new song items; the source recipe is untouched.
 - The URL is for sharing only: generated on Share, read on open. It doesn't mirror state while you edit.
-- Opening a link adds a new library item; it never overwrites what you were working on.
+- Opening a link adds a new library item (marked "shared with you"); it never overwrites what you were working on.
+- Pasted agent JSON (a doc or an envelope) takes the same path: validate against the schema, add, open.
 - A link carries a versioned envelope: `{ version, doc, practice? }`.
   - `practice` is optional; the Share sheet shows a summary and a toggle (on by default when it differs from defaults).
   - New blocks (e.g. `mix`) can be added to the envelope later without touching the song format.
@@ -151,5 +158,4 @@ Background and goals: `version-2.md`.
 - Export format and order (recording vs project bundle).
 - Practical URL size limit and when to fall back to JSON import.
 - Where an edit takes effect (next bar vs next downbeat vs next section) for each kind of change.
-- Whether practice settings are stored per library item or app-wide.
 - Custom styles (reusable drum + bass patterns) in v2: kept for backing tracks? How do they relate to composer sections?

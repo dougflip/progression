@@ -264,6 +264,16 @@
         font-weight: 600;
         color: var(--text-2);
       }
+      .view-title.link {
+        border: none;
+        background: none;
+        padding: 0;
+        cursor: pointer;
+        font-size: 1rem;
+      }
+      .view-title.link:hover {
+        color: var(--text);
+      }
       .key-row {
         display: flex;
         justify-content: center;
@@ -1088,7 +1098,7 @@
         return {
           version: 2,
           kind: "song",
-          title: "Untitled song",
+          title: r.title || "Untitled song",
           key: r.key,
           ppq: PPQ,
           defaults: {
@@ -1151,6 +1161,89 @@
       let nextId = 1;
       const uid = (p) => p + nextId++;
 
+      // ═══════════════════════════════════════════════════════════════════
+      // Library (local to this device). Each item = one doc + its own practice
+      // settings. The open item's doc/practice ARE S.recipe/S.song/S.practice
+      // (same objects), so every edit autosaves into the library.
+      // ═══════════════════════════════════════════════════════════════════
+      function mkRecipe(title, secs, extra) {
+        return {
+          version: 2,
+          kind: "backingTrack",
+          title,
+          key: "C",
+          tempo: 96,
+          style: "pop",
+          drums: "simple",
+          bass: "simple",
+          voicing: "voice-lead",
+          sections: secs.map(([id, name, progression]) => ({
+            id,
+            name,
+            progression,
+            barsPerChord: 1,
+            style: null,
+            drums: null,
+            bass: null,
+            tempo: null,
+          })),
+          arrangement: secs.map((s) => s[0]),
+          ...extra,
+        };
+      }
+      const DP = DEFAULT_PRACTICE;
+      // Built-in starting points (v1's presets). Tapping one loads a copy into Scratch.
+      const STARTERS = [
+        { doc: { ...structuredClone(S.recipe), title: "Pop: I–V–vi–IV" }, practice: structuredClone(DP) },
+        {
+          doc: mkRecipe("12-bar blues", [["A", "Blues", "I7 I7 I7 I7 IV7 IV7 I7 I7 V7 IV7 I7 V7"]], { style: "rock", tempo: 100 }),
+          practice: structuredClone(DP),
+        },
+        {
+          doc: mkRecipe("ii–V–I, all keys", [["A", "ii–V–I", "ii7 V7 Imaj7 Imaj7"]], { style: "ballad", tempo: 80 }),
+          practice: { ...structuredClone(DP), cycle: "4ths" },
+        },
+        {
+          doc: mkRecipe("One-chord drill", [["A", "Drill", "I"]], { tempo: 90 }),
+          practice: { ...structuredClone(DP), cycle: "4ths" },
+        },
+      ];
+      // Scratch: the one reusable backing track for quick jams. Starts filled, never empty.
+      S.library = [
+        {
+          id: "scratch",
+          scratch: true,
+          doc: { ...structuredClone(STARTERS[0].doc), title: "Scratch" },
+          practice: structuredClone(DP),
+          updated: Date.now(),
+          modified: false,
+        },
+      ];
+      S.currentId = "scratch";
+      S.libConfirm = null; // { type: 'delete' | 'starter', id|i }
+      const curItem = () => S.library.find((i) => i.id === S.currentId);
+
+      function openItem(id) {
+        const item = S.library.find((i) => i.id === id);
+        if (!item) return;
+        if (S.play.on || S.cue) stopPlay();
+        S.currentId = id;
+        S.mode = item.doc.kind === "song" ? "composer" : "backing";
+        if (S.mode === "backing") S.recipe = item.doc;
+        else S.song = item.doc;
+        S.practice = item.practice;
+        S.view = { screen: "play", sectionId: null, selChord: null, confirm: null };
+        S.sharePractice = null;
+        S.sheet = null;
+        S.libConfirm = null;
+        render();
+      }
+      function addItem(doc, practice, extra) {
+        const item = { id: uid("item-"), doc, practice: practice || structuredClone(DP), updated: Date.now(), ...extra };
+        S.library.push(item);
+        return item;
+      }
+
       // Which document is "live" for the engine in the current mode
       const liveSong = () => (S.mode === "backing" ? generateSong(S.recipe) : S.song);
       const findSec = (song, id) => song && song.sections.find((s) => s.id === id);
@@ -1158,6 +1251,11 @@
 
       // Every model edit goes through here so the "queued for next bar" behaviour is honest.
       function edited() {
+        const item = curItem();
+        if (item) {
+          item.updated = Date.now(); // autosave: the item's doc was edited in place
+          item.modified = true;
+        }
         if (S.play.on) {
           S.play.dirty = true;
           const nextBar = Math.floor(S.play.tick / barTicks()) + 2;
@@ -1192,10 +1290,7 @@
       function renderTop() {
         return `
         <div class="topbar">
-          <div class="seg">
-            <button class="${S.mode === "backing" ? "on" : ""}" data-act="mode" data-mode="backing">Backing track</button>
-            <button class="${S.mode === "composer" ? "on" : ""}" data-act="mode" data-mode="composer">Composer</button>
-          </div>
+          <button class="btn" data-act="sheet" data-type="library">📚 Library</button>
           <span class="spacer"></span>
           <button class="btn ghost small" data-act="sheet" data-type="data">{ } Data</button>
           <button class="btn ghost small" data-act="theme">◐</button>
@@ -1226,7 +1321,11 @@
           <label class="pill">🎵 <select data-field="song.voicing">${opts(VOICINGS, g.defaults.voicing)}</select></label>`;
         return `
         <div class="view-head">
-          <span class="view-title">${esc(backing ? "Backing track" : g.title)}</span>
+          <button class="view-title link" data-act="sheet" data-type="library" title="Open library">${esc(
+            (backing ? r : g).title,
+          )} ▾</button>
+          <span class="badge">${backing ? "backing track" : "song"}</span>
+          ${curItem() && curItem().scratch ? `<span class="muted" style="font-size:.78rem">· name it in the library to keep it</span>` : ""}
           <span class="spacer"></span>
           <button class="btn" data-act="edit">✎ Edit</button>
         </div>
@@ -1251,8 +1350,12 @@
         const set = (v) => (v ? "set" : "");
         return `
         <div class="view-head">
-          <b>Edit backing track</b>
-          <span class="spacer"></span>
+          ${
+            curItem() && curItem().scratch
+              ? `<input class="text" id="scratch-name-edit" placeholder="Scratch — name it to keep it…" style="font-size:1.05rem;flex:1;min-width:8rem" />
+                 <button class="btn" data-act="keepScratch" data-input="scratch-name-edit">Keep</button>`
+              : `<input class="text" style="font-size:1.15rem;font-weight:700;flex:1;min-width:8rem" value="${esc(r.title)}" data-field="doc.title" title="Name" />`
+          }
           <button class="btn primary" data-act="done">Done</button>
         </div>
         <div class="mock-note">Backing-track mode edits a small <b>recipe</b>; the generator turns it into a full <b>Song</b> for the engine. Edits made while playing land on the next bar.</div>
@@ -1299,16 +1402,10 @@
           <div class="row">
             <div style="flex:1;min-width:12rem">
               <b>Open in composer</b>
-              <div class="muted">Saves the generated song so you can edit every chord, hit and note. One-way: the recipe stays as it is and nothing syncs back.</div>
+              <div class="muted">Creates a new song in your library from this backing track, so you can edit every chord, hit and note. One-way: this backing track stays as it is and nothing syncs back.</div>
             </div>
             <button class="btn primary" data-act="openComposer">Open in composer →</button>
           </div>
-          ${
-            S.view.confirm === "openComposer"
-              ? `<div class="confirm">You already have a song in the composer. Replace it with this backing track?
-                 <div class="row" style="margin-top:.5rem"><button class="btn primary" data-act="openComposerYes">Replace</button><button class="btn" data-act="confirmNo">Cancel</button></div></div>`
-              : ""
-          }
         </div>`;
       }
 
@@ -1744,7 +1841,94 @@
         if (t === "sectionSettings") body = renderSectionSettings();
         if (t === "share") body = renderShareSheet();
         if (t === "mix") body = renderMixSheet();
+        if (t === "library") body = renderLibrarySheet();
         return `<div class="backdrop" data-act="closeSheet"></div><div class="sheet"><div class="inner">${body}</div></div>`;
+      }
+
+      // Minimal schema check for imported/agent-written docs (the real app validates against the schema).
+      function validateDoc(doc) {
+        if (!doc || typeof doc !== "object") return "no document";
+        if (doc.version !== 2) return "version must be 2";
+        if (doc.kind !== "backingTrack" && doc.kind !== "song") return "kind must be backingTrack or song";
+        if (!Array.isArray(doc.sections) || !doc.sections.length) return "needs at least one section";
+        if (!Array.isArray(doc.arrangement) || !doc.arrangement.length) return "needs an arrangement";
+        const ids = new Set(doc.sections.map((s) => s.id));
+        const bad = doc.arrangement.filter((id) => !ids.has(id));
+        if (bad.length) return "arrangement references unknown section " + bad[0];
+        if (!KEYS.includes(doc.key)) return "unknown key " + doc.key;
+        return null;
+      }
+
+      function ago(t) {
+        const s = Math.round((Date.now() - t) / 1000);
+        return s < 60 ? "just now" : s < 3600 ? Math.round(s / 60) + " min ago" : Math.round(s / 3600) + " h ago";
+      }
+
+      function renderLibrarySheet() {
+        const sc = S.library.find((i) => i.scratch);
+        const items = S.library.filter((i) => !i.scratch).sort((a, b) => b.updated - a.updated);
+        const conf = S.libConfirm;
+        const row = (i) => `
+          <div class="opt ${i.id === S.currentId ? "on" : ""}">
+            <span style="flex:1;cursor:pointer" data-act="openItem" data-id="${i.id}">
+              <b>${esc(i.doc.title)}</b>
+              <span class="badge">${i.doc.kind === "song" ? "song" : "backing track"}</span>${i.shared ? `<span class="badge">shared with you</span>` : ""}${
+                i.source === "import" ? `<span class="badge">imported</span>` : ""
+              }
+              <br><span class="muted" style="font-size:.78rem">${ago(i.updated)}${i.practice.cycle !== "none" ? " · cycle " + i.practice.cycle : ""}</span>
+            </span>
+            <button class="btn small" data-act="dupItem" data-id="${i.id}">Duplicate</button>
+            <button class="btn small danger" data-act="delItem" data-id="${i.id}">Delete</button>
+          </div>
+          ${
+            conf && conf.type === "delete" && conf.id === i.id
+              ? `<div class="confirm">Delete “${esc(i.doc.title)}”${i.doc.kind === "song" ? " and its loop recordings" : ""}? This can't be undone.
+                 <div class="row" style="margin-top:.5rem"><button class="btn primary" data-act="delYes">Delete</button><button class="btn" data-act="libCancel">Cancel</button></div></div>`
+              : ""
+          }`;
+        return `
+        <div class="row"><h3 style="flex:1">Library</h3><button class="btn small" data-act="closeSheet">Close</button></div>
+        <div class="muted" style="margin-top:.3rem">Saved on this device. Everything autosaves; practice settings are saved per item. Rename an item from its ✎ Edit screen.</div>
+
+        <h2>Scratch</h2>
+        <div class="opt ${sc.id === S.currentId ? "on" : ""}">
+          <span style="flex:1;cursor:pointer" data-act="openItem" data-id="scratch"><b>Scratch</b> <span class="badge">backing track</span><br>
+            <span class="muted" style="font-size:.78rem">Your quick jam. ${sc.modified ? "Edited " + ago(sc.updated) : "Unchanged starter"}</span></span>
+        </div>
+        <div class="row" style="margin:.35rem 0 0">
+          <input class="text" id="scratch-name" placeholder="Name it to keep it…" style="flex:1;min-width:10rem" />
+          <button class="btn" data-act="keepScratch">Keep</button>
+        </div>
+
+        <h2>Yours</h2>
+        ${items.length ? items.map(row).join("") : `<div class="muted">Nothing saved yet. Name your Scratch, open something in the composer, or import.</div>`}
+        <div class="row" style="margin-top:.4rem"><button class="btn" data-act="blankSong">+ New song</button></div>
+
+        <h2>Starters</h2>
+        <div class="muted" style="margin-bottom:.4rem">Loads a copy into Scratch.</div>
+        ${STARTERS.map(
+          (st, i) => `
+          <div class="opt" data-act="loadStarter" data-i="${i}">
+            <span style="flex:1"><b>${esc(st.doc.title)}</b><br><span class="muted" style="font-size:.78rem">${esc(
+              st.doc.sections.map((s) => s.progression).join(" | "),
+            )}${st.practice.cycle !== "none" ? " · cycle " + st.practice.cycle : ""}</span></span>
+          </div>
+          ${
+            conf && conf.type === "starter" && conf.i === String(i)
+              ? `<div class="confirm">Scratch has changes. Replace them with “${esc(st.doc.title)}”? (Name Scratch above to keep it.)
+                 <div class="row" style="margin-top:.5rem"><button class="btn primary" data-act="loadStarter" data-i="${i}">Replace</button><button class="btn" data-act="libCancel">Cancel</button></div></div>`
+              : ""
+          }`,
+        ).join("")}
+
+        <h2>Import</h2>
+        <div class="muted" style="margin-bottom:.4rem">Paste JSON from an agent (a doc, or a share envelope). It's validated, then added as a new item.</div>
+        <textarea id="import-json" class="text" rows="3" style="width:100%;font-family:ui-monospace,monospace;font-size:.75rem" placeholder='{ "version": 2, "doc": { "kind": "backingTrack", … } }'></textarea>
+        <div class="row" style="margin-top:.4rem">
+          <button class="btn" data-act="importJson">Import</button>
+          <span class="spacer"></span>
+          <button class="btn ghost small" data-act="simulateLink">Simulate opening a shared link</button>
+        </div>`;
       }
 
       // One mixer UI, two homes for the data: mutes → practice (shareable intent),
@@ -1780,7 +1964,12 @@
                 ...(curSec() && S.view.screen === "section" ? [["section", "This section"]] : []),
               ];
         if (S.mode === "backing" || S.song)
-          scopes.push(["practice", "Practice"], ["mix", "Mix (this device)"], ["envelope", "Share envelope"]);
+          scopes.push(
+            ["practice", "Practice"],
+            ["mix", "Mix (this device)"],
+            ["library", "Library (this device)"],
+            ["envelope", "Share envelope"],
+          );
         let scope = S.dataScope;
         if (!scopes.find((s) => s[0] === scope)) scope = scopes[S.mode === "backing" ? 1 : 0][0];
         const obj = {
@@ -1790,6 +1979,18 @@
           song: () => S.song,
           practice: () => S.practice,
           mix: () => S.mix,
+          // Local storage shape: items hold the full doc + practice; shown here without the docs for readability.
+          library: () =>
+            S.library.map((i) => ({
+              id: i.id,
+              title: i.doc.title,
+              kind: i.doc.kind,
+              scratch: !!i.scratch,
+              shared: !!i.shared,
+              updated: new Date(i.updated).toISOString(),
+              practice: i.practice,
+              doc: "{…}",
+            })),
           envelope: () => shareEnvelope(),
         }[scope]();
         return `
@@ -2220,31 +2421,106 @@
           arr.splice(Number(d.i), 1);
           edited();
         },
+        // Creates a NEW song item; the recipe item is untouched.
         openComposer() {
-          if (S.song) {
-            S.view.confirm = "openComposer";
-            return render();
-          }
-          ACTIONS.openComposerYes();
-        },
-        openComposerYes() {
-          if (S.play.on) stopPlay();
-          S.song = generateSong(S.recipe);
-          S.mode = "composer";
-          S.view = { screen: "song", sectionId: null, selChord: null, confirm: null };
+          const song = generateSong(S.recipe);
+          song.title = S.recipe.title === "Scratch" ? "Untitled song" : S.recipe.title + " (song)";
+          const item = addItem(song, structuredClone(S.practice));
+          openItem(item.id);
+          S.view.screen = "song";
           render();
-          toast("Song created from backing track");
+          toast("New song added to your library");
         },
         blankSong() {
-          S.song = generateSong({
-            key: "C",
-            tempo: 96,
-            style: "pop",
-            sections: [{ id: "A", name: "Section 1", progression: "I", barsPerChord: 4, style: null, tempo: null }],
-            arrangement: ["A"],
-          });
-          S.view = { screen: "song", sectionId: null, selChord: null, confirm: null };
+          const song = generateSong(mkRecipe("Untitled song", [["A", "Section 1", "I"]], {}));
+          song.sections[0].bars = 4;
+          song.sections[0].chords[0].duration = 4 * barTicks();
+          const item = addItem(song);
+          openItem(item.id);
+          S.view.screen = "song";
           render();
+        },
+
+        // library
+        openItem(d) {
+          openItem(d.id);
+        },
+        keepScratch(d = {}) {
+          const name = (document.getElementById(d.input || "scratch-name").value || "").trim();
+          if (!name) return toast("Give it a name first");
+          const sc = S.library.find((i) => i.scratch);
+          const item = addItem({ ...structuredClone(sc.doc), title: name }, structuredClone(sc.practice));
+          // Scratch resets to a fresh starter so it's ready for the next jam.
+          sc.doc = { ...structuredClone(STARTERS[0].doc), title: "Scratch" };
+          sc.practice = structuredClone(DP);
+          sc.modified = false;
+          openItem(item.id);
+          toast(`Saved “${name}”`);
+        },
+        loadStarter(d) {
+          const sc = S.library.find((i) => i.scratch);
+          if (sc.modified && !(S.libConfirm && S.libConfirm.type === "starter" && S.libConfirm.i === d.i)) {
+            S.libConfirm = { type: "starter", i: d.i };
+            return render();
+          }
+          const st = STARTERS[Number(d.i)];
+          sc.doc = { ...structuredClone(st.doc), title: "Scratch" };
+          sc.practice = structuredClone(st.practice);
+          sc.modified = false;
+          sc.updated = Date.now();
+          openItem("scratch");
+          toast(`Scratch: ${st.doc.title}`);
+        },
+        dupItem(d) {
+          const src = S.library.find((i) => i.id === d.id);
+          const title = src.scratch ? "Scratch copy" : src.doc.title + " copy";
+          addItem({ ...structuredClone(src.doc), title }, structuredClone(src.practice));
+          render();
+        },
+        delItem(d) {
+          S.libConfirm = { type: "delete", id: d.id };
+          render();
+        },
+        delYes() {
+          const id = S.libConfirm.id;
+          S.library = S.library.filter((i) => i.id !== id); // a song's loop takes go with it
+          S.libConfirm = null;
+          if (S.currentId === id) openItem("scratch");
+          else render();
+        },
+        libCancel() {
+          S.libConfirm = null;
+          render();
+        },
+        // Pasted agent JSON and opened share links take the same path: validate, add, open.
+        importJson() {
+          const text = document.getElementById("import-json").value;
+          let env;
+          try {
+            env = JSON.parse(text);
+          } catch {
+            return toast("Not valid JSON");
+          }
+          const doc = env && env.doc ? env.doc : env;
+          const err = validateDoc(doc);
+          if (err) return toast("Can't import: " + err);
+          const item = addItem(doc, env.practice ? { ...structuredClone(DP), ...env.practice } : null, { source: "import" });
+          openItem(item.id);
+          toast("Imported into your library");
+        },
+        simulateLink() {
+          const doc = generateSong(
+            mkRecipe("Funky idea", [["A", "Groove", "i7 IV7 i7 IV7"], ["B", "Turn", "bVI7 V7"]], {
+              style: "funk",
+              tempo: 104,
+              arrangement: ["A", "A", "B"],
+            }),
+          );
+          doc.title = "Funky idea";
+          const env = { version: 2, doc, practice: { ...structuredClone(DP), cycle: "5ths" } };
+          const item = addItem(env.doc, env.practice, { shared: true });
+          openItem(item.id);
+          toast("Opened a shared link → added to your library");
         },
 
         // composer: song screen
@@ -2549,8 +2825,11 @@
           case "rsec.tempo":
             r.sections[d.i].tempo = num(value);
             break;
+          // The doc's title is the library item's name (one source of truth).
           case "song.title":
-            g.title = value;
+          case "doc.title":
+            if (!value.trim()) return toast("A name can't be empty"), render();
+            (field === "song.title" ? g : r).title = value.trim();
             break;
           case "song.key":
             g.key = value;
@@ -2607,7 +2886,7 @@
         if (e.key === "Escape" && S.sheet) ACTIONS.closeSheet();
       });
 
-      render();
+      openItem("scratch"); // first run: Scratch, pre-filled from a starter — never an empty app
     </script>
   </body>
 </html>
