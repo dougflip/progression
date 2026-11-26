@@ -9,22 +9,18 @@ import type {
   Song,
   SongDefaults,
 } from "../model/schema";
+import { DEFAULT_MUTES } from "../model/schema";
 import type { DeepReadonly, NonEmpty } from "../model/types";
 import { FLAT_NAMES, KEY_PC, SHARP_NAMES, mod12 } from "./theory";
 
 type R<T> = DeepReadonly<T>;
 
-/** v1's sounds. */
-export const DEFAULT_INSTRUMENTS: InstrumentMap = {
-  chords: { kind: "builtin", id: "pad-v1" },
-  bass: { kind: "builtin", id: "bass-v1" },
-  drums: { kind: "builtin", id: "kit-v1" },
-};
+export { DEFAULT_INSTRUMENTS } from "../model/schema";
 
 export const DEFAULT_PRACTICE: Practice = {
   cycle: { kind: "none" },
   advance: "auto",
-  mutes: { chords: false, bass: false, drums: false, loops: false },
+  mutes: { ...DEFAULT_MUTES },
 };
 
 export type EffectiveSettings = SongDefaults & { instruments: InstrumentMap };

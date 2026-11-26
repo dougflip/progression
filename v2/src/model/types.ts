@@ -32,4 +32,6 @@ export function deepFreeze<T>(value: T): T {
  * place throws instead of silently breaking caches and the engine's snapshots.
  * Production skips the cost.
  */
-export const freezeInDev: <T>(value: T) => T = import.meta.env.DEV ? deepFreeze : (v) => v;
+export const freezeInDev: <T>(value: T) => T =
+  // `import.meta.env` only exists under Vite; plain Node scripts (e.g. the agent tool) skip freezing.
+  import.meta.env?.DEV ? deepFreeze : (v) => v;

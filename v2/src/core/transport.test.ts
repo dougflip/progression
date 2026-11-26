@@ -76,7 +76,24 @@ describe("nextPosition", () => {
       pos(1, 0, 2),
     ],
     // Jumps land at the next bar.
-    ["section jump", pos(0, 0), { jump: { kind: "section", arrIdx: 2 } }, pos(2, 0)],
+    [
+      "section jump waits for the section to finish",
+      pos(0, 0),
+      { jump: { kind: "section", arrIdx: 2 } },
+      pos(0, 1),
+    ],
+    [
+      "section jump at the end of the section",
+      pos(0, 1),
+      { jump: { kind: "section", arrIdx: 2 } },
+      pos(2, 0),
+    ],
+    [
+      "section jump to the playing entry: finish, then start it again",
+      pos(0, 1),
+      { jump: { kind: "section", arrIdx: 0 } },
+      pos(0, 0),
+    ],
     [
       "chord jump lands on its bar",
       pos(1, 0),
@@ -109,10 +126,18 @@ describe("nextPosition", () => {
     expect(next(at, opts).at).toEqual(expected);
   });
 
+  it("keeps a section jump queued until the section ends", () => {
+    const jump = { kind: "section", arrIdx: 2 } as const;
+    expect(next(pos(0, 0), { jump })).toMatchObject({ at: pos(0, 1), jump });
+  });
+
   it("keeps a key jump queued until the lap ends, clears jumps once landed", () => {
     expect(next(pos(0, 0), { keyJump: 2 })).toMatchObject({ keyJump: 2 });
     expect(next(pos(2, 1), { keyJump: 2 }).keyJump).toBeUndefined();
-    expect(next(pos(0, 0), { jump: { kind: "section", arrIdx: 1 } }).jump).toBeUndefined();
+    expect(next(pos(0, 1), { jump: { kind: "section", arrIdx: 1 } }).jump).toBeUndefined();
+    expect(
+      next(pos(0, 0), { jump: { kind: "chord", arrIdx: 1, bar: 0, chordIndex: 0 } }).jump,
+    ).toBeUndefined();
   });
 
   it("keeps the scope", () => {

@@ -6,6 +6,7 @@
 
 import type {
   BackingTrack,
+  Doc,
   Bpm,
   BuiltinStyleId,
   DrumInstrument,
@@ -114,14 +115,19 @@ export interface ScheduledBar {
 /** Fired at audible time (Tone.Draw), so the UI matches what you hear. */
 export type EngineEvent =
   | { type: "transport"; transport: Transport }
-  | { type: "bar"; bar: ScheduledBar }
+  /** `source` is what the bar was scheduled from, so the UI shows what is actually playing. */
+  | { type: "bar"; bar: ScheduledBar; source: EngineSource }
   | { type: "beat"; position: Position; beat: number } // 0-based within the bar
-  | { type: "chord"; position: Position; chordIndex: number };
+  | { type: "chord"; position: Position; chordIndex: number }
+  /** Playback hit an error (e.g. the source threw) and paused on the audible bar. */
+  | { type: "error"; message: string };
 
 /** What the engine plays: the open item's song (or the one generated from it) + its practice. */
 export interface EngineSource {
   song: DeepReadonly<Song>;
   practice: DeepReadonly<Practice>;
+  /** The doc `song` came from (a BackingTrack generates it). Views read it for override marks. */
+  doc?: DeepReadonly<Doc>;
 }
 
 /**

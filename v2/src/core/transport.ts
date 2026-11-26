@@ -5,8 +5,10 @@
  *   section when looping one section. In manual advance the section repeats and the
  *   lap ends only when a key jump is queued.
  * - At the end of a lap the key moves to the next lap, or to a queued key jump.
- * - A queued jump lands at the next bar (section → its first bar; chord → its bar).
- *   It replaces where the bar would have gone; a lap that ended still ends.
+ * - A queued section jump waits for the current section to finish, then lands on
+ *   the target's first bar (like cueing "chorus next" mid-verse).
+ * - A queued chord jump lands at the next bar, on the chord's bar.
+ * - A landing jump replaces where playback would have gone; a lap that ended still ends.
  */
 
 import type { Song } from "../model/schema";
@@ -42,7 +44,8 @@ export function nextPosition(source: EngineSource, transport: Playing): Playing 
   }
 
   if (lapEnded) next.lap = keyJump !== undefined ? keyJump % laps : (at.lap + 1) % laps;
-  if (jump) {
+  const lands = jump !== undefined && (jump.kind === "chord" || endOfSection);
+  if (jump && lands) {
     next =
       jump.kind === "section"
         ? { ...next, arrIdx: jump.arrIdx, bar: 0 }
@@ -50,6 +53,7 @@ export function nextPosition(source: EngineSource, transport: Playing): Playing 
   }
 
   const result: Playing = { status: "playing", scope, at: next };
+  if (jump && !lands) result.jump = jump;
   if (keyJump !== undefined && !lapEnded) result.keyJump = keyJump;
   return result;
 }
