@@ -42,7 +42,7 @@ describe("sectionSettings", () => {
     const song = structuredClone(generateSong(bt, STYLES)) as Song;
     song.sections[0].overrides = {
       swing: 0.5,
-      instruments: { bass: { kind: "builtin", id: "pad-v1" } },
+      instruments: { bass: { kind: "builtin", id: "bass-v1" } },
     };
     const s = sectionSettings(Song.parse(song), id("a"));
     expect(s).toMatchObject({
@@ -51,7 +51,7 @@ describe("sectionSettings", () => {
       swing: { value: 0.5, from: "section" },
       instruments: {
         chords: { value: { id: "pad-v1" }, from: "song" },
-        bass: { value: { id: "pad-v1" }, from: "section" },
+        bass: { value: { id: "bass-v1" }, from: "section" },
       },
     });
   });

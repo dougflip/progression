@@ -69,6 +69,10 @@ export default defineConfig({
           chunk.name === "v2" ? "v2/assets/[name]-[hash].js" : "assets/[name]-[hash].js",
         chunkFileNames: (chunk) =>
           chunk.name.startsWith("v2") ? "v2/assets/[name]-[hash].js" : "assets/[name]-[hash].js",
+        assetFileNames: (asset) =>
+          asset.names.some((n) => n.startsWith("v2"))
+            ? "v2/assets/[name]-[hash][extname]"
+            : "assets/[name]-[hash][extname]",
       },
     },
   },

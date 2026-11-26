@@ -26,7 +26,7 @@ Schema: `v2/src/model/schema.ts` (Zod 4; persisted types are inferred from it). 
 3. `key = lapKeys(song, practice)[lap % n]`.
 4. `scheduleBar(source, position, scope, prevVoicing)` → `ScheduledBar`: numerals, chord tones, scale degrees and chromatic notes become MIDI (see Semantics), voicing and swing are applied. The bar's `voicing` is the next bar's `prevVoicing`. **Mutes are not applied here.**
 5. `nextPosition(source, transport)`: advance mode, a queued `Jump` (next bar), a queued key jump (end of lap).
-6. Engine: hands the bar to Tone with about a bar of lookahead. Instruments and channels are long-lived; only events are scheduled. Emits `EngineEvent`s at audible time (`Tone.Draw`) for the UI.
+6. Engine: hands the whole bar to Web Audio 0.2 s before it starts. Instruments live for the play session; channels for the engine; only events are scheduled. Emits `EngineEvent`s at audible time (`Tone.Draw`) for the UI; each `bar` event carries the `EngineSource` it was scheduled from (including the `doc`), so the player shows what is actually playing, even right after a swap.
 
 Mixer levels and mutes bypass the loop: `setLevels` / `setMutes` change channel gains instantly.
 
@@ -53,7 +53,7 @@ Mixer levels and mutes bypass the loop: `setLevels` / `setMutes` change channel 
 - **Held chords**: a chord is struck once and rings for its duration. A bar it continues into lists it with `continued: true`; the engine strikes it only when playback starts or jumps into that bar.
 - **Voicing modes**: `root` never voice-leads; `voice-lead` leads from the previous chord across laps; `voice-lead-loop` starts fresh on the first bar of each lap (v1).
 - **Bass phrases** in styles use `major` or `minor` by the sounding chord: minor, m7, dim, m7b5, dim7, mMaj7 → `minor`; everything else → `major`.
-- **Cycle laps**: `fourths` / `fifths` start from the song key (12 laps), spelled with flats for fourths and sharps for fifths (v1); `custom` plays its keys as given. Chord names follow the lap key's spelling. A lap ends when the arrangement completes (or the section, when looping one section or in manual advance with a key jump queued). A queued jump lands at the next bar; if that bar also ended a lap, the lap still advances.
+- **Cycle laps**: `fourths` / `fifths` start from the song key (12 laps), spelled with flats for fourths and sharps for fifths (v1); `custom` plays its keys as given. Chord names follow the lap key's spelling. A lap ends when the arrangement completes (or the section, when looping one section or in manual advance with a key jump queued). A queued section jump lands when the current section ends; a chord jump at the next bar. If that bar also ended a lap, the lap still advances.
 - **Generator**: a section's chords last their `:bars` or bars-per-chord; each bar repeats the style's one-bar drums and the bass phrase for the chord sounding in that bar.
 
 ## Validation rules
@@ -66,7 +66,7 @@ Field-level ranges are in `schema.ts`. Objects are strict (unknown keys are reje
 - **Drums**: per instrument, sorted, unique, every tick `<` section length.
 - **Parts**: sorted by `start`, one note per start (parts are monophonic: a note is cut where the next starts); every note `start <` section length (a note may ring past the end).
 - **Loops**: `take.bars ≤ section.bars`.
-- **Instruments**: every `PatchRef` with `kind: "custom"` resolves to a key in `song.patches`; each patch's `role` matches the role it's used for (Milestone 5; until then `patches` is `{}`).
+- **Instruments**: a built-in patch is only used for its own role (`pad-v1` chords, `bass-v1` bass, `kit-v1` drums); every `PatchRef` with `kind: "custom"` resolves to a key in `song.patches`, and its `role` must match too (Milestone 5; until then `patches` is `{}`).
 - **Progressions** (`BackingSection`, `SectionSeed`): every token parses (`[b#]NUMERAL[suffix][/[b#]NUMERAL][:bars]`, grammar in `core/numerals.ts`), `:bars` is 1–16, and the generated section is ≤ 64 bars.
 - **Ticks** are integers ≥ 0; durations > 0. Any tick is valid (the UI snaps; triplets need e.g. 16).
 - **Strings** are trimmed and non-empty.
@@ -104,6 +104,7 @@ Field-level ranges are in `schema.ts`. Objects are strict (unknown keys are reje
 ## Choices made in the model
 
 - **Zod 4 is the schema.** Types are inferred from it (no drift), it validates at runtime, and `z.toJSONSchema()` produces the agent skill's docs.
+- **Maps keyed by role or channel** (`Song.instruments`, `Practice.mutes`, `Mix.levels`) accept any subset of keys: a missing key takes its default (`DEFAULT_INSTRUMENTS`, `DEFAULT_MUTES`, `DEFAULT_LEVELS`), an unknown key is rejected, and parsed values always have every key. That's what keeps adding a role or channel additive: docs saved before it lack the key.
 - **Additive-only evolution within version 2:** add optional fields or widen unions; never rename, remove or narrow. Planned additions that already fit this rule:
   - `NoteEvent.velocity?`
   - drum hits widen from `Tick` to `Tick | { start, velocity }`

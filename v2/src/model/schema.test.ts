@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import frozen from "../../fixtures/frozen.json";
 import { validateEnvelope } from "./envelope";
-import { LibraryStore, type ShareEnvelope } from "./schema";
+import { LibraryStore, Mix, type ShareEnvelope } from "./schema";
 
 const raw = import.meta.glob<string>("../../fixtures/*.json", {
   query: "?raw",
@@ -168,6 +168,13 @@ describe("invalid docs are rejected with readable errors", () => {
       'doc.instruments.bass: no patch with id "fat"',
     ],
     [
+      "built-in patch in the wrong role",
+      SONG,
+      (e) =>
+        (e.doc.sections[1].overrides.instruments = { bass: { kind: "builtin", id: "kit-v1" } }),
+      'doc.sections[1].overrides.instruments.bass: "kit-v1" is a drums patch, not bass',
+    ],
+    [
       "custom patches before Milestone 5",
       SONG,
       (e) => (e.doc.patches = { fat: { kind: "synth" } }),
@@ -179,7 +186,13 @@ describe("invalid docs are rejected with readable errors", () => {
       (e) => (e.practice.cycle = { kind: "custom", keys: [] }),
       "practice.cycle.keys: Too small",
     ],
-    ["missing mute channel", SONG, (e) => delete e.practice.mutes.loops, "practice.mutes.loops"],
+    ["unknown mute channel", SONG, (e) => (e.practice.mutes.melody = true), "practice.mutes"],
+    [
+      "unknown instrument role",
+      SONG,
+      (e) => (e.doc.instruments.melody = { kind: "builtin", id: "pad-v1" }),
+      "doc.instruments",
+    ],
   ])("%s", (_label, name, edit, expected) => {
     const errors = errorsAfter(name, edit);
     expect(errors.join("\n")).toContain(expected);
@@ -196,6 +209,56 @@ describe("invalid docs are rejected with readable errors", () => {
       e.doc.key = "H";
     });
     expect(errors).toHaveLength(2);
+  });
+});
+
+describe("role- and channel-keyed maps", () => {
+  // Widening Role or Channel must stay additive: docs saved before a new key existed
+  // lack it, so a missing key takes its default instead of failing.
+  function parsed(edit: (env: any) => void) {
+    const env = structuredClone(fixture("song-overrides-slash-pitches.json"));
+    edit(env);
+    const result = validateEnvelope(env);
+    if (!result.ok) throw new Error(result.errors.join("\n"));
+    return result.value;
+  }
+
+  it("a missing instrument role plays its default patch", () => {
+    const env = parsed((e) => {
+      delete e.doc.instruments.drums;
+      delete e.doc.instruments.bass;
+    });
+    expect(env.doc.kind === "song" && env.doc.instruments).toEqual({
+      chords: { kind: "builtin", id: "pad-v1" },
+      bass: { kind: "builtin", id: "bass-v1" },
+      drums: { kind: "builtin", id: "kit-v1" },
+    });
+  });
+
+  it("a missing mute channel isn't muted", () => {
+    const env = parsed((e) => {
+      e.practice.mutes = { drums: true };
+    });
+    expect(env.practice?.mutes).toEqual({ chords: false, bass: false, drums: true, loops: false });
+  });
+
+  it("a missing mix level takes its default", () => {
+    expect(Mix.parse({ levels: { master: 80 } }).levels).toEqual({
+      chords: 50,
+      bass: 100,
+      drums: 100,
+      loops: 100,
+      master: 80,
+    });
+  });
+
+  it("an empty map is every default", () => {
+    expect(parsed((e) => (e.practice.mutes = {})).practice?.mutes).toEqual({
+      chords: false,
+      bass: false,
+      drums: false,
+      loops: false,
+    });
   });
 });
 

@@ -47,6 +47,23 @@ const label = (max: number) =>
  * keeps `T[]`, and `z.tuple` types it but reports empty arrays badly, so this
  * validates as an array and declares the tuple type.
  */
+/**
+ * A map with one entry per key of an enum (role, channel). Any subset of the keys
+ * may be given; a missing key takes its default and an unknown key is rejected.
+ * Parsed values always have every key. This is what keeps widening the enum
+ * additive: a role or channel added later just needs a default, and every doc
+ * saved before it (which lacks the key) still parses.
+ */
+function keyedMap<K extends string, V extends z.ZodType>(
+  keys: z.ZodEnum<{ [k in K]: k }>,
+  value: V,
+  defaults: Record<K, z.output<V>>,
+) {
+  return z
+    .partialRecord(keys, value)
+    .transform((given) => ({ ...defaults, ...given }) as Record<K, z.output<V>>);
+}
+
 const nonEmpty = <T extends z.ZodType>(item: T) =>
   z.array(item).nonempty() as unknown as z.ZodType<
     [z.output<T>, ...z.output<T>[]],
@@ -267,6 +284,13 @@ export type Channel = z.infer<typeof Channel>;
 export const BuiltinPatchId = z.enum(["pad-v1", "bass-v1", "kit-v1"]);
 export type BuiltinPatchId = z.infer<typeof BuiltinPatchId>;
 
+/** The role each built-in patch plays. A patch can only be used for its own role. */
+export const BUILTIN_PATCH_ROLE: Record<BuiltinPatchId, "chords" | "bass" | "drums"> = {
+  "pad-v1": "chords",
+  "bass-v1": "bass",
+  "kit-v1": "drums",
+};
+
 /** Either a built-in, or a custom patch embedded in `Song.patches`. */
 export const PatchRef = z.discriminatedUnion("kind", [
   z.strictObject({ kind: z.literal("builtin"), id: BuiltinPatchId }),
@@ -281,7 +305,15 @@ export type PatchRef = z.infer<typeof PatchRef>;
 export const Patch = z.never({ error: "custom patches are not supported yet (Milestone 5)" });
 export type Patch = z.infer<typeof Patch>;
 
-export const InstrumentMap = z.record(Role, PatchRef);
+/** v1's sounds: the instrument for a role a doc doesn't name. */
+export const DEFAULT_INSTRUMENTS: Record<Role, PatchRef> = {
+  chords: { kind: "builtin", id: "pad-v1" },
+  bass: { kind: "builtin", id: "bass-v1" },
+  drums: { kind: "builtin", id: "kit-v1" },
+};
+
+/** One patch per role; a role left out plays its default. */
+export const InstrumentMap = keyedMap(Role, PatchRef, DEFAULT_INSTRUMENTS);
 export type InstrumentMap = z.infer<typeof InstrumentMap>;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -559,19 +591,26 @@ export const Song = z
     checkUniqueIds(ids, ["sections"], ctx, "section");
     checkArrangement(song.arrangement, ids, ctx);
 
-    const checkRef = (ref: PatchRef, path: Path) => {
+    const checkRef = (ref: PatchRef, role: Role, path: Path) => {
       if (ref.kind === "custom" && !(ref.id in song.patches)) {
         ctx.addIssue({ code: "custom", path, message: `no patch with id "${ref.id}" in patches` });
       }
-      // Milestone 5: also check the patch's `role` matches the role it's used for.
+      if (ref.kind === "builtin" && BUILTIN_PATCH_ROLE[ref.id] !== role) {
+        ctx.addIssue({
+          code: "custom",
+          path,
+          message: `"${ref.id}" is a ${BUILTIN_PATCH_ROLE[ref.id]} patch, not ${role}`,
+        });
+      }
+      // Milestone 5: custom patches' `role` must match too.
     };
-    for (const role of Role.options) checkRef(song.instruments[role], ["instruments", role]);
+    for (const role of Role.options) checkRef(song.instruments[role], role, ["instruments", role]);
 
     song.sections.forEach((section, i) => {
       const meter = section.overrides.meter ?? song.defaults.meter;
       checkSection(section, section.bars * barLength(meter), ["sections", i], ctx);
       for (const [role, ref] of Object.entries(section.overrides.instruments ?? {})) {
-        checkRef(ref, ["sections", i, "overrides", "instruments", role]);
+        checkRef(ref, role as Role, ["sections", i, "overrides", "instruments", role]);
       }
     });
   });
@@ -597,10 +636,18 @@ export type Cycle = z.infer<typeof Cycle>;
 export const Advance = z.enum(["auto", "manual"]);
 export type Advance = z.infer<typeof Advance>;
 
+/** Nothing muted: the value for a channel a practice doesn't mention. */
+export const DEFAULT_MUTES: Record<Channel, boolean> = {
+  chords: false,
+  bass: false,
+  drums: false,
+  loops: false,
+};
+
 export const Practice = z.strictObject({
   cycle: Cycle,
   advance: Advance,
-  mutes: z.record(Channel, z.boolean()), // intent ("play without drums"), so shareable
+  mutes: keyedMap(Channel, z.boolean(), DEFAULT_MUTES), // intent ("play without drums"), so shareable
 });
 export type Practice = z.infer<typeof Practice>;
 
@@ -680,8 +727,20 @@ export const LibraryStore = z
   });
 export type LibraryStore = z.infer<typeof LibraryStore>;
 
+export const MixChannel = z.enum([...Channel.options, "master"]);
+export type MixChannel = z.infer<typeof MixChannel>;
+
+/** v1's default mix (chords sit lower). */
+export const DEFAULT_LEVELS: Record<MixChannel, number> = {
+  chords: 50,
+  bass: 100,
+  drums: 100,
+  loops: 100,
+  master: 100,
+};
+
 export const Mix = z.strictObject({
-  levels: z.record(z.enum([...Channel.options, "master"]), z.int().min(0).max(100)),
+  levels: keyedMap(MixChannel, z.int().min(0).max(100), DEFAULT_LEVELS),
 });
 export type Mix = z.infer<typeof Mix>;
 

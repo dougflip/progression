@@ -200,7 +200,7 @@ describe("drums, meter, settings, loops", () => {
         x.sections[0].overrides = {
           meter: { beatsPerBar: 6, beatUnit: 8 },
           tempo: 120,
-          instruments: { drums: { kind: "builtin", id: "pad-v1" } },
+          instruments: { drums: { kind: "builtin", id: "kit-v1" } },
         };
         x.sections[0].chords = [{ start: 0, duration: 288, root: { degree: 1 }, quality: "major" }];
         x.sections[0].drums = { kick: [0, 144] };
@@ -209,7 +209,7 @@ describe("drums, meter, settings, loops", () => {
     const bar1 = scheduleBar(s, at(0, 1), ARR);
     expect(bar1).toMatchObject({ length: 144, tempo: 120, meter: { beatsPerBar: 6, beatUnit: 8 } });
     expect(bar1.drums).toEqual([
-      { time: 0, drum: "kick", instrument: { kind: "builtin", id: "pad-v1" } },
+      { time: 0, drum: "kick", instrument: { kind: "builtin", id: "kit-v1" } },
     ]);
     expect(bar1.chords[0]).toMatchObject({ time: 0, duration: 144, continued: true });
   });

@@ -1,0 +1,433 @@
+/* Tokens and player/action-bar styles from docs-internal/v2/mockup.html (the UI spec). */
+
+:root,
+[data-theme="dark"] {
+  --bg: #121212;
+  --surface: #1e1e1e;
+  --surface-alt: #2a2a2a;
+  --surface-alt-active: #353535;
+  --border: #333333;
+  --border-faint: #262626;
+  --text: #f0f0f0;
+  --text-2: #b8b8b8;
+  --text-3: #888888;
+  --text-4: #666666;
+  --accent: #f0f0f0;
+  --accent-text: #121212;
+  --playing: #ef4444;
+  --queued: #f59e0b;
+  color-scheme: dark;
+}
+[data-theme="light"] {
+  --bg: #fafafa;
+  --surface: #ffffff;
+  --surface-alt: #f1f1f1;
+  --surface-alt-active: #e1e1e1;
+  --border: #dddddd;
+  --border-faint: #eeeeee;
+  --text: #222222;
+  --text-2: #555555;
+  --text-3: #888888;
+  --text-4: #aaaaaa;
+  --accent: #222222;
+  --accent-text: #ffffff;
+  --playing: #b91c1c;
+  --queued: #b45309;
+  color-scheme: light;
+}
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  background: var(--bg);
+}
+body {
+  font-family: system-ui, sans-serif;
+  color: var(--text);
+  margin: 0;
+  padding-bottom: calc(170px + env(safe-area-inset-bottom));
+  font-size: 15px;
+}
+main {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0.75rem 1rem 1.5rem;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+.muted {
+  color: var(--text-3);
+  font-size: 0.85rem;
+}
+
+/* buttons and pills */
+.btn {
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  border-radius: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.88rem;
+  white-space: nowrap;
+}
+.btn:hover {
+  background: var(--surface-alt-active);
+}
+.btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: none;
+  background: var(--surface-alt);
+  border-radius: 999px;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+.pill:hover {
+  background: var(--surface-alt-active);
+}
+.pill.on {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+.pill select {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  outline: none;
+  max-width: 14rem;
+}
+.pill select option {
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* player header */
+.player {
+  margin: 0.9rem 0 0.6rem;
+}
+.player.stage {
+  margin: 1.6rem 0 1.4rem;
+}
+.key-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.4rem 0 0.7rem;
+}
+.key-pill,
+.key-label {
+  font-size: 2.3rem;
+  font-weight: 700;
+}
+.player.stage .key-pill,
+.player.stage .key-label {
+  font-size: 3rem;
+}
+.key-pill {
+  background: var(--surface-alt);
+  border-radius: 0.6rem;
+  padding: 0.15rem 0.6rem;
+}
+.key-label {
+  color: var(--text-2);
+}
+.key-lap {
+  font-size: 0.8rem;
+  color: var(--text-3);
+  align-self: flex-end;
+  margin-bottom: 0.35rem;
+}
+.player-sec {
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--text-2);
+  margin-bottom: 0.5rem;
+  line-height: 1.6;
+}
+.player.stage .player-sec {
+  font-size: 0.95rem;
+  margin-bottom: 0.9rem;
+}
+.player-sec .eff {
+  color: var(--text-3);
+  margin-left: 0.35rem;
+  white-space: nowrap;
+}
+.player-sec .eff.ovr {
+  color: var(--text);
+  font-weight: 600;
+}
+.player-sec .eff.ovr::after {
+  content: "•";
+  color: var(--queued);
+  margin-left: 0.1rem;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
+  min-height: 4.5rem;
+}
+.chip {
+  flex: 1 1 4.5rem;
+  min-width: 4.5rem;
+  max-width: 8rem;
+  min-height: 3.8rem;
+  padding: 0.6rem 0.5rem;
+  border-radius: 0.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+  cursor: pointer;
+  transition:
+    background 0.1s,
+    color 0.1s,
+    border-color 0.1s;
+}
+.player.stage .chip {
+  min-height: 4.8rem;
+  max-width: 9rem;
+}
+.chip .numeral {
+  font-size: 0.75rem;
+  color: var(--text-3);
+  line-height: 1;
+}
+.player.stage .chip .numeral {
+  font-size: 0.85rem;
+}
+.chip .name {
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.3;
+  margin-top: 0.15rem;
+}
+.player.stage .chip .name {
+  font-size: 1.6rem;
+}
+.chip.active {
+  background: var(--accent);
+  color: var(--accent-text);
+  border-color: var(--accent);
+}
+.chip.active .numeral {
+  color: inherit;
+  opacity: 0.7;
+}
+.chip.cued {
+  outline: 2px dashed var(--queued);
+  outline-offset: 2px;
+}
+.bar-progress {
+  position: absolute;
+  left: 0.4rem;
+  right: 0.4rem;
+  bottom: 0.3rem;
+  display: flex;
+  justify-content: center;
+  gap: 0.25rem;
+  pointer-events: none;
+}
+.chip:not(.active) .bar-progress {
+  display: none;
+}
+.bar-dot {
+  flex: 0 1 0.6rem;
+  min-width: 0;
+  height: 0.2rem;
+  border-radius: 0.1rem;
+  background: var(--accent-text);
+  opacity: 0.3;
+}
+.bar-dot.active {
+  opacity: 1;
+}
+.beats {
+  display: flex;
+  justify-content: center;
+  gap: 0.7rem;
+  min-height: 0.75rem;
+  align-items: center;
+}
+.beat-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--surface-alt);
+  transition:
+    background 0.08s,
+    transform 0.08s;
+}
+.beat-dot.active {
+  background: var(--accent);
+  transform: scale(1.5);
+}
+
+/* action bar */
+.action-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 0.6rem 1rem calc(0.6rem + env(safe-area-inset-bottom));
+  z-index: 10;
+}
+.action-bar .col {
+  max-width: 760px;
+  margin: 0 auto;
+}
+.scrub {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.45rem;
+}
+.scrub-lbl {
+  flex: 0 0 2.6rem;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+}
+.scrub-track {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 3px;
+}
+.seg-btn {
+  flex: 0 0 auto;
+  border: none;
+  background: var(--surface-alt);
+  border-radius: 0.4rem;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.seg-btn.current {
+  background: var(--accent);
+  color: var(--accent-text);
+  font-weight: 600;
+}
+.seg-btn.queued {
+  outline: 2px dashed var(--queued);
+  outline-offset: 1px;
+}
+.action-bar .inner {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.play {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 1.3rem;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.play.on {
+  background: var(--playing);
+  color: #fff;
+}
+.pos {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.85rem;
+  color: var(--text-2);
+  line-height: 1.35;
+}
+
+/* bench only */
+.bench-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+.panel {
+  margin: 0.8rem 0;
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  padding: 0.5rem 0.8rem;
+}
+.panel summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text-2);
+}
+.perf {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 0.8rem;
+  font-size: 0.85rem;
+  margin: 0.6rem 0 0.2rem;
+}
+.perf dt {
+  color: var(--text-3);
+}
+.perf dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.json {
+  width: 100%;
+  min-height: 18rem;
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  padding: 0.5rem;
+}
+.panel-row {
+  display: flex;
+  gap: 0.8rem;
+  align-items: flex-start;
+  margin: 0.4rem 0;
+}
+.errors {
+  margin: 0;
+  padding-left: 1rem;
+  color: var(--playing);
+  font-size: 0.8rem;
+}
+.error-banner {
+  border: 1px solid var(--playing);
+  color: var(--playing);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.88rem;
+}
+.perf dd.warn {
+  color: var(--queued);
+  font-weight: 600;
+}

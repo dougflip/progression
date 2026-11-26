@@ -54,7 +54,7 @@ Background and goals: `version-2.md`.
 - `cycle`: `none | fourths | fifths | custom` (a tagged union; `custom` carries its non-empty key list). Fourths/fifths start from the song key.
 - `custom` plays its keys as given (absolute keys). The song key is ignored while cycling, so v1's "key must equal `customCycleKeys[0]`" invariant goes away.
 - A cycle lap ends when the arrangement completes; the engine picks the next lap's key at that boundary (just-in-time, no lap bookkeeping).
-- `advance: manual` repeats the current arrangement position until a jump is queued. Jumps take effect at the next bar.
+- `advance: manual` repeats the current arrangement position until a jump is queued. A section jump lands when the current pass of the section ends; a chord jump at the next bar.
 - Mutes are intent ("play without drums"), so they're shareable. Levels are device-specific, so they aren't.
 
 ## Time
@@ -91,11 +91,16 @@ Background and goals: `version-2.md`.
 ## Playback engine
 
 - **Lesson from v1:** pre-scheduling many events with Tone (pre-baked multi-lap `Tone.Part`/`Sequence`) made the app sluggish (see `e8c63c5`).
-- Schedule just-in-time: at each bar boundary (or a short lookahead window), schedule only the next bar's events from the current song state.
-- Edits take effect at the next bar boundary (or downbeat/section, whichever is simplest). Instant updates aren't required.
+- Schedule just-in-time: each bar is computed from the current source `lookahead` (0.2 s) before it starts and handed to Web Audio whole. Bar start times are summed from each bar's tempo and length, never read from a timer, so nothing drifts.
+- Edits, jumps and scope changes take effect at the next bar boundary; one made in the last `lookahead` of a bar lands a bar later. Instant updates aren't required.
+- **Late bars** (the main thread stalled longer than `lookahead`): the bar starts just after it's computed, never in the past, so it's one hiccup instead of a burst of overdue notes. The timeline shifts by the lost time. Counted in the engine's stats; the bench shows them.
+- **Errors** while computing a bar pause playback on the audible bar and emit an `error` event; ▶ resumes there once fixed. A failing `play()` rejects and leaves the transport as it was. Listener exceptions never stop the engine.
   - This replaces v1's rebuild/teardown complexity. There's nothing to cancel and rebuild; the next bar just reads new data.
-- Instrument nodes (synths, samplers, channels) are long-lived and survive edits; only events are rescheduled.
+- Instrument nodes (synths, samplers) live for a play session and survive edits; only events are rescheduled. Channels (levels, mutes) live as long as the engine.
   - v1 lesson: disposing the synth on rebuild cut off ringing notes (`c43e200`).
+  - Pause and stop fade the session out and dispose it: that's how notes already handed to Web Audio are cancelled.
+- The engine captures Tone's context once and takes its instruments and UI-event scheduler as options, so tests render offline on Node (`node-web-audio-api`) with recording instruments.
+- Tone caveats found: `MetalSynth` can't hold more than one future trigger (v1's fallback closed hat is now filtered noise); `Tone.Reverb` renders its impulse with `Tone.Offline`, which swaps the global context (the pad reverb builds its impulse synchronously instead).
 - Don't use Tone containers that snapshot data at construction (`Tone.Sequence` captures step values once).
 - Timing logic (song + position → events for a bar) is a pure function, unit-tested without Tone.
 
@@ -105,7 +110,8 @@ Background and goals: `version-2.md`.
 - **Pause** stops sound and keeps the position; ▶ resumes from the start of that bar.
 - **Stop** stops sound and clears the position; ▶ starts from the top.
 - **Jumps:** tap a chord chip (→ that chord's bar) or a section in the SONG scrubber / arrangement (→ its first bar).
-  - While playing: queued, lands at the next bar.
+  - While playing, a **section jump** is queued and lands when the current section finishes (cue "chorus next" mid-verse, play into it). It stays outlined until then; a new tap replaces it.
+  - While playing, a **chord jump** lands at the next bar (precise navigation within what you hear).
   - While paused/stopped: moves where ▶ starts.
   - A chord jump lands on its bar, so the cue outlines every chord in that bar. Later option (engine-only): land on the chord's own beat by switching mid-bar at the same in-bar offset.
 - **Key jumps** (KEY scrubber, shown whenever a cycle is on) are the one exception: they land at the end of the current lap (end of the section in manual advance).
