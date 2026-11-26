@@ -2,6 +2,16 @@
 
 Make sure all proposed plans and changes adhere to the guidelines in ARCHITECTURE.md.
 
+### v2
+
+ARCHITECTURE.md describes v1. For any v2 work, first read (in order):
+
+1. `docs-internal/v2/decisions.md`: current decisions
+2. `docs-internal/v2/data-model.md` (+ `model.ts` until Milestone 1 replaces it with the Zod schema): data model and data flow
+3. `docs-internal/v2/milestones.md`: the build plan and ground rules
+
+`docs-internal/v2/mockup.html` is the UI spec (open it in a browser). Keep v2 docs concise and rewrite them to reflect current understanding rather than appending history.
+
 ## Before Code Commits
 
 1. Run both `npm run check` AND `npm run test:quiet` before commits and report/fix any errors.
