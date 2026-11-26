@@ -82,19 +82,19 @@ but I am open to discuss how this should all work. HTML mockups will help us sor
 ## Plan
 
 1. Discuss the changes
-  * What is feasible?
-  * What questions to answer before starting?
-  * What is risky?
+   - What is feasible?
+   - What questions to answer before starting?
+   - What is risky?
 2. Create mock ups (clickable HTML) to show the entire application
-  * Want to have a really strong sense of how the app will behave
-  * Also want to understand what data is necessary
+   - Want to have a really strong sense of how the app will behave
+   - Also want to understand what data is necessary
 3. Design data structures to support the application
-  * Make sure everything we see in the mock ups can trace back to data in our model
-  * I want a really good understanding of how data is modeled and how it transforms as the app is used
+   - Make sure everything we see in the mock ups can trace back to data in our model
+   - I want a really good understanding of how data is modeled and how it transforms as the app is used
 4. Discuss/design URL state management
-  * How much can be stored in the URL?
-  * Which pieces are NOT appropriate for URL state
-  * Individual query params or just serialize the entire state object (base64 or hash) into a single `?state=` param?
+   - How much can be stored in the URL?
+   - Which pieces are NOT appropriate for URL state
+   - Individual query params or just serialize the entire state object (base64 or hash) into a single `?state=` param?
 5. Create milestones detailing the "chunks" of work that will get us there
 6. Any spikes/proof of concepts to retire risk
 7. Work milestones one at a time to create the software

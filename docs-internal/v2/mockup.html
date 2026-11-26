@@ -873,7 +873,11 @@
         pop: {
           label: "Pop",
           drums: {
-            simple: { kick: "1000000010000000", snare: "0000100000001000", hat: "1010101010101010" },
+            simple: {
+              kick: "1000000010000000",
+              snare: "0000100000001000",
+              hat: "1010101010101010",
+            },
             busy: { kick: "1010000000101000", snare: "0000100001001000", hat: "1010101010101011" },
           },
           bass: {
@@ -884,7 +888,11 @@
         rock: {
           label: "Rock",
           drums: {
-            simple: { kick: "1000000010100000", snare: "0000100000001000", hat: "1010101010101010" },
+            simple: {
+              kick: "1000000010100000",
+              snare: "0000100000001000",
+              hat: "1010101010101010",
+            },
             busy: { kick: "1000001010100010", snare: "0000100000001001", hat: "1111111111111111" },
           },
           bass: {
@@ -895,7 +903,11 @@
         funk: {
           label: "Funk",
           drums: {
-            simple: { kick: "1000001000100000", snare: "0000100100001000", hat: "1010101010101010" },
+            simple: {
+              kick: "1000001000100000",
+              snare: "0000100100001000",
+              hat: "1010101010101010",
+            },
             busy: { kick: "1000001000100100", snare: "0000100100001001", hat: "1111111111111111" },
           },
           bass: {
@@ -906,7 +918,11 @@
         ballad: {
           label: "Ballad",
           drums: {
-            simple: { kick: "1000000000000000", snare: "0000000010000000", hat: "1000100010001000" },
+            simple: {
+              kick: "1000000000000000",
+              snare: "0000000010000000",
+              hat: "1000100010001000",
+            },
             busy: { kick: "1000000000100000", snare: "0000100000001000", hat: "1010101010101010" },
           },
           bass: {
@@ -1139,8 +1155,26 @@
           bass: "simple",
           voicing: "voice-lead",
           sections: [
-            { id: "A", name: "Verse", progression: "I V vi IV", barsPerChord: 1, style: null, drums: null, bass: null, tempo: null },
-            { id: "B", name: "Chorus", progression: "IV V iii vi", barsPerChord: 1, style: "rock", drums: "busy", bass: null, tempo: null },
+            {
+              id: "A",
+              name: "Verse",
+              progression: "I V vi IV",
+              barsPerChord: 1,
+              style: null,
+              drums: null,
+              bass: null,
+              tempo: null,
+            },
+            {
+              id: "B",
+              name: "Chorus",
+              progression: "IV V iii vi",
+              barsPerChord: 1,
+              style: "rock",
+              drums: "busy",
+              bass: null,
+              tempo: null,
+            },
           ],
           arrangement: ["A", "A", "B"],
         },
@@ -1154,7 +1188,16 @@
         sharePractice: null, // null = default (on when practice differs from defaults)
         // Volume levels: local to this device, never shared.
         mix: { chords: 50, bass: 100, drums: 100, loops: 100, master: 100 },
-        play: { on: false, tick: 0, arrIdx: 0, lap: 0, jump: null, snapshot: null, dirty: false, last: 0 },
+        play: {
+          on: false,
+          tick: 0,
+          arrIdx: 0,
+          lap: 0,
+          jump: null,
+          snapshot: null,
+          dirty: false,
+          last: 0,
+        },
         // Where ▶ starts when not playing: null = from the top. Set by pause or by tapping a section/chord.
         cue: null, // { arrIdx, lap, bar, paused }
       };
@@ -1194,13 +1237,23 @@
       const DP = DEFAULT_PRACTICE;
       // Built-in starting points (v1's presets). Tapping one loads a copy into Scratch.
       const STARTERS = [
-        { doc: { ...structuredClone(S.recipe), title: "Pop: I–V–vi–IV" }, practice: structuredClone(DP) },
         {
-          doc: mkRecipe("12-bar blues", [["A", "Blues", "I7 I7 I7 I7 IV7 IV7 I7 I7 V7 IV7 I7 V7"]], { style: "rock", tempo: 100 }),
+          doc: { ...structuredClone(S.recipe), title: "Pop: I–V–vi–IV" },
           practice: structuredClone(DP),
         },
         {
-          doc: mkRecipe("ii–V–I, all keys", [["A", "ii–V–I", "ii7 V7 Imaj7 Imaj7"]], { style: "ballad", tempo: 80 }),
+          doc: mkRecipe(
+            "12-bar blues",
+            [["A", "Blues", "I7 I7 I7 I7 IV7 IV7 I7 I7 V7 IV7 I7 V7"]],
+            { style: "rock", tempo: 100 },
+          ),
+          practice: structuredClone(DP),
+        },
+        {
+          doc: mkRecipe("ii–V–I, all keys", [["A", "ii–V–I", "ii7 V7 Imaj7 Imaj7"]], {
+            style: "ballad",
+            tempo: 80,
+          }),
           practice: { ...structuredClone(DP), cycle: "4ths" },
         },
         {
@@ -1239,7 +1292,13 @@
         render();
       }
       function addItem(doc, practice, extra) {
-        const item = { id: uid("item-"), doc, practice: practice || structuredClone(DP), updated: Date.now(), ...extra };
+        const item = {
+          id: uid("item-"),
+          doc,
+          practice: practice || structuredClone(DP),
+          updated: Date.now(),
+          ...extra,
+        };
         S.library.push(item);
         return item;
       }
@@ -1268,16 +1327,31 @@
       // Rendering
       // ═══════════════════════════════════════════════════════════════════
       const esc = (s) =>
-        String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+        String(s).replace(
+          /[&<>"]/g,
+          (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
+        );
       const opts = (list, sel) =>
-        list.map(([v, l]) => `<option value="${esc(v)}" ${v === sel ? "selected" : ""}>${esc(l)}</option>`).join("");
+        list
+          .map(
+            ([v, l]) =>
+              `<option value="${esc(v)}" ${v === sel ? "selected" : ""}>${esc(l)}</option>`,
+          )
+          .join("");
       const styleOpts = (sel, withDefault) =>
-        opts([...(withDefault ? [["", "Song default"]] : []), ...Object.entries(STYLES).map(([k, v]) => [k, v.label])], sel || "");
+        opts(
+          [
+            ...(withDefault ? [["", "Song default"]] : []),
+            ...Object.entries(STYLES).map(([k, v]) => [k, v.label]),
+          ],
+          sel || "",
+        );
 
       function render() {
         const tl = document.querySelector(".timeline");
         const scroll = tl ? tl.scrollLeft : 0;
-        document.getElementById("app").innerHTML = renderTop() + (S.mode === "backing" ? renderBacking() : renderComposer());
+        document.getElementById("app").innerHTML =
+          renderTop() + (S.mode === "backing" ? renderBacking() : renderComposer());
         document.getElementById("bar").innerHTML = renderBar();
         document.getElementById("sheet").innerHTML = S.sheet ? renderSheet() : "";
         const tl2 = document.querySelector(".timeline");
@@ -1315,7 +1389,11 @@
           : `
           <label class="pill">♩ <input type="number" min="40" max="240" value="${g.defaults.tempo}" data-field="song.tempo" /> bpm</label>
           <label class="pill">Swing <select data-field="song.swing">${opts(
-            [["0", "Straight"], ["0.33", "Light"], ["0.66", "Heavy"]],
+            [
+              ["0", "Straight"],
+              ["0.33", "Light"],
+              ["0.66", "Heavy"],
+            ],
             String(g.defaults.swing),
           )}</select></label>
           <label class="pill">🎵 <select data-field="song.voicing">${opts(VOICINGS, g.defaults.voicing)}</select></label>`;
@@ -1417,7 +1495,8 @@
           ${arr
             .map((id, i) => {
               const s = lookup(id);
-              const queued = S.play.on && S.play.jump && S.play.jump.section && S.play.jump.arrIdx === i;
+              const queued =
+                S.play.on && S.play.jump && S.play.jump.section && S.play.jump.arrIdx === i;
               return `<span class="chip-sm ${i === nowIdx ? "now" : ""} ${queued ? "queued" : ""}"><button class="chip-name" data-act="arrJump" data-i="${i}" title="${S.play.on ? "Jump here at the next bar" : "Start here"}">${esc(s ? s.name : "?")}</button><button class="x" data-act="arrDel" data-p="${prefix}" data-i="${i}">✕</button></span>`;
             })
             .join("")}
@@ -1448,12 +1527,19 @@
 
       function playerContext() {
         if (S.play.on && S.play.snapshot) {
-          return { doc: S.play.snapshot, sec: playSection(), key: playKey(), lap: S.play.lap, cueBar: null };
+          return {
+            doc: S.play.snapshot,
+            sec: playSection(),
+            key: playKey(),
+            lap: S.play.lap,
+            cueBar: null,
+          };
         }
         const doc = liveSong();
         const pos = S.cue ? clampPos(doc, S.cue) : null;
-        const sec =
-          loopingSectionId() ? curSec() : findSec(doc, doc.arrangement[pos ? pos.arrIdx : 0]) || doc.sections[0];
+        const sec = loopingSectionId()
+          ? curSec()
+          : findSec(doc, doc.arrangement[pos ? pos.arrIdx : 0]) || doc.sections[0];
         const keys = lapKeys(doc, S.practice);
         return {
           doc,
@@ -1484,7 +1570,14 @@
           ["♩", o.tempo || d.tempo, o.tempo != null],
           ["", swing[o.swing ?? d.swing], o.swing != null],
           ["🎵", voicing(o.voicing || d.voicing), !!o.voicing],
-          ["🎹", patchLabel((o.instruments && o.instruments.chords) || doc.instruments.chords).replace(/ \(.*\)$/, ""), !!(o.instruments && o.instruments.chords)],
+          [
+            "🎹",
+            patchLabel((o.instruments && o.instruments.chords) || doc.instruments.chords).replace(
+              / \(.*\)$/,
+              "",
+            ),
+            !!(o.instruments && o.instruments.chords),
+          ],
         ];
       }
 
@@ -1510,7 +1603,10 @@
         const keyField = S.mode === "backing" ? "recipe.key" : "song.key";
         const keyEl = cycling
           ? `<span class="key-pill">${esc(key)}</span><span class="key-label">major</span><span class="key-lap">${(lap % keys.length) + 1}/${keys.length}</span>`
-          : `<select class="key-pill" data-field="${keyField}">${opts(KEYS.map((k) => [k, k]), doc.key)}</select><span class="key-label">major</span>`;
+          : `<select class="key-pill" data-field="${keyField}">${opts(
+              KEYS.map((k) => [k, k]),
+              doc.key,
+            )}</select><span class="key-label">major</span>`;
         const chips = sec.chords
           .map((c, i) => {
             const bars = Math.max(1, Math.round(c.duration / barTicks()));
@@ -1523,7 +1619,10 @@
           })
           .join("");
         const eff = effectiveSettings(doc, sec)
-          .map(([icon, v, ovr]) => `<span class="eff ${ovr ? "ovr" : ""}" title="${ovr ? "Section override" : "Song default"}">${icon} ${esc(v)}</span>`)
+          .map(
+            ([icon, v, ovr]) =>
+              `<span class="eff ${ovr ? "ovr" : ""}" title="${ovr ? "Section override" : "Song default"}">${icon} ${esc(v)}</span>`,
+          )
           .join("");
         return `
         <div class="player ${stage ? "stage" : ""}" id="player" data-sec="${esc(sec.id)}">
@@ -1586,7 +1685,9 @@
           o.tempo ? `♩ ${o.tempo}` : null,
           o.swing != null ? `swing ${Math.round(o.swing * 100)}%` : null,
           o.voicing ? `voicing: ${VOICINGS.find((v) => v[0] === o.voicing)[1]}` : null,
-          o.instruments && o.instruments.chords ? `chords: ${patchLabel(o.instruments.chords)}` : null,
+          o.instruments && o.instruments.chords
+            ? `chords: ${patchLabel(o.instruments.chords)}`
+            : null,
         ]
           .filter(Boolean)
           .map((b) => `<span class="badge">${esc(b)}</span>`)
@@ -1595,7 +1696,8 @@
 
       function renderSongScreen() {
         const g = S.song;
-        const nowId = S.play.on && S.play.snapshot ? S.play.snapshot.arrangement[S.play.arrIdx] : null;
+        const nowId =
+          S.play.on && S.play.snapshot ? S.play.snapshot.arrangement[S.play.arrIdx] : null;
         return `
         <div class="view-head">
           <input class="text" style="font-size:1.15rem;font-weight:700;flex:1;min-width:8rem" value="${esc(g.title)}" data-field="song.title" />
@@ -1663,7 +1765,14 @@
 
         const width = 60 + cols * CELL;
         const sel = S.view.selChord != null ? sec.chords[S.view.selChord] : null;
-        const seed = { progression: "", barsPerChord: 1, style: "pop", drums: "simple", bass: "simple", ...(sec.seed || {}) };
+        const seed = {
+          progression: "",
+          barsPerChord: 1,
+          style: "pop",
+          drums: "simple",
+          bass: "simple",
+          ...(sec.seed || {}),
+        };
 
         return `
         <div class="row" style="margin-top:.6rem">
@@ -1718,10 +1827,19 @@
           <div class="muted" style="margin-bottom:.45rem">Re-run the generator on this section only. Overwrites its chords, drums and bass (loops are kept).</div>
           <div class="row">
             <input class="text" style="flex:1;min-width:8rem" id="regen-prog" value="${esc(seed.progression)}" placeholder="I IV V vi" />
-            <select class="text" id="regen-bpc">${opts([1, 2, 4].map((n) => [String(n), n + " bar/chord"]), String(seed.barsPerChord))}</select>
+            <select class="text" id="regen-bpc">${opts(
+              [1, 2, 4].map((n) => [String(n), n + " bar/chord"]),
+              String(seed.barsPerChord),
+            )}</select>
             <select class="text" id="regen-style">${styleOpts(seed.style)}</select>
-            <select class="text" id="regen-drums">${opts(VARIANTS.map(([k, l]) => [k, "🥁 " + l]), seed.drums)}</select>
-            <select class="text" id="regen-bass">${opts(VARIANTS.map(([k, l]) => [k, "🎸 " + l]), seed.bass)}</select>
+            <select class="text" id="regen-drums">${opts(
+              VARIANTS.map(([k, l]) => [k, "🥁 " + l]),
+              seed.drums,
+            )}</select>
+            <select class="text" id="regen-bass">${opts(
+              VARIANTS.map(([k, l]) => [k, "🎸 " + l]),
+              seed.bass,
+            )}</select>
             <button class="btn" data-act="regen">Regenerate</button>
           </div>
           ${
@@ -1749,7 +1867,10 @@
           </div>
           <div class="numerals">
             ${quick
-              .map((q) => `<button class="btn small ${q === cur ? "on" : ""}" data-act="setNumeral" data-n="${esc(q)}">${esc(q)}</button>`)
+              .map(
+                (q) =>
+                  `<button class="btn small ${q === cur ? "on" : ""}" data-act="setNumeral" data-n="${esc(q)}">${esc(q)}</button>`,
+              )
               .join("")}
             <input class="text" style="width:6rem" placeholder="type: bIII7" data-field="chordNumeral" />
           </div>
@@ -1793,7 +1914,11 @@
       function renderScrubbers() {
         const doc = S.play.on && S.play.snapshot ? S.play.snapshot : liveSong();
         if (!doc) return "";
-        const pos = S.play.on ? { arrIdx: S.play.arrIdx, lap: S.play.lap } : S.cue ? clampPos(doc, S.cue) : null;
+        const pos = S.play.on
+          ? { arrIdx: S.play.arrIdx, lap: S.play.lap }
+          : S.cue
+            ? clampPos(doc, S.cue)
+            : null;
         let out = "";
         if (!loopingSectionId() && doc.arrangement.length > 1) {
           const segs = doc.arrangement
@@ -1849,9 +1974,12 @@
       function validateDoc(doc) {
         if (!doc || typeof doc !== "object") return "no document";
         if (doc.version !== 2) return "version must be 2";
-        if (doc.kind !== "backingTrack" && doc.kind !== "song") return "kind must be backingTrack or song";
-        if (!Array.isArray(doc.sections) || !doc.sections.length) return "needs at least one section";
-        if (!Array.isArray(doc.arrangement) || !doc.arrangement.length) return "needs an arrangement";
+        if (doc.kind !== "backingTrack" && doc.kind !== "song")
+          return "kind must be backingTrack or song";
+        if (!Array.isArray(doc.sections) || !doc.sections.length)
+          return "needs at least one section";
+        if (!Array.isArray(doc.arrangement) || !doc.arrangement.length)
+          return "needs an arrangement";
         const ids = new Set(doc.sections.map((s) => s.id));
         const bad = doc.arrangement.filter((id) => !ids.has(id));
         if (bad.length) return "arrangement references unknown section " + bad[0];
@@ -1861,7 +1989,11 @@
 
       function ago(t) {
         const s = Math.round((Date.now() - t) / 1000);
-        return s < 60 ? "just now" : s < 3600 ? Math.round(s / 60) + " min ago" : Math.round(s / 3600) + " h ago";
+        return s < 60
+          ? "just now"
+          : s < 3600
+            ? Math.round(s / 60) + " min ago"
+            : Math.round(s / 3600) + " h ago";
       }
 
       function renderLibrarySheet() {
@@ -1996,7 +2128,10 @@
         return `
         <div class="row"><h3 style="flex:1">Data</h3><button class="btn small" data-act="closeSheet">Close</button></div>
         <div class="seg" style="margin-top:.6rem">${scopes
-          .map(([k, l]) => `<button class="${k === scope ? "on" : ""}" data-act="dataScope" data-s="${k}">${esc(l)}</button>`)
+          .map(
+            ([k, l]) =>
+              `<button class="${k === scope ? "on" : ""}" data-act="dataScope" data-s="${k}">${esc(l)}</button>`,
+          )
           .join("")}</div>
         <div class="muted" style="margin-top:.5rem">Draft model. Positions are ticks (${PPQ} per quarter: 8th = ${EIGHTH}, 16th = ${SIX}). Drums are hit start ticks per instrument.</div>
         <pre class="json">${esc(JSON.stringify(obj, null, 2))}</pre>`;
@@ -2017,7 +2152,10 @@
         return `
         <div class="row"><h3 style="flex:1">Instruments</h3><button class="btn small" data-act="closeSheet">Close</button></div>
         <div class="seg" style="margin-top:.6rem">${["chords", "bass", "drums"]
-          .map((r) => `<button class="${r === role ? "on" : ""}" data-act="instRole" data-r="${r}">${r}</button>`)
+          .map(
+            (r) =>
+              `<button class="${r === role ? "on" : ""}" data-act="instRole" data-r="${r}">${r}</button>`,
+          )
           .join("")}</div>
         <div style="margin-top:.7rem">
           ${choices
@@ -2048,8 +2186,12 @@
         const sec = curSec();
         const o = sec.overrides;
         const chordChoices = [["", "Song default (" + patchLabel(g.instruments.chords) + ")"]];
-        Object.entries(BUILTIN_PATCHES).forEach(([id, p]) => p.role === "chords" && chordChoices.push([id, p.label]));
-        Object.entries(g.patches).forEach(([id, p]) => p.role === "chords" && chordChoices.push([id, p.label]));
+        Object.entries(BUILTIN_PATCHES).forEach(
+          ([id, p]) => p.role === "chords" && chordChoices.push([id, p.label]),
+        );
+        Object.entries(g.patches).forEach(
+          ([id, p]) => p.role === "chords" && chordChoices.push([id, p.label]),
+        );
         return `
         <div class="row"><h3 style="flex:1">Section settings</h3><button class="btn small" data-act="closeSheet">Done</button></div>
         <div class="muted" style="margin-top:.3rem">Blank = inherit from the song. Only what you set is stored in <code>overrides</code>.</div>
@@ -2062,7 +2204,12 @@
           </select>
           <span>Swing</span>
           <select class="text" data-field="sec.swing">${opts(
-            [["", "Song default"], ["0", "Straight"], ["0.33", "Light"], ["0.66", "Heavy"]],
+            [
+              ["", "Song default"],
+              ["0", "Straight"],
+              ["0.33", "Light"],
+              ["0.66", "Heavy"],
+            ],
             o.swing == null ? "" : String(o.swing),
           )}</select>
           <span>Voicing</span>
@@ -2129,7 +2276,9 @@
         const json = JSON.stringify(shareEnvelope());
         let enc = "";
         try {
-          const stream = new Blob([json]).stream().pipeThrough(new CompressionStream("deflate-raw"));
+          const stream = new Blob([json])
+            .stream()
+            .pipeThrough(new CompressionStream("deflate-raw"));
           const buf = new Uint8Array(await new Response(stream).arrayBuffer());
           let bin = "";
           buf.forEach((b) => (bin += String.fromCharCode(b)));
@@ -2140,7 +2289,9 @@
         }
         const url = "https://dougflip.github.io/progression/v2/?s=" + enc;
         el.innerHTML = `JSON ${json.length.toLocaleString()} chars → URL <b>${url.length.toLocaleString()}</b> chars ${
-          url.length > 2000 ? '<span class="badge" style="color:var(--queued)">long for some chat apps</span>' : ""
+          url.length > 2000
+            ? '<span class="badge" style="color:var(--queued)">long for some chat apps</span>'
+            : ""
         }`;
       }
 
@@ -2159,7 +2310,9 @@
       function currentChordIndex() {
         const sec = playSection();
         if (!sec) return -1;
-        return sec.chords.findIndex((c) => S.play.tick >= c.start && S.play.tick < c.start + c.duration);
+        return sec.chords.findIndex(
+          (c) => S.play.tick >= c.start && S.play.tick < c.start + c.duration,
+        );
       }
       function tempoOf(snap, sec) {
         return (sec && sec.overrides && sec.overrides.tempo) || snap.defaults.tempo;
@@ -2187,7 +2340,12 @@
       }
       // ❚❚: stop sound, remember the bar we were in.
       function pausePlay() {
-        S.cue = { arrIdx: S.play.arrIdx, lap: S.play.lap, bar: Math.floor(S.play.tick / barTicks()), paused: true };
+        S.cue = {
+          arrIdx: S.play.arrIdx,
+          lap: S.play.lap,
+          bar: Math.floor(S.play.tick / barTicks()),
+          paused: true,
+        };
         S.play.on = false;
         render();
       }
@@ -2244,7 +2402,8 @@
         // Queued jumps (section or chord) land on the next bar, at the start of the target bar.
         if (crossed && p.jump) {
           const over = p.tick % barTicks();
-          if (!loopingSectionId()) p.arrIdx = Math.min(p.jump.arrIdx, p.snapshot.arrangement.length - 1);
+          if (!loopingSectionId())
+            p.arrIdx = Math.min(p.jump.arrIdx, p.snapshot.arrangement.length - 1);
           p.tick = p.jump.bar * barTicks() + over;
           p.jump = null;
           const target = playSection();
@@ -2285,10 +2444,14 @@
             el.classList.toggle("active", i === ci);
             if (i === ci) {
               const barInChord = Math.floor((S.play.tick - chord.start) / barTicks());
-              el.querySelectorAll(".bar-dot").forEach((d, b) => d.classList.toggle("active", b === barInChord));
+              el.querySelectorAll(".bar-dot").forEach((d, b) =>
+                d.classList.toggle("active", b === barInChord),
+              );
             }
           });
-          player.querySelectorAll(".beat-dot").forEach((d, b) => d.classList.toggle("active", b === beat - 1));
+          player
+            .querySelectorAll(".beat-dot")
+            .forEach((d, b) => d.classList.toggle("active", b === beat - 1));
         }
         const keys = lapKeys(S.play.snapshot, S.practice);
         const key = playKey();
@@ -2299,7 +2462,9 @@
           }<br><span class="muted">${keys.length > 1 ? `key ${key} (${(S.play.lap % keys.length) + 1}/${keys.length}) · ` : ""}♩ ${tempoOf(S.play.snapshot, sec)}${
             S.practice.advance === "manual" && !loopingSectionId() ? " · manual" : ""
           }${muted.length ? " · muted: " + muted.join(", ") : ""}${
-            S.play.dirty ? ' · <span style="color:var(--queued)">edit queued for next bar</span>' : ""
+            S.play.dirty
+              ? ' · <span style="color:var(--queued)">edit queued for next bar</span>'
+              : ""
           }${loopingSectionId() ? " · looping section" : ""}</span>`;
         if (ph) {
           const showing = sec.id === S.view.sectionId;
@@ -2370,7 +2535,12 @@
         },
         // Play view ⇄ edit. Playback is unaffected by navigation.
         edit() {
-          S.view = { screen: S.mode === "backing" ? "edit" : "song", sectionId: null, selChord: null, confirm: null };
+          S.view = {
+            screen: S.mode === "backing" ? "edit" : "song",
+            sectionId: null,
+            selChord: null,
+            confirm: null,
+          };
           render();
         },
         done() {
@@ -2401,7 +2571,14 @@
         // backing track
         rsecAdd() {
           const id = uid("R");
-          S.recipe.sections.push({ id, name: "Bridge", progression: "vi IV I V", barsPerChord: 1, style: null, tempo: null });
+          S.recipe.sections.push({
+            id,
+            name: "Bridge",
+            progression: "vi IV I V",
+            barsPerChord: 1,
+            style: null,
+            tempo: null,
+          });
           edited();
         },
         rsecDel(d) {
@@ -2449,7 +2626,10 @@
           const name = (document.getElementById(d.input || "scratch-name").value || "").trim();
           if (!name) return toast("Give it a name first");
           const sc = S.library.find((i) => i.scratch);
-          const item = addItem({ ...structuredClone(sc.doc), title: name }, structuredClone(sc.practice));
+          const item = addItem(
+            { ...structuredClone(sc.doc), title: name },
+            structuredClone(sc.practice),
+          );
           // Scratch resets to a fresh starter so it's ready for the next jam.
           sc.doc = { ...structuredClone(STARTERS[0].doc), title: "Scratch" };
           sc.practice = structuredClone(DP);
@@ -2459,7 +2639,10 @@
         },
         loadStarter(d) {
           const sc = S.library.find((i) => i.scratch);
-          if (sc.modified && !(S.libConfirm && S.libConfirm.type === "starter" && S.libConfirm.i === d.i)) {
+          if (
+            sc.modified &&
+            !(S.libConfirm && S.libConfirm.type === "starter" && S.libConfirm.i === d.i)
+          ) {
             S.libConfirm = { type: "starter", i: d.i };
             return render();
           }
@@ -2504,17 +2687,28 @@
           const doc = env && env.doc ? env.doc : env;
           const err = validateDoc(doc);
           if (err) return toast("Can't import: " + err);
-          const item = addItem(doc, env.practice ? { ...structuredClone(DP), ...env.practice } : null, { source: "import" });
+          const item = addItem(
+            doc,
+            env.practice ? { ...structuredClone(DP), ...env.practice } : null,
+            { source: "import" },
+          );
           openItem(item.id);
           toast("Imported into your library");
         },
         simulateLink() {
           const doc = generateSong(
-            mkRecipe("Funky idea", [["A", "Groove", "i7 IV7 i7 IV7"], ["B", "Turn", "bVI7 V7"]], {
-              style: "funk",
-              tempo: 104,
-              arrangement: ["A", "A", "B"],
-            }),
+            mkRecipe(
+              "Funky idea",
+              [
+                ["A", "Groove", "i7 IV7 i7 IV7"],
+                ["B", "Turn", "bVI7 V7"],
+              ],
+              {
+                style: "funk",
+                tempo: 104,
+                arrangement: ["A", "A", "B"],
+              },
+            ),
           );
           doc.title = "Funky idea";
           const env = { version: 2, doc, practice: { ...structuredClone(DP), cycle: "5ths" } };
@@ -2583,7 +2777,12 @@
           }
           const next = sec.chords.filter((c) => c.start > t).sort((a, b) => a.start - b.start)[0];
           const end = Math.min(next ? next.start : sec.bars * barTicks(), t + barTicks());
-          const c = { start: t, duration: end - t, root: { degree: 1, accidental: 0 }, quality: "maj" };
+          const c = {
+            start: t,
+            duration: end - t,
+            root: { degree: 1, accidental: 0 },
+            quality: "maj",
+          };
           sec.chords.push(c);
           sortChords(sec, c);
           edited();
@@ -2663,7 +2862,14 @@
         takeAdd() {
           const sec = curSec();
           const n = sec.loops.length + 1;
-          sec.loops.push({ id: uid("take-"), name: "Take " + n, audio: "idb:" + uid("take-"), bars: sec.bars, gain: 1, muted: false });
+          sec.loops.push({
+            id: uid("take-"),
+            name: "Take " + n,
+            audio: "idb:" + uid("take-"),
+            bars: sec.bars,
+            gain: 1,
+            muted: false,
+          });
           toast("(simulated) recorded " + sec.bars + " bars");
           edited();
         },
@@ -2683,7 +2889,13 @@
         regenYes() {
           const sec = curSec();
           const fresh = generateSection(sec.id, sec.name, readRegenSeed());
-          Object.assign(sec, { bars: fresh.bars, chords: fresh.chords, drums: fresh.drums, bass: fresh.bass, seed: fresh.seed });
+          Object.assign(sec, {
+            bars: fresh.bars,
+            chords: fresh.chords,
+            drums: fresh.drums,
+            bass: fresh.bass,
+            seed: fresh.seed,
+          });
           S.view.confirm = null;
           S.view.selChord = null;
           edited();
@@ -2708,7 +2920,12 @@
             const same = S.play.jump && S.play.jump.section && S.play.jump.arrIdx === i;
             S.play.jump = same ? null : { arrIdx: i, bar: 0, section: true };
           } else {
-            S.cue = { arrIdx: i, lap: S.cue ? S.cue.lap : 0, bar: 0, paused: S.cue ? S.cue.paused : false };
+            S.cue = {
+              arrIdx: i,
+              lap: S.cue ? S.cue.lap : 0,
+              bar: 0,
+              paused: S.cue ? S.cue.paused : false,
+            };
           }
           render();
         },
@@ -2733,7 +2950,12 @@
             S.play.keyJump = S.play.keyJump === i ? null : i;
           } else {
             const cur = S.cue ? clampPos(liveSong(), S.cue) : { arrIdx: 0, bar: 0 };
-            S.cue = { arrIdx: cur.arrIdx, lap: i, bar: cur.bar, paused: S.cue ? S.cue.paused : false };
+            S.cue = {
+              arrIdx: cur.arrIdx,
+              lap: i,
+              bar: cur.bar,
+              paused: S.cue ? S.cue.paused : false,
+            };
           }
           render();
         },
@@ -2828,7 +3050,7 @@
           // The doc's title is the library item's name (one source of truth).
           case "song.title":
           case "doc.title":
-            if (!value.trim()) return toast("A name can't be empty"), render();
+            if (!value.trim()) return (toast("A name can't be empty"), render());
             (field === "song.title" ? g : r).title = value.trim();
             break;
           case "song.key":
@@ -2875,12 +3097,14 @@
       });
       document.addEventListener("change", (e) => {
         const el = e.target.closest("[data-field]");
-        if (el) onField(el.dataset.field, el.type === "checkbox" ? el.checked : el.value, el.dataset);
+        if (el)
+          onField(el.dataset.field, el.type === "checkbox" ? el.checked : el.value, el.dataset);
       });
       // Live readout while dragging a mix slider (the change event commits it).
       document.addEventListener("input", (e) => {
         const el = e.target;
-        if (el.dataset && el.dataset.field === "mix.vol") el.nextElementSibling.textContent = el.value;
+        if (el.dataset && el.dataset.field === "mix.vol")
+          el.nextElementSibling.textContent = el.value;
       });
       document.addEventListener("keydown", (e) => {
         if (e.key === "Escape" && S.sheet) ACTIONS.closeSheet();
