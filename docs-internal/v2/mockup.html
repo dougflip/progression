@@ -1,0 +1,3116 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Progression v2 — Mockup</title>
+    <style>
+      :root,
+      [data-theme="dark"] {
+        --bg: #121212;
+        --surface: #1e1e1e;
+        --surface-alt: #2a2a2a;
+        --surface-alt-active: #353535;
+        --border: #333333;
+        --border-faint: #262626;
+        --text: #f0f0f0;
+        --text-2: #b8b8b8;
+        --text-3: #888888;
+        --text-4: #666666;
+        --accent: #f0f0f0;
+        --accent-text: #121212;
+        --playing: #ef4444;
+        --chord: #3b5b8c;
+        --chord-sel: #5b87c9;
+        --hit: #d0d0d0;
+        --bass: #7c5a2e;
+        --queued: #f59e0b;
+        --backdrop: rgba(0, 0, 0, 0.6);
+        color-scheme: dark;
+      }
+      [data-theme="light"] {
+        --bg: #fafafa;
+        --surface: #ffffff;
+        --surface-alt: #f1f1f1;
+        --surface-alt-active: #e1e1e1;
+        --border: #dddddd;
+        --border-faint: #eeeeee;
+        --text: #222222;
+        --text-2: #555555;
+        --text-3: #888888;
+        --text-4: #aaaaaa;
+        --accent: #222222;
+        --accent-text: #ffffff;
+        --playing: #b91c1c;
+        --chord: #a9c2e8;
+        --chord-sel: #5b87c9;
+        --hit: #444444;
+        --bass: #e0b77d;
+        --queued: #b45309;
+        --backdrop: rgba(0, 0, 0, 0.4);
+        color-scheme: light;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        background: var(--bg);
+      }
+      body {
+        font-family: system-ui, sans-serif;
+        color: var(--text);
+        margin: 0;
+        padding-bottom: calc(170px + env(safe-area-inset-bottom));
+        font-size: 15px;
+      }
+      main {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 0.75rem 1rem 1.5rem;
+      }
+      button,
+      input,
+      select {
+        font: inherit;
+        color: inherit;
+      }
+      .mock-note {
+        font-size: 0.78rem;
+        color: var(--text-3);
+        border: 1px dashed var(--border);
+        border-radius: 0.5rem;
+        padding: 0.45rem 0.65rem;
+        margin: 0.5rem 0 0.9rem;
+        line-height: 1.4;
+      }
+
+      /* ── top bar ── */
+      .topbar {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+      .seg {
+        display: inline-flex;
+        flex-wrap: wrap;
+        background: var(--surface-alt);
+        border-radius: 999px;
+        padding: 3px;
+      }
+      .seg button {
+        border: none;
+        background: none;
+        padding: 0.4rem 0.9rem;
+        border-radius: 999px;
+        cursor: pointer;
+        color: var(--text-2);
+        font-weight: 600;
+        font-size: 0.88rem;
+      }
+      .seg button.on {
+        background: var(--accent);
+        color: var(--accent-text);
+      }
+      .spacer {
+        flex: 1;
+      }
+
+      /* ── generic controls ── */
+      .btn {
+        border: 1px solid var(--border);
+        background: var(--surface-alt);
+        border-radius: 0.5rem;
+        padding: 0.4rem 0.75rem;
+        cursor: pointer;
+        font-size: 0.88rem;
+        white-space: nowrap;
+      }
+      .btn:hover {
+        background: var(--surface-alt-active);
+      }
+      .btn.primary {
+        background: var(--accent);
+        color: var(--accent-text);
+        border-color: var(--accent);
+        font-weight: 600;
+      }
+      .btn.ghost {
+        background: none;
+        border-color: transparent;
+        color: var(--text-2);
+      }
+      .btn.small {
+        padding: 0.2rem 0.5rem;
+        font-size: 0.8rem;
+      }
+      .btn.danger {
+        color: var(--playing);
+      }
+      .btn:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        border: none;
+        background: var(--surface-alt);
+        border-radius: 999px;
+        padding: 0.35rem 0.8rem;
+        font-size: 0.88rem;
+        cursor: pointer;
+      }
+      .pill:hover {
+        background: var(--surface-alt-active);
+      }
+      .pill select,
+      .pill input {
+        background: none;
+        border: none;
+        padding: 0;
+        cursor: pointer;
+        outline: none;
+      }
+      .pill input[type="number"] {
+        width: 3.2em;
+      }
+      input.text,
+      select.text {
+        background: var(--surface-alt);
+        border: 1px solid var(--border);
+        border-radius: 0.4rem;
+        padding: 0.35rem 0.5rem;
+        min-width: 0;
+      }
+      .badge {
+        display: inline-block;
+        font-size: 0.72rem;
+        padding: 0.1rem 0.45rem;
+        border-radius: 999px;
+        background: var(--surface-alt-active);
+        color: var(--text-2);
+        margin-right: 0.25rem;
+      }
+      h2 {
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--text-3);
+        margin: 1.4rem 0 0.5rem;
+        font-weight: 600;
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        padding: 0.7rem 0.8rem;
+        margin-bottom: 0.5rem;
+      }
+      .card.click {
+        cursor: pointer;
+      }
+      .card.click:hover {
+        border-color: var(--text-4);
+      }
+      .card.now {
+        border-color: var(--playing);
+      }
+      .muted {
+        color: var(--text-3);
+        font-size: 0.85rem;
+      }
+
+      /* ── player header (shared by every screen; chips copied from v1) ── */
+      .player {
+        margin: 0.9rem 0 0.6rem;
+      }
+      .player.stage {
+        margin: 1.6rem 0 1.4rem;
+      }
+      .player.stage .key-pill,
+      .player.stage .key-label {
+        font-size: 3rem;
+      }
+      .player.stage .player-sec {
+        font-size: 0.95rem;
+        margin-bottom: 0.9rem;
+      }
+      .player.stage .chip {
+        min-height: 4.8rem;
+        max-width: 9rem;
+      }
+      .player.stage .chip .name {
+        font-size: 1.6rem;
+      }
+      .player.stage .chip .numeral {
+        font-size: 0.85rem;
+      }
+      .view-head {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 0.8rem;
+      }
+      .view-title {
+        font-weight: 600;
+        color: var(--text-2);
+      }
+      .view-title.link {
+        border: none;
+        background: none;
+        padding: 0;
+        cursor: pointer;
+        font-size: 1rem;
+      }
+      .view-title.link:hover {
+        color: var(--text);
+      }
+      .key-row {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 0.6rem;
+        margin: 0.4rem 0 0.7rem;
+      }
+      .key-lap {
+        font-size: 0.8rem;
+        color: var(--text-3);
+        align-self: flex-end;
+        margin-bottom: 0.35rem;
+      }
+      .player-sec {
+        text-align: center;
+        font-size: 0.85rem;
+        color: var(--text-2);
+        margin-bottom: 0.5rem;
+        line-height: 1.6;
+      }
+      .player-sec .eff {
+        color: var(--text-3);
+        margin-left: 0.35rem;
+        white-space: nowrap;
+      }
+      .player-sec .eff.ovr {
+        color: var(--text);
+        font-weight: 600;
+      }
+      .player-sec .eff.ovr::after {
+        content: "•";
+        color: var(--queued);
+        margin-left: 0.1rem;
+      }
+      .beats {
+        display: flex;
+        justify-content: center;
+        gap: 0.7rem;
+        min-height: 0.75rem;
+        align-items: center;
+      }
+      .beat-dot {
+        width: 0.5rem;
+        height: 0.5rem;
+        border-radius: 50%;
+        background: var(--surface-alt);
+        transition:
+          background 0.08s,
+          transform 0.08s;
+      }
+      .beat-dot.active {
+        background: var(--accent);
+        transform: scale(1.5);
+      }
+      select.text.set,
+      input.text.set {
+        border-color: var(--queued);
+        font-weight: 600;
+      }
+      .mix-row {
+        display: grid;
+        grid-template-columns: minmax(6rem, 1fr) 2fr 2.5rem;
+        gap: 0.75rem;
+        align-items: center;
+        padding: 0.7rem 0;
+        border-bottom: 1px solid var(--border-faint);
+      }
+      .mix-row label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 600;
+      }
+      .mix-row .val {
+        font-variant-numeric: tabular-nums;
+        color: var(--text-3);
+        font-size: 0.85rem;
+        text-align: right;
+      }
+      .key-pill {
+        font-size: 2.3rem;
+        font-weight: 700;
+        background: var(--surface-alt);
+        border: none;
+        border-radius: 0.6rem;
+        padding: 0.15rem 0.6rem;
+        cursor: pointer;
+        appearance: none;
+        text-align: center;
+      }
+      .key-label {
+        font-size: 2.3rem;
+        font-weight: 700;
+        color: var(--text-2);
+      }
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.5rem;
+        margin-bottom: 0.8rem;
+        min-height: 4.5rem;
+      }
+      .chip {
+        flex: 1 1 4.5rem;
+        min-width: 4.5rem;
+        max-width: 8rem;
+        min-height: 3.8rem;
+        padding: 0.6rem 0.5rem;
+        border-radius: 0.5rem;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        position: relative;
+        transition:
+          background 0.1s,
+          color 0.1s,
+          border-color 0.1s;
+      }
+      .chip .numeral {
+        font-size: 0.75rem;
+        color: var(--text-3);
+        line-height: 1;
+      }
+      .chip .name {
+        font-size: 1.25rem;
+        font-weight: 600;
+        line-height: 1.3;
+        margin-top: 0.15rem;
+      }
+      .chip {
+        cursor: pointer;
+      }
+      .chip.active {
+        background: var(--accent);
+        color: var(--accent-text);
+        border-color: var(--accent);
+      }
+      .chip.cued {
+        outline: 2px dashed var(--queued);
+        outline-offset: 2px;
+      }
+      .bar-progress {
+        position: absolute;
+        left: 0.4rem;
+        right: 0.4rem;
+        bottom: 0.3rem;
+        display: flex;
+        justify-content: center;
+        gap: 0.25rem;
+        pointer-events: none;
+      }
+      .chip:not(.active) .bar-progress {
+        display: none;
+      }
+      .bar-dot {
+        flex: 0 1 0.6rem;
+        min-width: 0;
+        height: 0.2rem;
+        border-radius: 0.1rem;
+        background: var(--accent-text);
+        opacity: 0.3;
+      }
+      .bar-dot.active {
+        opacity: 1;
+      }
+      .readout-lbl {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--text-3);
+        align-self: center;
+        margin-right: 0.2rem;
+      }
+      .readout {
+        display: flex;
+        gap: 0.4rem;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+      .sec-row {
+        display: grid;
+        grid-template-columns: 5.5rem 1fr auto auto auto;
+        gap: 0.4rem;
+        align-items: center;
+      }
+      @media (max-width: 520px) {
+        .sec-row {
+          grid-template-columns: 1fr 1fr auto;
+        }
+        .sec-row .prog {
+          grid-column: 1 / -1;
+          order: -1;
+        }
+      }
+      .arr {
+        display: flex;
+        gap: 0.35rem;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .arr .chip-sm {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.2rem;
+        background: var(--surface-alt);
+        border-radius: 0.4rem;
+        padding: 0.2rem 0.25rem 0.2rem 0.55rem;
+        font-size: 0.85rem;
+      }
+      .arr .chip-sm.now {
+        outline: 2px solid var(--playing);
+      }
+      .arr .chip-sm.queued {
+        outline: 2px dashed var(--queued);
+      }
+      .chip-name {
+        border: none;
+        background: none;
+        padding: 0;
+        cursor: pointer;
+      }
+      .practice {
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        margin-top: 0.6rem;
+        padding: 0.45rem 0.6rem;
+        border: 1px dashed var(--border);
+        border-radius: 0.7rem;
+      }
+      .practice-lbl {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--text-3);
+        margin-right: 0.2rem;
+      }
+      .pill.off {
+        opacity: 0.4;
+        text-decoration: line-through;
+      }
+      .lane.muted-lane .cells {
+        opacity: 0.35;
+      }
+      .x {
+        border: none;
+        background: none;
+        color: var(--text-3);
+        cursor: pointer;
+        padding: 0 0.25rem;
+      }
+
+      /* ── composer: section editor timeline ── */
+      .timeline {
+        overflow-x: auto;
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        background: var(--surface);
+        margin-top: 0.5rem;
+      }
+      .tl-inner {
+        position: relative;
+      }
+      .lane {
+        display: flex;
+        border-bottom: 1px solid var(--border-faint);
+        height: 30px;
+      }
+      .lane.tall {
+        height: 44px;
+      }
+      .lane:last-child {
+        border-bottom: none;
+      }
+      .lbl {
+        position: sticky;
+        left: 0;
+        z-index: 3;
+        flex: 0 0 60px;
+        background: var(--surface);
+        border-right: 1px solid var(--border);
+        font-size: 0.72rem;
+        color: var(--text-3);
+        display: flex;
+        align-items: center;
+        padding-left: 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .cells {
+        position: relative;
+        display: flex;
+      }
+      .cell {
+        flex: 0 0 14px;
+        width: 14px;
+        border: none;
+        border-left: 1px solid var(--border-faint);
+        background: none;
+        padding: 0;
+        cursor: pointer;
+        font-size: 0.62rem;
+        font-weight: 700;
+        color: var(--text);
+      }
+      .cell.beat {
+        border-left-color: var(--border);
+      }
+      .cell.bar {
+        border-left: 1px solid var(--text-4);
+      }
+      .cell.wide {
+        flex-basis: 28px;
+        width: 28px;
+      }
+      .cell:hover {
+        background: var(--surface-alt);
+      }
+      .cell.on::after {
+        content: "";
+        display: block;
+        width: 8px;
+        height: 8px;
+        margin: auto;
+        border-radius: 2px;
+        background: var(--hit);
+      }
+      .cell.bass-on {
+        background: var(--bass);
+      }
+      .ruler .cell {
+        cursor: default;
+        color: var(--text-3);
+        font-weight: 600;
+        text-align: left;
+        padding-left: 3px;
+      }
+      .ruler .cell:hover {
+        background: none;
+      }
+      .chord-block {
+        position: absolute;
+        top: 4px;
+        bottom: 4px;
+        background: var(--chord);
+        border: 1px solid transparent;
+        border-radius: 5px;
+        color: #fff;
+        font-size: 0.8rem;
+        font-weight: 700;
+        padding: 0 0.35rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        overflow: hidden;
+        white-space: nowrap;
+        cursor: pointer;
+        z-index: 1;
+        text-align: left;
+      }
+      [data-theme="light"] .chord-block {
+        color: #13233d;
+      }
+      .chord-block small {
+        font-weight: 500;
+        opacity: 0.8;
+        font-size: 0.68rem;
+      }
+      .chord-block.sel {
+        background: var(--chord-sel);
+        border-color: var(--text);
+      }
+      .playhead {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: var(--playing);
+        z-index: 4;
+        pointer-events: none;
+      }
+      .inspector {
+        margin-top: 0.6rem;
+      }
+      .numerals {
+        display: flex;
+        gap: 0.3rem;
+        flex-wrap: wrap;
+        margin: 0.4rem 0;
+      }
+      .numerals .btn.on {
+        background: var(--accent);
+        color: var(--accent-text);
+      }
+      .confirm {
+        border: 1px solid var(--queued);
+        border-radius: 0.6rem;
+        padding: 0.6rem 0.75rem;
+        margin: 0.6rem 0;
+        font-size: 0.9rem;
+      }
+
+      /* ── action bar ── */
+      .action-bar {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: var(--surface);
+        border-top: 1px solid var(--border);
+        padding: 0.6rem 1rem calc(0.6rem + env(safe-area-inset-bottom));
+        z-index: 10;
+      }
+      .action-bar .col {
+        max-width: 760px;
+        margin: 0 auto;
+      }
+      .scrub {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.45rem;
+      }
+      .scrub-lbl {
+        flex: 0 0 2.6rem;
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--text-3);
+      }
+      .scrub-track {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        gap: 4px;
+        overflow-x: auto;
+        scrollbar-width: none;
+        padding: 3px;
+      }
+      .seg-btn {
+        flex: 0 0 auto;
+        border: none;
+        background: var(--surface-alt);
+        border-radius: 0.4rem;
+        padding: 0.3rem 0.65rem;
+        font-size: 0.82rem;
+        cursor: pointer;
+      }
+      .seg-btn.current {
+        background: var(--accent);
+        color: var(--accent-text);
+        font-weight: 600;
+      }
+      .seg-btn.queued {
+        outline: 2px dashed var(--queued);
+        outline-offset: 1px;
+      }
+      .action-bar .inner {
+        max-width: 760px;
+        margin: 0 auto;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+      }
+      .play {
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        border: none;
+        background: var(--accent);
+        color: var(--accent-text);
+        font-size: 1.3rem;
+        cursor: pointer;
+        flex: 0 0 auto;
+      }
+      .play.on {
+        background: var(--playing);
+        color: #fff;
+      }
+      .pos {
+        flex: 1;
+        min-width: 0;
+        font-size: 0.85rem;
+        color: var(--text-2);
+        line-height: 1.35;
+      }
+      .pos b {
+        color: var(--text);
+      }
+
+      /* ── sheet ── */
+      .backdrop {
+        position: fixed;
+        inset: 0;
+        background: var(--backdrop);
+        z-index: 20;
+      }
+      .sheet {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        max-height: 82vh;
+        overflow-y: auto;
+        background: var(--surface);
+        border-top-left-radius: 1rem;
+        border-top-right-radius: 1rem;
+        z-index: 21;
+        padding: 0.9rem 1rem calc(1.2rem + env(safe-area-inset-bottom));
+      }
+      .sheet .inner {
+        max-width: 760px;
+        margin: 0 auto;
+      }
+      .sheet h3 {
+        margin: 0;
+        font-size: 1.05rem;
+      }
+      .form {
+        display: grid;
+        grid-template-columns: 7.5rem 1fr;
+        gap: 0.55rem 0.75rem;
+        align-items: center;
+        margin-top: 0.8rem;
+      }
+      pre.json {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 0.5rem;
+        padding: 0.7rem;
+        font-size: 0.74rem;
+        line-height: 1.45;
+        overflow-x: auto;
+        max-height: 55vh;
+        margin: 0.6rem 0 0;
+      }
+      .opt {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.6rem;
+        border: 1px solid var(--border);
+        border-radius: 0.5rem;
+        margin-bottom: 0.35rem;
+        cursor: pointer;
+      }
+      .opt.on {
+        border-color: var(--text);
+      }
+
+      .toast {
+        position: fixed;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: calc(170px + env(safe-area-inset-bottom));
+        background: var(--surface-alt-active);
+        border: 1px solid var(--queued);
+        color: var(--text);
+        border-radius: 999px;
+        padding: 0.4rem 0.9rem;
+        font-size: 0.82rem;
+        z-index: 30;
+        white-space: nowrap;
+      }
+    </style>
+  </head>
+  <body>
+    <main id="app"></main>
+    <div id="bar"></div>
+    <div id="sheet"></div>
+    <div id="toast" class="toast" hidden></div>
+
+    <script>
+      // ═══════════════════════════════════════════════════════════════════
+      // Constants & static data
+      // ═══════════════════════════════════════════════════════════════════
+      const PPQ = 48; // ticks per quarter note
+      const SIX = PPQ / 4; // 16th note = 12 ticks
+      const EIGHTH = PPQ / 2; // 8th note = 24 ticks
+      const CELL = 14; // px per 16th in the timeline
+
+      const KEYS = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
+      const MAJOR = [0, 2, 4, 5, 7, 9, 11];
+      const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII"];
+      const MINORISH = ["min", "dim", "m7"];
+      const QUALITY_NAME = { maj: "", min: "m", dim: "dim", 7: "7", maj7: "maj7", m7: "m7" };
+
+      // Each style has simple/busy variants for drums and bass, as in v1.
+      // 16 steps per bar. Drums: 1 = hit. Bass: R/3/5 = chord tone, 0 = rest.
+      const STYLES = {
+        pop: {
+          label: "Pop",
+          drums: {
+            simple: {
+              kick: "1000000010000000",
+              snare: "0000100000001000",
+              hat: "1010101010101010",
+            },
+            busy: { kick: "1010000000101000", snare: "0000100001001000", hat: "1010101010101011" },
+          },
+          bass: {
+            simple: { maj: "R000R0005000R000", min: "R000R000R000R000" },
+            busy: { maj: "R0005000300050R0", min: "R0005000300050R0" },
+          },
+        },
+        rock: {
+          label: "Rock",
+          drums: {
+            simple: {
+              kick: "1000000010100000",
+              snare: "0000100000001000",
+              hat: "1010101010101010",
+            },
+            busy: { kick: "1000001010100010", snare: "0000100000001001", hat: "1111111111111111" },
+          },
+          bass: {
+            simple: { maj: "R0R0R0R0R0R0R0R0", min: "R0R0R0R0R0R0R0R0" },
+            busy: { maj: "R0RRR0RR50RRR0R5", min: "R0RRR0RR50RRR0R5" },
+          },
+        },
+        funk: {
+          label: "Funk",
+          drums: {
+            simple: {
+              kick: "1000001000100000",
+              snare: "0000100100001000",
+              hat: "1010101010101010",
+            },
+            busy: { kick: "1000001000100100", snare: "0000100100001001", hat: "1111111111111111" },
+          },
+          bass: {
+            simple: { maj: "R00000R0R0000000", min: "R00000R0R0000000" },
+            busy: { maj: "R00R005000R03050", min: "R00R005000R03050" },
+          },
+        },
+        ballad: {
+          label: "Ballad",
+          drums: {
+            simple: {
+              kick: "1000000000000000",
+              snare: "0000000010000000",
+              hat: "1000100010001000",
+            },
+            busy: { kick: "1000000000100000", snare: "0000100000001000", hat: "1010101010101010" },
+          },
+          bass: {
+            simple: { maj: "R000000000000000", min: "R000000000000000" },
+            busy: { maj: "R000000050000000", min: "R000000050000000" },
+          },
+        },
+      };
+      const DRUMS = ["kick", "snare", "hat"];
+      const VARIANTS = [
+        ["simple", "Simple"],
+        ["busy", "Busy"],
+      ];
+      const VOICINGS = [
+        ["root", "Root"],
+        ["voice-lead", "Lead"],
+        ["voice-lead-loop", "Lead/loop"],
+      ];
+      const CYCLES = [
+        ["none", "Off"],
+        ["4ths", "4ths"],
+        ["5ths", "5ths"],
+        ["custom", "Custom"],
+      ];
+      const CHANNELS = [
+        ["chords", "🎹"],
+        ["bass", "🎸"],
+        ["drums", "🥁"],
+      ];
+      const DEFAULT_PRACTICE = {
+        cycle: "none",
+        customKeys: [],
+        advance: "auto",
+        mutes: { chords: false, bass: false, drums: false },
+      };
+
+      // Built-in instrument patches. A song references these by id; custom
+      // (e.g. agent-made) patches get embedded in song.patches so they travel with the song.
+      const BUILTIN_PATCHES = {
+        "pad-v1": {
+          role: "chords",
+          label: "Warm pad (v1 default)",
+          kind: "synth",
+          oscillator: { type: "fatsawtooth", count: 3, spread: 20 },
+          envelope: { attack: 0.05, decay: 0.3, sustain: 0.6, release: 1.2 },
+          filter: { type: "lowpass", frequency: 1800, Q: 0.7 },
+          effects: [{ type: "reverb", decay: 2.5, wet: 0.25 }],
+        },
+        epiano: {
+          role: "chords",
+          label: "Electric piano (samples)",
+          kind: "sampler",
+          sampleSet: "epiano-rhodes",
+          release: 0.8,
+        },
+        "bass-v1": {
+          role: "bass",
+          label: "Synth bass (v1 default)",
+          kind: "synth",
+          oscillator: { type: "triangle" },
+          envelope: { attack: 0.01, decay: 0.2, sustain: 0.5, release: 0.3 },
+        },
+        "bass-finger": {
+          role: "bass",
+          label: "Finger bass (samples)",
+          kind: "sampler",
+          sampleSet: "bass-finger",
+        },
+        "kit-muldjord": {
+          role: "drums",
+          label: "Acoustic kit (MuldjordKit)",
+          kind: "sampler",
+          sampleSet: "muldjord-kit",
+        },
+      };
+      // Example of what an agent skill would hand back for "a glassy 80s bell".
+      const AGENT_PATCH = {
+        id: "glassy-80s-bell",
+        patch: {
+          role: "chords",
+          label: "Glassy 80s bell (agent-made)",
+          kind: "synth",
+          oscillator: { type: "fmsine", modulationIndex: 12, harmonicity: 3.01 },
+          envelope: { attack: 0.005, decay: 1.4, sustain: 0.1, release: 2 },
+          effects: [
+            { type: "chorus", frequency: 1.5, depth: 0.6, wet: 0.3 },
+            { type: "reverb", decay: 4, wet: 0.35 },
+          ],
+        },
+      };
+
+      // ═══════════════════════════════════════════════════════════════════
+      // Music helpers
+      // ═══════════════════════════════════════════════════════════════════
+      function parseNumeral(tok) {
+        const m = /^([b♭#♯])?(vii|iii|vi|iv|ii|v|i|VII|III|VI|IV|II|V|I)(°|o|dim)?(maj7|7)?$/.exec(
+          tok.trim(),
+        );
+        if (!m) return null;
+        const [, acc, rn, dim, ext] = m;
+        const upper = rn === rn.toUpperCase();
+        let quality;
+        if (dim) quality = "dim";
+        else if (upper) quality = ext === "maj7" ? "maj7" : ext === "7" ? "7" : "maj";
+        else quality = ext === "7" ? "m7" : "min";
+        return {
+          root: {
+            degree: ROMAN.indexOf(rn.toUpperCase()) + 1,
+            accidental: acc ? (acc === "b" || acc === "♭" ? -1 : 1) : 0,
+          },
+          quality,
+        };
+      }
+      function numeral(c) {
+        let r = ROMAN[c.root.degree - 1];
+        if (MINORISH.includes(c.quality)) r = r.toLowerCase();
+        const acc = c.root.accidental === -1 ? "♭" : c.root.accidental === 1 ? "♯" : "";
+        const suf = { maj: "", min: "", dim: "°", 7: "7", maj7: "maj7", m7: "7" }[c.quality];
+        return acc + r + suf;
+      }
+      function chordName(c, key) {
+        const k = KEYS.indexOf(key);
+        const semi = (k + MAJOR[c.root.degree - 1] + c.root.accidental + 24) % 12;
+        return KEYS[semi] + QUALITY_NAME[c.quality];
+      }
+      function parseProgression(str) {
+        return str.split(/\s+/).filter(Boolean).map(parseNumeral).filter(Boolean);
+      }
+      const toneLabel = (t) => (t === 1 ? "R" : String(t));
+
+      // ═══════════════════════════════════════════════════════════════════
+      // Model: BackingTrack recipe → Song (the generator)
+      // ═══════════════════════════════════════════════════════════════════
+      function sectionTicks(sec, song) {
+        const m = (sec.overrides && sec.overrides.meter) || song.defaults.meter;
+        return sec.bars * m.beatsPerBar * PPQ * (4 / m.beatUnit);
+      }
+      const barTicks = () => 4 * PPQ; // 4/4 only in the mockup
+
+      function chordAt(sec, tick) {
+        return sec.chords.find((c) => tick >= c.start && tick < c.start + c.duration);
+      }
+
+      // Fill drums + bass for a section from a style, given its chords.
+      function applyStyle(sec, seed) {
+        const st = STYLES[seed.style];
+        const dr = st.drums[seed.drums || "simple"];
+        const bs = st.bass[seed.bass || "simple"];
+        sec.drums = { kick: [], snare: [], hat: [] };
+        sec.bass = [];
+        const steps = sec.bars * 16;
+        for (let s = 0; s < steps; s++) {
+          const i = s % 16;
+          const t = s * SIX;
+          for (const d of DRUMS) if (dr[d][i] === "1") sec.drums[d].push(t);
+          const ch = chordAt(sec, t);
+          if (!ch) continue;
+          const b = (MINORISH.includes(ch.quality) ? bs.min : bs.maj)[i];
+          if (b !== "0") {
+            sec.bass.push({
+              start: t,
+              duration: SIX,
+              pitch: { kind: "chordTone", tone: b === "R" ? 1 : Number(b) },
+            });
+          }
+        }
+      }
+
+      function generateSection(id, name, seed) {
+        const chords = parseProgression(seed.progression);
+        const span = seed.barsPerChord * barTicks();
+        const sec = {
+          id,
+          name,
+          bars: Math.max(1, chords.length * seed.barsPerChord),
+          overrides: {},
+          chords: chords.map((c, i) => ({ start: i * span, duration: span, ...c })),
+          drums: null,
+          bass: null,
+          loops: [],
+          seed: { ...seed },
+        };
+        applyStyle(sec, seed);
+        return sec;
+      }
+
+      // The generator: the only path from a recipe to something the engine can play.
+      function generateSong(r) {
+        return {
+          version: 2,
+          kind: "song",
+          title: r.title || "Untitled song",
+          key: r.key,
+          ppq: PPQ,
+          defaults: {
+            tempo: r.tempo,
+            meter: { beatsPerBar: 4, beatUnit: 4 },
+            swing: 0,
+            voicing: r.voicing || "voice-lead",
+          },
+          instruments: { chords: "pad-v1", bass: "bass-v1", drums: "kit-muldjord" },
+          patches: {},
+          sections: r.sections.map((s) => {
+            const sec = generateSection(s.id, s.name, {
+              progression: s.progression,
+              barsPerChord: s.barsPerChord,
+              style: s.style || r.style,
+              drums: s.drums || r.drums || "simple",
+              bass: s.bass || r.bass || "simple",
+            });
+            if (s.tempo) sec.overrides.tempo = s.tempo;
+            return sec;
+          }),
+          arrangement: [...r.arrangement],
+        };
+      }
+
+      // ═══════════════════════════════════════════════════════════════════
+      // App state
+      // ═══════════════════════════════════════════════════════════════════
+      const S = {
+        mode: "backing", // 'backing' | 'composer'
+        recipe: {
+          version: 2,
+          kind: "backingTrack",
+          key: "C",
+          tempo: 96,
+          style: "pop",
+          drums: "simple",
+          bass: "simple",
+          voicing: "voice-lead",
+          sections: [
+            {
+              id: "A",
+              name: "Verse",
+              progression: "I V vi IV",
+              barsPerChord: 1,
+              style: null,
+              drums: null,
+              bass: null,
+              tempo: null,
+            },
+            {
+              id: "B",
+              name: "Chorus",
+              progression: "IV V iii vi",
+              barsPerChord: 1,
+              style: "rock",
+              drums: "busy",
+              bass: null,
+              tempo: null,
+            },
+          ],
+          arrangement: ["A", "A", "B"],
+        },
+        song: null,
+        // Practice settings: separate from the document, same in both modes.
+        practice: structuredClone(DEFAULT_PRACTICE),
+        // screen: 'play' (home, both modes) | 'edit' (backing) | 'song' | 'section' (composer)
+        view: { screen: "play", sectionId: null, selChord: null, confirm: null },
+        sheet: null, // {type, ...}
+        dataScope: "auto",
+        sharePractice: null, // null = default (on when practice differs from defaults)
+        // Volume levels: local to this device, never shared.
+        mix: { chords: 50, bass: 100, drums: 100, loops: 100, master: 100 },
+        play: {
+          on: false,
+          tick: 0,
+          arrIdx: 0,
+          lap: 0,
+          jump: null,
+          snapshot: null,
+          dirty: false,
+          last: 0,
+        },
+        // Where ▶ starts when not playing: null = from the top. Set by pause or by tapping a section/chord.
+        cue: null, // { arrIdx, lap, bar, paused }
+      };
+      let nextId = 1;
+      const uid = (p) => p + nextId++;
+
+      // ═══════════════════════════════════════════════════════════════════
+      // Library (local to this device). Each item = one doc + its own practice
+      // settings. The open item's doc/practice ARE S.recipe/S.song/S.practice
+      // (same objects), so every edit autosaves into the library.
+      // ═══════════════════════════════════════════════════════════════════
+      function mkRecipe(title, secs, extra) {
+        return {
+          version: 2,
+          kind: "backingTrack",
+          title,
+          key: "C",
+          tempo: 96,
+          style: "pop",
+          drums: "simple",
+          bass: "simple",
+          voicing: "voice-lead",
+          sections: secs.map(([id, name, progression]) => ({
+            id,
+            name,
+            progression,
+            barsPerChord: 1,
+            style: null,
+            drums: null,
+            bass: null,
+            tempo: null,
+          })),
+          arrangement: secs.map((s) => s[0]),
+          ...extra,
+        };
+      }
+      const DP = DEFAULT_PRACTICE;
+      // Built-in starting points (v1's presets). Tapping one loads a copy into Scratch.
+      const STARTERS = [
+        {
+          doc: { ...structuredClone(S.recipe), title: "Pop: I–V–vi–IV" },
+          practice: structuredClone(DP),
+        },
+        {
+          doc: mkRecipe(
+            "12-bar blues",
+            [["A", "Blues", "I7 I7 I7 I7 IV7 IV7 I7 I7 V7 IV7 I7 V7"]],
+            { style: "rock", tempo: 100 },
+          ),
+          practice: structuredClone(DP),
+        },
+        {
+          doc: mkRecipe("ii–V–I, all keys", [["A", "ii–V–I", "ii7 V7 Imaj7 Imaj7"]], {
+            style: "ballad",
+            tempo: 80,
+          }),
+          practice: { ...structuredClone(DP), cycle: "4ths" },
+        },
+        {
+          doc: mkRecipe("One-chord drill", [["A", "Drill", "I"]], { tempo: 90 }),
+          practice: { ...structuredClone(DP), cycle: "4ths" },
+        },
+      ];
+      // Scratch: the one reusable backing track for quick jams. Starts filled, never empty.
+      S.library = [
+        {
+          id: "scratch",
+          scratch: true,
+          doc: { ...structuredClone(STARTERS[0].doc), title: "Scratch" },
+          practice: structuredClone(DP),
+          updated: Date.now(),
+          modified: false,
+        },
+      ];
+      S.currentId = "scratch";
+      S.libConfirm = null; // { type: 'delete' | 'starter', id|i }
+      const curItem = () => S.library.find((i) => i.id === S.currentId);
+
+      function openItem(id) {
+        const item = S.library.find((i) => i.id === id);
+        if (!item) return;
+        if (S.play.on || S.cue) stopPlay();
+        S.currentId = id;
+        S.mode = item.doc.kind === "song" ? "composer" : "backing";
+        if (S.mode === "backing") S.recipe = item.doc;
+        else S.song = item.doc;
+        S.practice = item.practice;
+        S.view = { screen: "play", sectionId: null, selChord: null, confirm: null };
+        S.sharePractice = null;
+        S.sheet = null;
+        S.libConfirm = null;
+        render();
+      }
+      function addItem(doc, practice, extra) {
+        const item = {
+          id: uid("item-"),
+          doc,
+          practice: practice || structuredClone(DP),
+          updated: Date.now(),
+          ...extra,
+        };
+        S.library.push(item);
+        return item;
+      }
+
+      // Which document is "live" for the engine in the current mode
+      const liveSong = () => (S.mode === "backing" ? generateSong(S.recipe) : S.song);
+      const findSec = (song, id) => song && song.sections.find((s) => s.id === id);
+      const curSec = () => findSec(S.song, S.view.sectionId);
+
+      // Every model edit goes through here so the "queued for next bar" behaviour is honest.
+      function edited() {
+        const item = curItem();
+        if (item) {
+          item.updated = Date.now(); // autosave: the item's doc was edited in place
+          item.modified = true;
+        }
+        if (S.play.on) {
+          S.play.dirty = true;
+          const nextBar = Math.floor(S.play.tick / barTicks()) + 2;
+          toast(`Edit queued → plays from bar ${nextBar}`);
+        }
+        render();
+      }
+
+      // ═══════════════════════════════════════════════════════════════════
+      // Rendering
+      // ═══════════════════════════════════════════════════════════════════
+      const esc = (s) =>
+        String(s).replace(
+          /[&<>"]/g,
+          (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
+        );
+      const opts = (list, sel) =>
+        list
+          .map(
+            ([v, l]) =>
+              `<option value="${esc(v)}" ${v === sel ? "selected" : ""}>${esc(l)}</option>`,
+          )
+          .join("");
+      const styleOpts = (sel, withDefault) =>
+        opts(
+          [
+            ...(withDefault ? [["", "Song default"]] : []),
+            ...Object.entries(STYLES).map(([k, v]) => [k, v.label]),
+          ],
+          sel || "",
+        );
+
+      function render() {
+        const tl = document.querySelector(".timeline");
+        const scroll = tl ? tl.scrollLeft : 0;
+        document.getElementById("app").innerHTML =
+          renderTop() + (S.mode === "backing" ? renderBacking() : renderComposer());
+        document.getElementById("bar").innerHTML = renderBar();
+        document.getElementById("sheet").innerHTML = S.sheet ? renderSheet() : "";
+        const tl2 = document.querySelector(".timeline");
+        if (tl2) tl2.scrollLeft = scroll;
+        if (document.querySelectorAll) centerScrubbers();
+        updatePlayUI();
+        if (S.sheet && S.sheet.type === "share") computeShare();
+      }
+
+      function renderTop() {
+        return `
+        <div class="topbar">
+          <button class="btn" data-act="sheet" data-type="library">📚 Library</button>
+          <span class="spacer"></span>
+          <button class="btn ghost small" data-act="sheet" data-type="data">{ } Data</button>
+          <button class="btn ghost small" data-act="theme">◐</button>
+        </div>`;
+      }
+
+      // ── Backing track mode ──────────────────────────────────────────────
+      // ── Play view: the home screen in both modes ────────────────────────
+      // Orientation first (key, section, chips, scrubbers); only the controls you
+      // touch while practising. Everything else is behind ✎ Edit.
+      function renderPlayView() {
+        const backing = S.mode === "backing";
+        const r = S.recipe;
+        const g = S.song;
+        const pills = backing
+          ? `
+          <label class="pill">⭐ <select data-field="recipe.style">${styleOpts(r.style)}</select></label>
+          <label class="pill">🥁 <select data-field="recipe.drums">${opts(VARIANTS, r.drums)}</select></label>
+          <label class="pill">🎸 <select data-field="recipe.bass">${opts(VARIANTS, r.bass)}</select></label>
+          <label class="pill">🎵 <select data-field="recipe.voicing">${opts(VOICINGS, r.voicing)}</select></label>
+          <label class="pill">♩ <input type="number" min="40" max="240" value="${r.tempo}" data-field="recipe.tempo" /> bpm</label>`
+          : `
+          <label class="pill">♩ <input type="number" min="40" max="240" value="${g.defaults.tempo}" data-field="song.tempo" /> bpm</label>
+          <label class="pill">Swing <select data-field="song.swing">${opts(
+            [
+              ["0", "Straight"],
+              ["0.33", "Light"],
+              ["0.66", "Heavy"],
+            ],
+            String(g.defaults.swing),
+          )}</select></label>
+          <label class="pill">🎵 <select data-field="song.voicing">${opts(VOICINGS, g.defaults.voicing)}</select></label>`;
+        return `
+        <div class="view-head">
+          <button class="view-title link" data-act="sheet" data-type="library" title="Open library">${esc(
+            (backing ? r : g).title,
+          )} ▾</button>
+          <span class="badge">${backing ? "backing track" : "song"}</span>
+          ${curItem() && curItem().scratch ? `<span class="muted" style="font-size:.78rem">· name it in the library to keep it</span>` : ""}
+          <span class="spacer"></span>
+          <button class="btn" data-act="edit">✎ Edit</button>
+        </div>
+        ${renderPlayer(true)}
+        <div class="readout">
+          <span class="readout-lbl" title="Every section uses these unless it overrides them">Song</span>
+          ${pills}
+          <span class="pill" title="Time signature (4/4 only for now)">4/4</span>
+        </div>
+        ${renderPractice()}
+        <div class="mock-note" style="margin-top:1.2rem">Play view (home). ✎ Edit opens ${
+          backing ? "sections, overrides and arrangement" : "the song overview and section editor"
+        }; playback keeps going while you edit.</div>`;
+      }
+
+      function renderBacking() {
+        return S.view.screen === "edit" ? renderBackingEdit() : renderPlayView();
+      }
+
+      function renderBackingEdit() {
+        const r = S.recipe;
+        const set = (v) => (v ? "set" : "");
+        return `
+        <div class="view-head">
+          ${
+            curItem() && curItem().scratch
+              ? `<input class="text" id="scratch-name-edit" placeholder="Scratch — name it to keep it…" style="font-size:1.05rem;flex:1;min-width:8rem" />
+                 <button class="btn" data-act="keepScratch" data-input="scratch-name-edit">Keep</button>`
+              : `<input class="text" style="font-size:1.15rem;font-weight:700;flex:1;min-width:8rem" value="${esc(r.title)}" data-field="doc.title" title="Name" />`
+          }
+          <button class="btn primary" data-act="done">Done</button>
+        </div>
+        <div class="mock-note">Backing-track mode edits a small <b>recipe</b>; the generator turns it into a full <b>Song</b> for the engine. Edits made while playing land on the next bar.</div>
+
+        <h2>Sections</h2>
+        ${r.sections
+          .map(
+            (s, i) => `
+          <div class="card">
+            <div class="sec-row">
+              <input class="text" value="${esc(s.name)}" data-field="rsec.name" data-i="${i}" />
+              <input class="text prog" value="${esc(s.progression)}" data-field="rsec.progression" data-i="${i}" placeholder="I IV V vi" />
+              <select class="text" data-field="rsec.barsPerChord" data-i="${i}" title="Bars per chord">${opts(
+                [1, 2, 4].map((n) => [String(n), n + " bar" + (n > 1 ? "s" : "")]),
+                String(s.barsPerChord),
+              )}</select>
+              <span></span>
+              <button class="x" data-act="rsecDel" data-i="${i}" title="Remove">✕</button>
+            </div>
+            <div class="row" style="margin-top:.45rem">
+              <span class="muted">Overrides</span>
+              <select class="text ${set(s.style)}" data-field="rsec.style" data-i="${i}" title="Style">${styleOpts(s.style, true)}</select>
+              <select class="text ${set(s.drums)}" data-field="rsec.drums" data-i="${i}" title="Drums">${opts(
+                [["", "🥁 Song default"], ...VARIANTS.map(([k, l]) => [k, "🥁 " + l])],
+                s.drums || "",
+              )}</select>
+              <select class="text ${set(s.bass)}" data-field="rsec.bass" data-i="${i}" title="Bass">${opts(
+                [["", "🎸 Song default"], ...VARIANTS.map(([k, l]) => [k, "🎸 " + l])],
+                s.bass || "",
+              )}</select>
+              <input class="text ${set(s.tempo)}" type="number" style="width:5.5rem" placeholder="♩ ${r.tempo}" value="${s.tempo || ""}" data-field="rsec.tempo" data-i="${i}" title="Tempo (blank = song tempo)" />
+              ${parseProgression(s.progression).length === 0 ? `<span class="badge" style="color:var(--playing)">no valid chords</span>` : ""}
+            </div>
+          </div>`,
+          )
+          .join("")}
+        <button class="btn" data-act="rsecAdd">+ Section</button>
+
+        <h2>Arrangement</h2>
+        ${renderArrangement(r.arrangement, (id) => r.sections.find((s) => s.id === id), "r")}
+
+        <h2>Next step</h2>
+        <div class="card">
+          <div class="row">
+            <div style="flex:1;min-width:12rem">
+              <b>Open in composer</b>
+              <div class="muted">Creates a new song in your library from this backing track, so you can edit every chord, hit and note. One-way: this backing track stays as it is and nothing syncs back.</div>
+            </div>
+            <button class="btn primary" data-act="openComposer">Open in composer →</button>
+          </div>
+        </div>`;
+      }
+
+      function renderArrangement(arr, lookup, prefix) {
+        const nowIdx = S.play.on ? S.play.arrIdx : S.cue ? clampPos(liveSong(), S.cue).arrIdx : -1;
+        const secs = prefix === "r" ? S.recipe.sections : S.song.sections;
+        return `
+        <div class="arr">
+          ${arr
+            .map((id, i) => {
+              const s = lookup(id);
+              const queued =
+                S.play.on && S.play.jump && S.play.jump.section && S.play.jump.arrIdx === i;
+              return `<span class="chip-sm ${i === nowIdx ? "now" : ""} ${queued ? "queued" : ""}"><button class="chip-name" data-act="arrJump" data-i="${i}" title="${S.play.on ? "Jump here at the next bar" : "Start here"}">${esc(s ? s.name : "?")}</button><button class="x" data-act="arrDel" data-p="${prefix}" data-i="${i}">✕</button></span>`;
+            })
+            .join("")}
+          <span class="muted" style="margin:0 .2rem">add:</span>
+          ${secs.map((s) => `<button class="btn small" data-act="arrAdd" data-p="${prefix}" data-id="${s.id}">+ ${esc(s.name)}</button>`).join("")}
+        </div>
+        <div class="muted" style="margin-top:.35rem;font-size:.78rem">${
+          S.play.on
+            ? "Tap a section (or a chord above) to jump there at the next bar."
+            : "Tap a section (or a chord above) to choose where ▶ starts."
+        }</div>`;
+      }
+
+      // Practice strip: identical in both modes. Not part of the song.
+      // ── Player header: identical on every screen ─────────────────────────
+      // Shows the section that's playing (or would play), its chords resolved in
+      // the current key with numerals, and the settings that section actually uses.
+      // Playback position is always a bar: { arrIdx, lap, bar }. Pause, resume and
+      // every jump land on a bar start. A saved position that edits made invalid is
+      // clamped (missing section → first, bar past the end → bar 1), never discarded.
+      function clampPos(doc, pos) {
+        const loopId = loopingSectionId();
+        const arrIdx = pos.arrIdx < doc.arrangement.length ? pos.arrIdx : 0;
+        const sec = findSec(doc, loopId || doc.arrangement[arrIdx]);
+        const bar = sec && pos.bar < sec.bars ? pos.bar : 0;
+        return { arrIdx, lap: pos.lap || 0, bar };
+      }
+
+      function playerContext() {
+        if (S.play.on && S.play.snapshot) {
+          return {
+            doc: S.play.snapshot,
+            sec: playSection(),
+            key: playKey(),
+            lap: S.play.lap,
+            cueBar: null,
+          };
+        }
+        const doc = liveSong();
+        const pos = S.cue ? clampPos(doc, S.cue) : null;
+        const sec = loopingSectionId()
+          ? curSec()
+          : findSec(doc, doc.arrangement[pos ? pos.arrIdx : 0]) || doc.sections[0];
+        const keys = lapKeys(doc, S.practice);
+        return {
+          doc,
+          sec,
+          key: pos ? keys[pos.lap % keys.length] : doc.key,
+          lap: pos ? pos.lap : 0,
+          cueBar: pos ? pos.bar : null,
+        };
+      }
+
+      // What the shown section really plays; overridden values are marked.
+      function effectiveSettings(doc, sec) {
+        if (S.mode === "backing") {
+          const r = S.recipe;
+          const rs = r.sections.find((s) => s.id === sec.id) || {};
+          return [
+            ["⭐", STYLES[rs.style || r.style].label, !!rs.style],
+            ["🥁", rs.drums || r.drums, !!rs.drums],
+            ["🎸", rs.bass || r.bass, !!rs.bass],
+            ["♩", rs.tempo || r.tempo, !!rs.tempo],
+          ];
+        }
+        const o = sec.overrides || {};
+        const d = doc.defaults;
+        const swing = { 0: "straight", 0.33: "light swing", 0.66: "heavy swing" };
+        const voicing = (v) => VOICINGS.find((x) => x[0] === v)[1];
+        return [
+          ["♩", o.tempo || d.tempo, o.tempo != null],
+          ["", swing[o.swing ?? d.swing], o.swing != null],
+          ["🎵", voicing(o.voicing || d.voicing), !!o.voicing],
+          [
+            "🎹",
+            patchLabel((o.instruments && o.instruments.chords) || doc.instruments.chords).replace(
+              / \(.*\)$/,
+              "",
+            ),
+            !!(o.instruments && o.instruments.chords),
+          ],
+        ];
+      }
+
+      // stage = the play view's larger, calmer presentation of the same header.
+      function renderPlayer(stage) {
+        const { doc, sec, key, lap, cueBar } = playerContext();
+        if (!sec) return "";
+        const ci = S.play.on ? currentChordIndex() : -1;
+        // Dashed outline: where a queued jump will land (playing) or where ▶ will start (paused/stopped).
+        // Jumps land on a bar, so outline every chord that sounds in the target bar,
+        // not just the one tapped (a mid-bar chord means you'll hear what precedes it first).
+        let targetBar = null;
+        if (S.play.on && S.play.jump && S.play.jump.chord != null) targetBar = S.play.jump.bar;
+        if (!S.play.on && cueBar != null) targetBar = cueBar;
+        const cued = new Set();
+        if (targetBar != null) {
+          const a = targetBar * barTicks();
+          const b = a + barTicks();
+          sec.chords.forEach((c, i) => c.start < b && c.start + c.duration > a && cued.add(i));
+        }
+        const keys = lapKeys(doc, S.practice);
+        const cycling = (S.play.on || S.cue) && keys.length > 1;
+        const keyField = S.mode === "backing" ? "recipe.key" : "song.key";
+        const keyEl = cycling
+          ? `<span class="key-pill">${esc(key)}</span><span class="key-label">major</span><span class="key-lap">${(lap % keys.length) + 1}/${keys.length}</span>`
+          : `<select class="key-pill" data-field="${keyField}">${opts(
+              KEYS.map((k) => [k, k]),
+              doc.key,
+            )}</select><span class="key-label">major</span>`;
+        const chips = sec.chords
+          .map((c, i) => {
+            const bars = Math.max(1, Math.round(c.duration / barTicks()));
+            const dots =
+              bars > 1
+                ? `<div class="bar-progress">${Array.from({ length: bars }, () => `<span class="bar-dot"></span>`).join("")}</div>`
+                : "";
+            return `<div class="chip ${i === ci ? "active" : ""} ${cued.has(i) ? "cued" : ""}" data-ci="${i}" data-act="chipJump"
+              title="${S.play.on ? "Jump to this chord's bar at the next bar" : "Start here"}"><span class="numeral">${esc(numeral(c))}</span><span class="name">${esc(chordName(c, key))}</span>${dots}</div>`;
+          })
+          .join("");
+        const eff = effectiveSettings(doc, sec)
+          .map(
+            ([icon, v, ovr]) =>
+              `<span class="eff ${ovr ? "ovr" : ""}" title="${ovr ? "Section override" : "Song default"}">${icon} ${esc(v)}</span>`,
+          )
+          .join("");
+        return `
+        <div class="player ${stage ? "stage" : ""}" id="player" data-sec="${esc(sec.id)}">
+          <div class="key-row">${keyEl}</div>
+          <div class="player-sec"><b>${esc(sec.name)}</b>${eff}</div>
+          <div class="chips">${chips || `<span class="muted" style="align-self:center">No chords in this section</span>`}</div>
+          <div class="beats">${Array.from({ length: 4 }, () => `<span class="beat-dot"></span>`).join("")}</div>
+        </div>`;
+      }
+
+      function renderPractice() {
+        const p = S.practice;
+        return `
+        <div class="practice">
+          <span class="practice-lbl">Practice</span>
+          <label class="pill">🔁 Cycle <select data-field="practice.cycle">${opts(CYCLES, p.cycle)}</select></label>
+          ${
+            p.cycle === "custom"
+              ? `<input class="text" style="width:9rem" placeholder="A E D G" value="${esc(p.customKeys.join(" "))}" data-field="practice.customKeys" title="Keys to cycle through" />`
+              : ""
+          }
+          <button class="pill" data-act="advance">⏭️ ${p.advance === "manual" ? "Manual" : "Auto"}</button>
+        </div>`;
+      }
+
+      // Keys each cycle lap plays in. 4ths/5ths start from the song key; custom keys are absolute.
+      function lapKeys(song, practice) {
+        const k = KEYS.indexOf(song.key);
+        const step = { "4ths": 5, "5ths": 7 }[practice.cycle];
+        if (step) return Array.from({ length: 12 }, (_, i) => KEYS[(k + step * i) % 12]);
+        if (practice.cycle === "custom" && practice.customKeys.length) return practice.customKeys;
+        return [song.key];
+      }
+      function playKey() {
+        const keys = lapKeys(S.play.snapshot, S.practice);
+        return keys[S.play.lap % keys.length];
+      }
+
+      // ── Composer mode ───────────────────────────────────────────────────
+      function renderComposer() {
+        if (!S.song) {
+          return `
+          <div class="mock-note">Composer edits a full <b>Song</b> directly. Get one by opening a backing track in the composer, or start blank.</div>
+          <div class="card" style="text-align:center;padding:2rem 1rem">
+            <p style="margin-top:0">No song yet.</p>
+            <div class="row" style="justify-content:center">
+              <button class="btn primary" data-act="mode" data-mode="backing">Start from a backing track</button>
+              <button class="btn" data-act="blankSong">Blank song</button>
+            </div>
+          </div>`;
+        }
+        if (S.view.screen === "section" && curSec()) return renderSectionEditor();
+        if (S.view.screen === "song") return renderSongScreen();
+        return renderPlayView();
+      }
+
+      function overrideBadges(sec) {
+        const o = sec.overrides || {};
+        return [
+          o.tempo ? `♩ ${o.tempo}` : null,
+          o.swing != null ? `swing ${Math.round(o.swing * 100)}%` : null,
+          o.voicing ? `voicing: ${VOICINGS.find((v) => v[0] === o.voicing)[1]}` : null,
+          o.instruments && o.instruments.chords
+            ? `chords: ${patchLabel(o.instruments.chords)}`
+            : null,
+        ]
+          .filter(Boolean)
+          .map((b) => `<span class="badge">${esc(b)}</span>`)
+          .join("");
+      }
+
+      function renderSongScreen() {
+        const g = S.song;
+        const nowId =
+          S.play.on && S.play.snapshot ? S.play.snapshot.arrangement[S.play.arrIdx] : null;
+        return `
+        <div class="view-head">
+          <input class="text" style="font-size:1.15rem;font-weight:700;flex:1;min-width:8rem" value="${esc(g.title)}" data-field="song.title" />
+          <button class="btn primary" data-act="done">Done</button>
+        </div>
+        <div class="mock-note">Song overview. Song-level settings are defaults; a section can override them. Tap a section to edit it.</div>
+        <div class="row">
+          <button class="pill" data-act="sheet" data-type="instruments">🎛 Instruments</button>
+        </div>
+
+        <h2>Sections</h2>
+        ${g.sections
+          .map(
+            (s) => `
+          <div class="card click ${s.id === nowId ? "now" : ""}" data-act="openSection" data-id="${s.id}">
+            <div class="row"><b style="flex:1">${esc(s.name)}</b><span class="muted">${s.bars} bar${s.bars > 1 ? "s" : ""} ›</span></div>
+            <div class="muted" style="margin-top:.2rem">${s.chords.map((c) => esc(numeral(c))).join(" · ") || "no chords"}</div>
+            <div style="margin-top:.35rem">${overrideBadges(s)}${s.loops.length ? `<span class="badge">🎙 ${s.loops.length} take${s.loops.length > 1 ? "s" : ""}</span>` : ""}</div>
+          </div>`,
+          )
+          .join("")}
+        <button class="btn" data-act="addSection">+ Blank section</button>
+
+        <h2>Arrangement</h2>
+        ${renderArrangement(g.arrangement, (id) => findSec(g, id), "s")}`;
+      }
+
+      const mutedCls = (ch) => (S.practice.mutes[ch] ? "muted-lane" : "");
+
+      function renderSectionEditor() {
+        const g = S.song;
+        const sec = curSec();
+        const cols = sec.bars * 16;
+        const ruler = Array.from({ length: cols }, (_, i) => {
+          const cls = i % 16 === 0 ? "bar" : i % 4 === 0 ? "beat" : "";
+          return `<span class="cell ${cls}">${i % 16 === 0 ? i / 16 + 1 : ""}</span>`;
+        }).join("");
+
+        // Chord lane: 8th-note cells underneath, chord blocks on top.
+        const chordCells = Array.from({ length: sec.bars * 8 }, (_, e) => {
+          const cls = e % 8 === 0 ? "bar" : e % 2 === 0 ? "beat" : "";
+          return `<button class="cell wide ${cls}" data-act="chordCell" data-e="${e}" title="8th ${e + 1}"></button>`;
+        }).join("");
+        const blocks = sec.chords
+          .map(
+            (c, i) =>
+              `<button class="chord-block ${S.view.selChord === i ? "sel" : ""}" data-act="selChord" data-i="${i}"
+                 style="left:${(c.start / SIX) * CELL + 1}px;width:${(c.duration / SIX) * CELL - 2}px">
+                 ${esc(numeral(c))}<small>${esc(chordName(c, g.key))}</small></button>`,
+          )
+          .join("");
+
+        const drumLane = (d) =>
+          Array.from({ length: cols }, (_, i) => {
+            const cls = i % 16 === 0 ? "bar" : i % 4 === 0 ? "beat" : "";
+            const on = sec.drums[d].includes(i * SIX);
+            return `<button class="cell ${cls} ${on ? "on" : ""}" data-act="drum" data-d="${d}" data-s="${i}"></button>`;
+          }).join("");
+
+        const bassLane = Array.from({ length: cols }, (_, i) => {
+          const cls = i % 16 === 0 ? "bar" : i % 4 === 0 ? "beat" : "";
+          const n = sec.bass.find((b) => b.start === i * SIX);
+          return `<button class="cell ${cls} ${n ? "bass-on" : ""}" data-act="bass" data-s="${i}">${n ? toneLabel(n.pitch.tone) : ""}</button>`;
+        }).join("");
+
+        const width = 60 + cols * CELL;
+        const sel = S.view.selChord != null ? sec.chords[S.view.selChord] : null;
+        const seed = {
+          progression: "",
+          barsPerChord: 1,
+          style: "pop",
+          drums: "simple",
+          bass: "simple",
+          ...(sec.seed || {}),
+        };
+
+        return `
+        <div class="row" style="margin-top:.6rem">
+          <button class="btn ghost small" data-act="backToSong">← Song</button>
+          <b style="font-size:1.15rem;flex:1">${esc(sec.name)}</b>
+          <button class="btn small" data-act="sheet" data-type="sectionSettings">⚙ Settings</button>
+          <button class="btn small primary" data-act="done">Done</button>
+        </div>
+        ${renderPlayer()}
+
+        <div class="row" style="margin-top:.6rem">
+          <span class="muted">Bars</span>
+          <button class="btn small" data-act="bars" data-d="-1">−</button><b>${sec.bars}</b><button class="btn small" data-act="bars" data-d="1">+</button>
+          <span class="spacer"></span>
+          <span class="muted">Tap the chord lane to add a chord on any 8th · tap drum/bass cells to toggle</span>
+        </div>
+
+        <div class="timeline">
+          <div class="tl-inner" style="width:${width}px">
+            <div class="lane ruler"><span class="lbl">bar</span><div class="cells">${ruler}</div></div>
+            <div class="lane tall ${mutedCls("chords")}"><span class="lbl">Chords</span><div class="cells">${chordCells}${blocks}</div></div>
+            ${DRUMS.map((d) => `<div class="lane ${mutedCls("drums")}"><span class="lbl">${d}</span><div class="cells">${drumLane(d)}</div></div>`).join("")}
+            <div class="lane ${mutedCls("bass")}"><span class="lbl">Bass</span><div class="cells">${bassLane}</div></div>
+            <div class="playhead" id="playhead" hidden></div>
+          </div>
+        </div>
+        <div class="muted" style="margin-top:.3rem;font-size:.78rem">Bass cells cycle · → R → 3 → 5 → 7 (chord tones). The model also allows scale degrees and chromatic offsets.</div>
+
+        ${sel ? renderInspector(sec, sel) : ""}
+
+        <h2>Loops</h2>
+        <div class="card">
+          ${
+            sec.loops.length
+              ? sec.loops
+                  .map(
+                    (t, i) => `
+            <div class="row" style="margin-bottom:.35rem">
+              <span style="flex:1">🎙 ${esc(t.name)} <span class="muted">· ${t.bars} bars · ${esc(t.audio)}</span></span>
+              <button class="btn small" data-act="takeMute" data-i="${i}">${t.muted ? "Unmute" : "Mute"}</button>
+              <button class="x" data-act="takeDel" data-i="${i}">✕</button>
+            </div>`,
+                  )
+                  .join("")
+              : `<div class="muted" style="margin-bottom:.4rem">No takes. Each recording adds a take; stacking takes = overdub.</div>`
+          }
+          <button class="btn" data-act="takeAdd">● Record take</button>
+        </div>
+
+        <h2>Regenerate</h2>
+        <div class="card">
+          <div class="muted" style="margin-bottom:.45rem">Re-run the generator on this section only. Overwrites its chords, drums and bass (loops are kept).</div>
+          <div class="row">
+            <input class="text" style="flex:1;min-width:8rem" id="regen-prog" value="${esc(seed.progression)}" placeholder="I IV V vi" />
+            <select class="text" id="regen-bpc">${opts(
+              [1, 2, 4].map((n) => [String(n), n + " bar/chord"]),
+              String(seed.barsPerChord),
+            )}</select>
+            <select class="text" id="regen-style">${styleOpts(seed.style)}</select>
+            <select class="text" id="regen-drums">${opts(
+              VARIANTS.map(([k, l]) => [k, "🥁 " + l]),
+              seed.drums,
+            )}</select>
+            <select class="text" id="regen-bass">${opts(
+              VARIANTS.map(([k, l]) => [k, "🎸 " + l]),
+              seed.bass,
+            )}</select>
+            <button class="btn" data-act="regen">Regenerate</button>
+          </div>
+          ${
+            S.view.confirm === "regen"
+              ? `<div class="confirm">Replace this section's chords, drums and bass? Hand edits here will be lost.
+                 <div class="row" style="margin-top:.5rem"><button class="btn primary" data-act="regenYes">Regenerate</button><button class="btn" data-act="confirmNo">Cancel</button></div></div>`
+              : ""
+          }
+          <div class="row" style="margin-top:.5rem">
+            <span class="muted">Or keep chords, just swap the groove (uses the style + 🥁/🎸 picked above):</span>
+            <button class="btn small" data-act="restyle">Swap groove</button>
+          </div>
+        </div>`;
+      }
+
+      function renderInspector(sec, c) {
+        const quick = ["I", "ii", "iii", "IV", "V", "vi", "vii°", "♭VII", "V7", "Imaj7", "ii7"];
+        const cur = numeral(c);
+        return `
+        <div class="card inspector">
+          <div class="row">
+            <b style="font-size:1.1rem">${esc(cur)} <span class="muted">${esc(chordName(c, S.song.key))}</span></b>
+            <span class="spacer"></span>
+            <span class="muted" style="font-size:.78rem">start ${c.start} · dur ${c.duration} ticks (${c.duration / EIGHTH} × ⅛)</span>
+          </div>
+          <div class="numerals">
+            ${quick
+              .map(
+                (q) =>
+                  `<button class="btn small ${q === cur ? "on" : ""}" data-act="setNumeral" data-n="${esc(q)}">${esc(q)}</button>`,
+              )
+              .join("")}
+            <input class="text" style="width:6rem" placeholder="type: bIII7" data-field="chordNumeral" />
+          </div>
+          <div class="row">
+            <span class="muted">Length</span>
+            <button class="btn small" data-act="dur" data-d="-1">− ⅛</button>
+            <button class="btn small" data-act="dur" data-d="1">+ ⅛</button>
+            <button class="btn small" data-act="nudge" data-d="-1">← move</button>
+            <button class="btn small" data-act="nudge" data-d="1">move →</button>
+            <button class="btn small" data-act="split" ${c.duration < 2 * EIGHTH ? "disabled" : ""}>Split</button>
+            <span class="spacer"></span>
+            <button class="btn small danger" data-act="chordDel">Delete</button>
+          </div>
+        </div>`;
+      }
+
+      // ── Bottom action bar ───────────────────────────────────────────────
+      function renderBar() {
+        const canPlay = S.mode === "backing" || !!S.song;
+        let posText = canPlay ? "Stopped" : "";
+        if (canPlay && !S.play.on && S.cue) {
+          const { sec } = playerContext();
+          const pos = clampPos(liveSong(), S.cue);
+          posText = `${S.cue.paused ? "Paused" : "Starts at"} · <b>${esc(sec ? sec.name : "")}</b> · bar ${pos.bar + 1}`;
+        }
+        return `
+        <div class="action-bar"><div class="col">
+          ${canPlay ? renderScrubbers() : ""}
+          <div class="inner">
+          <button class="btn" data-act="sheet" data-type="mix" ${canPlay ? "" : "disabled"}>🎚 Mix</button>
+          <button class="btn" data-act="stop" title="Stop: back to the beginning" ${S.play.on || S.cue ? "" : "disabled"}>■</button>
+          <button class="play ${S.play.on ? "on" : ""}" data-act="play" title="${S.play.on ? "Pause" : "Play"}" ${canPlay ? "" : "disabled"}>${S.play.on ? "❚❚" : "▶"}</button>
+          <div class="pos" id="pos">${posText}</div>
+          <button class="btn" data-act="sheet" data-type="share" ${canPlay ? "" : "disabled"}>Share</button>
+          </div>
+        </div></div>`;
+      }
+
+      // v1-style scrubbers above the transport. SONG: arrangement positions (hidden when
+      // looping one section). KEY: the cycle's keys, shown whenever a cycle is on.
+      function renderScrubbers() {
+        const doc = S.play.on && S.play.snapshot ? S.play.snapshot : liveSong();
+        if (!doc) return "";
+        const pos = S.play.on
+          ? { arrIdx: S.play.arrIdx, lap: S.play.lap }
+          : S.cue
+            ? clampPos(doc, S.cue)
+            : null;
+        let out = "";
+        if (!loopingSectionId() && doc.arrangement.length > 1) {
+          const segs = doc.arrangement
+            .map((id, i) => {
+              const s = findSec(doc, id);
+              const cur = pos && pos.arrIdx === i;
+              const q = S.play.on && S.play.jump && S.play.jump.section && S.play.jump.arrIdx === i;
+              return `<button class="seg-btn ${cur ? "current" : ""} ${q ? "queued" : ""}" data-act="arrJump" data-i="${i}">${esc(s ? s.name : "?")}</button>`;
+            })
+            .join("");
+          out += `<div class="scrub"><span class="scrub-lbl">Song</span><div class="scrub-track">${segs}</div></div>`;
+        }
+        if (S.practice.cycle !== "none") {
+          const keys = lapKeys(doc, S.practice);
+          const curIdx = pos ? pos.lap % keys.length : -1;
+          const segs = keys
+            .map((k, i) => {
+              const q = S.play.on && S.play.keyJump === i;
+              return `<button class="seg-btn ${i === curIdx ? "current" : ""} ${q ? "queued" : ""}" data-act="keyJump" data-i="${i}"
+                title="${S.play.on ? (i === curIdx ? "Repeat this key next lap" : "Play this key next lap") : "Start in this key"}">${esc(k)}</button>`;
+            })
+            .join("");
+          out += `<div class="scrub"><span class="scrub-lbl">Key</span><div class="scrub-track">${segs}</div></div>`;
+        }
+        return out;
+      }
+
+      // Keep the current scrubber segment centred.
+      function centerScrubbers() {
+        document.querySelectorAll(".scrub-track").forEach((track) => {
+          const cur = track.querySelector(".current");
+          if (!cur) return;
+          const t = track.getBoundingClientRect();
+          const c = cur.getBoundingClientRect();
+          track.scrollLeft += c.left + c.width / 2 - (t.left + t.width / 2);
+        });
+      }
+
+      // ── Sheets ──────────────────────────────────────────────────────────
+      function renderSheet() {
+        const t = S.sheet.type;
+        let body = "";
+        if (t === "data") body = renderDataSheet();
+        if (t === "instruments") body = renderInstrumentsSheet();
+        if (t === "sectionSettings") body = renderSectionSettings();
+        if (t === "share") body = renderShareSheet();
+        if (t === "mix") body = renderMixSheet();
+        if (t === "library") body = renderLibrarySheet();
+        return `<div class="backdrop" data-act="closeSheet"></div><div class="sheet"><div class="inner">${body}</div></div>`;
+      }
+
+      // Minimal schema check for imported/agent-written docs (the real app validates against the schema).
+      function validateDoc(doc) {
+        if (!doc || typeof doc !== "object") return "no document";
+        if (doc.version !== 2) return "version must be 2";
+        if (doc.kind !== "backingTrack" && doc.kind !== "song")
+          return "kind must be backingTrack or song";
+        if (!Array.isArray(doc.sections) || !doc.sections.length)
+          return "needs at least one section";
+        if (!Array.isArray(doc.arrangement) || !doc.arrangement.length)
+          return "needs an arrangement";
+        const ids = new Set(doc.sections.map((s) => s.id));
+        const bad = doc.arrangement.filter((id) => !ids.has(id));
+        if (bad.length) return "arrangement references unknown section " + bad[0];
+        if (!KEYS.includes(doc.key)) return "unknown key " + doc.key;
+        return null;
+      }
+
+      function ago(t) {
+        const s = Math.round((Date.now() - t) / 1000);
+        return s < 60
+          ? "just now"
+          : s < 3600
+            ? Math.round(s / 60) + " min ago"
+            : Math.round(s / 3600) + " h ago";
+      }
+
+      function renderLibrarySheet() {
+        const sc = S.library.find((i) => i.scratch);
+        const items = S.library.filter((i) => !i.scratch).sort((a, b) => b.updated - a.updated);
+        const conf = S.libConfirm;
+        const row = (i) => `
+          <div class="opt ${i.id === S.currentId ? "on" : ""}">
+            <span style="flex:1;cursor:pointer" data-act="openItem" data-id="${i.id}">
+              <b>${esc(i.doc.title)}</b>
+              <span class="badge">${i.doc.kind === "song" ? "song" : "backing track"}</span>${i.shared ? `<span class="badge">shared with you</span>` : ""}${
+                i.source === "import" ? `<span class="badge">imported</span>` : ""
+              }
+              <br><span class="muted" style="font-size:.78rem">${ago(i.updated)}${i.practice.cycle !== "none" ? " · cycle " + i.practice.cycle : ""}</span>
+            </span>
+            <button class="btn small" data-act="dupItem" data-id="${i.id}">Duplicate</button>
+            <button class="btn small danger" data-act="delItem" data-id="${i.id}">Delete</button>
+          </div>
+          ${
+            conf && conf.type === "delete" && conf.id === i.id
+              ? `<div class="confirm">Delete “${esc(i.doc.title)}”${i.doc.kind === "song" ? " and its loop recordings" : ""}? This can't be undone.
+                 <div class="row" style="margin-top:.5rem"><button class="btn primary" data-act="delYes">Delete</button><button class="btn" data-act="libCancel">Cancel</button></div></div>`
+              : ""
+          }`;
+        return `
+        <div class="row"><h3 style="flex:1">Library</h3><button class="btn small" data-act="closeSheet">Close</button></div>
+        <div class="muted" style="margin-top:.3rem">Saved on this device. Everything autosaves; practice settings are saved per item. Rename an item from its ✎ Edit screen.</div>
+
+        <h2>Scratch</h2>
+        <div class="opt ${sc.id === S.currentId ? "on" : ""}">
+          <span style="flex:1;cursor:pointer" data-act="openItem" data-id="scratch"><b>Scratch</b> <span class="badge">backing track</span><br>
+            <span class="muted" style="font-size:.78rem">Your quick jam. ${sc.modified ? "Edited " + ago(sc.updated) : "Unchanged starter"}</span></span>
+        </div>
+        <div class="row" style="margin:.35rem 0 0">
+          <input class="text" id="scratch-name" placeholder="Name it to keep it…" style="flex:1;min-width:10rem" />
+          <button class="btn" data-act="keepScratch">Keep</button>
+        </div>
+
+        <h2>Yours</h2>
+        ${items.length ? items.map(row).join("") : `<div class="muted">Nothing saved yet. Name your Scratch, open something in the composer, or import.</div>`}
+        <div class="row" style="margin-top:.4rem"><button class="btn" data-act="blankSong">+ New song</button></div>
+
+        <h2>Starters</h2>
+        <div class="muted" style="margin-bottom:.4rem">Loads a copy into Scratch.</div>
+        ${STARTERS.map(
+          (st, i) => `
+          <div class="opt" data-act="loadStarter" data-i="${i}">
+            <span style="flex:1"><b>${esc(st.doc.title)}</b><br><span class="muted" style="font-size:.78rem">${esc(
+              st.doc.sections.map((s) => s.progression).join(" | "),
+            )}${st.practice.cycle !== "none" ? " · cycle " + st.practice.cycle : ""}</span></span>
+          </div>
+          ${
+            conf && conf.type === "starter" && conf.i === String(i)
+              ? `<div class="confirm">Scratch has changes. Replace them with “${esc(st.doc.title)}”? (Name Scratch above to keep it.)
+                 <div class="row" style="margin-top:.5rem"><button class="btn primary" data-act="loadStarter" data-i="${i}">Replace</button><button class="btn" data-act="libCancel">Cancel</button></div></div>`
+              : ""
+          }`,
+        ).join("")}
+
+        <h2>Import</h2>
+        <div class="muted" style="margin-bottom:.4rem">Paste JSON from an agent (a doc, or a share envelope). It's validated, then added as a new item.</div>
+        <textarea id="import-json" class="text" rows="3" style="width:100%;font-family:ui-monospace,monospace;font-size:.75rem" placeholder='{ "version": 2, "doc": { "kind": "backingTrack", … } }'></textarea>
+        <div class="row" style="margin-top:.4rem">
+          <button class="btn" data-act="importJson">Import</button>
+          <span class="spacer"></span>
+          <button class="btn ghost small" data-act="simulateLink">Simulate opening a shared link</button>
+        </div>`;
+      }
+
+      // One mixer UI, two homes for the data: mutes → practice (shareable intent),
+      // levels → this device only. Both are channel gains, so they apply instantly.
+      function renderMixSheet() {
+        const row = (ch, label, mutable) => `
+          <div class="mix-row">
+            <label>${mutable ? `<input type="checkbox" ${S.practice.mutes[ch] ? "" : "checked"} data-field="mix.on" data-ch="${ch}" />` : ""}${label}</label>
+            <input type="range" min="0" max="100" value="${S.mix[ch]}" data-field="mix.vol" data-ch="${ch}" />
+            <span class="val">${S.mix[ch]}</span>
+          </div>`;
+        return `
+        <div class="row"><h3 style="flex:1">Mix</h3><button class="btn small" data-act="closeSheet">Close</button></div>
+        <div class="muted" style="margin-top:.3rem">Mutes are saved with practice settings (they can be shared). Levels stay on this device. Changes are instant.</div>
+        <div style="margin-top:.4rem">
+          ${row("chords", "Chords", true)}
+          ${row("bass", "Bass", true)}
+          ${row("drums", "Drums", true)}
+          ${S.mode === "composer" ? row("loops", "Loops", false) : ""}
+          ${row("master", "Master", false)}
+        </div>`;
+      }
+
+      function renderDataSheet() {
+        const scopes =
+          S.mode === "backing"
+            ? [
+                ["recipe", "BackingTrack (what you edit)"],
+                ["generated", "Generated Song (what the engine plays)"],
+              ]
+            : [
+                ["song", "Whole song"],
+                ...(curSec() && S.view.screen === "section" ? [["section", "This section"]] : []),
+              ];
+        if (S.mode === "backing" || S.song)
+          scopes.push(
+            ["practice", "Practice"],
+            ["mix", "Mix (this device)"],
+            ["library", "Library (this device)"],
+            ["envelope", "Share envelope"],
+          );
+        let scope = S.dataScope;
+        if (!scopes.find((s) => s[0] === scope)) scope = scopes[S.mode === "backing" ? 1 : 0][0];
+        const obj = {
+          recipe: () => S.recipe,
+          generated: () => generateSong(S.recipe),
+          section: () => curSec(),
+          song: () => S.song,
+          practice: () => S.practice,
+          mix: () => S.mix,
+          // Local storage shape: items hold the full doc + practice; shown here without the docs for readability.
+          library: () =>
+            S.library.map((i) => ({
+              id: i.id,
+              title: i.doc.title,
+              kind: i.doc.kind,
+              scratch: !!i.scratch,
+              shared: !!i.shared,
+              updated: new Date(i.updated).toISOString(),
+              practice: i.practice,
+              doc: "{…}",
+            })),
+          envelope: () => shareEnvelope(),
+        }[scope]();
+        return `
+        <div class="row"><h3 style="flex:1">Data</h3><button class="btn small" data-act="closeSheet">Close</button></div>
+        <div class="seg" style="margin-top:.6rem">${scopes
+          .map(
+            ([k, l]) =>
+              `<button class="${k === scope ? "on" : ""}" data-act="dataScope" data-s="${k}">${esc(l)}</button>`,
+          )
+          .join("")}</div>
+        <div class="muted" style="margin-top:.5rem">Draft model. Positions are ticks (${PPQ} per quarter: 8th = ${EIGHTH}, 16th = ${SIX}). Drums are hit start ticks per instrument.</div>
+        <pre class="json">${esc(JSON.stringify(obj, null, 2))}</pre>`;
+      }
+
+      function patchLabel(id) {
+        const p = BUILTIN_PATCHES[id] || (S.song && S.song.patches[id]);
+        return p ? p.label : id;
+      }
+
+      function renderInstrumentsSheet() {
+        const g = S.song;
+        const role = S.sheet.role || "chords";
+        const choices = Object.entries(BUILTIN_PATCHES).filter(([, p]) => p.role === role);
+        Object.entries(g.patches).forEach(([id, p]) => p.role === role && choices.push([id, p]));
+        const selId = g.instruments[role];
+        const selPatch = BUILTIN_PATCHES[selId] || g.patches[selId];
+        return `
+        <div class="row"><h3 style="flex:1">Instruments</h3><button class="btn small" data-act="closeSheet">Close</button></div>
+        <div class="seg" style="margin-top:.6rem">${["chords", "bass", "drums"]
+          .map(
+            (r) =>
+              `<button class="${r === role ? "on" : ""}" data-act="instRole" data-r="${r}">${r}</button>`,
+          )
+          .join("")}</div>
+        <div style="margin-top:.7rem">
+          ${choices
+            .map(
+              ([id, p]) => `
+            <div class="opt ${id === selId ? "on" : ""}" data-act="pickPatch" data-id="${esc(id)}">
+              <span style="flex:1">${esc(p.label)}</span><span class="badge">${p.kind}</span>${g.patches[id] ? `<span class="badge">in song</span>` : ""}
+            </div>`,
+            )
+            .join("")}
+        </div>
+        ${
+          role === "chords" && !g.patches[AGENT_PATCH.id]
+            ? `<div class="card" style="margin-top:.6rem">
+                <div class="muted">Describe a sound → an agent skill returns a patch (JSON) → it's embedded in the song.</div>
+                <div class="row" style="margin-top:.45rem">
+                  <input class="text" style="flex:1" value="a glassy 80s bell" disabled />
+                  <button class="btn" data-act="agentPatch">Simulate agent</button>
+                </div></div>`
+            : ""
+        }
+        <div class="muted" style="margin-top:.7rem">Selected patch (built-ins are referenced by id; custom patches live in <code>song.patches</code>):</div>
+        <pre class="json">${esc(JSON.stringify(selPatch, null, 2))}</pre>`;
+      }
+
+      function renderSectionSettings() {
+        const g = S.song;
+        const sec = curSec();
+        const o = sec.overrides;
+        const chordChoices = [["", "Song default (" + patchLabel(g.instruments.chords) + ")"]];
+        Object.entries(BUILTIN_PATCHES).forEach(
+          ([id, p]) => p.role === "chords" && chordChoices.push([id, p.label]),
+        );
+        Object.entries(g.patches).forEach(
+          ([id, p]) => p.role === "chords" && chordChoices.push([id, p.label]),
+        );
+        return `
+        <div class="row"><h3 style="flex:1">Section settings</h3><button class="btn small" data-act="closeSheet">Done</button></div>
+        <div class="muted" style="margin-top:.3rem">Blank = inherit from the song. Only what you set is stored in <code>overrides</code>.</div>
+        <div class="form">
+          <span>Name</span><input class="text" value="${esc(sec.name)}" data-field="sec.name" />
+          <span>Tempo</span><input class="text" type="number" placeholder="${g.defaults.tempo} (song)" value="${o.tempo || ""}" data-field="sec.tempo" />
+          <span>Meter</span>
+          <select class="text" data-field="sec.meter">
+            <option selected>4/4 (song)</option><option disabled>3/4 — later</option><option disabled>6/8 — later</option>
+          </select>
+          <span>Swing</span>
+          <select class="text" data-field="sec.swing">${opts(
+            [
+              ["", "Song default"],
+              ["0", "Straight"],
+              ["0.33", "Light"],
+              ["0.66", "Heavy"],
+            ],
+            o.swing == null ? "" : String(o.swing),
+          )}</select>
+          <span>Voicing</span>
+          <select class="text" data-field="sec.voicing">${opts(
+            [["", "Song default"], ...VOICINGS],
+            o.voicing || "",
+          )}</select>
+          <span>Chord sound</span>
+          <select class="text" data-field="sec.chordsPatch">${opts(chordChoices, (o.instruments && o.instruments.chords) || "")}</select>
+        </div>
+        <div class="row" style="margin-top:1rem">
+          <button class="btn danger" data-act="secDel">Delete section</button>
+        </div>`;
+      }
+
+      const practiceDiffers = () => JSON.stringify(S.practice) !== JSON.stringify(DEFAULT_PRACTICE);
+      const includePractice = () => (S.sharePractice == null ? practiceDiffers() : S.sharePractice);
+
+      function practiceSummary() {
+        const p = S.practice;
+        const parts = [];
+        if (p.cycle === "custom") parts.push("cycle " + (p.customKeys.join(" ") || "(no keys)"));
+        else if (p.cycle !== "none") parts.push("cycle in " + p.cycle);
+        if (p.advance === "manual") parts.push("manual advance");
+        const muted = CHANNELS.filter(([ch]) => p.mutes[ch]).map(([ch]) => ch);
+        if (muted.length) parts.push(muted.join(" + ") + " muted");
+        return parts.join(", ") || "defaults";
+      }
+
+      // What a link carries: a versioned envelope. New blocks (e.g. mix) can be added later.
+      function shareEnvelope() {
+        const env = { version: 2, doc: S.mode === "backing" ? S.recipe : S.song };
+        if (includePractice()) env.practice = S.practice;
+        return env;
+      }
+
+      function renderShareSheet() {
+        const inc = includePractice();
+        return `
+        <div class="row"><h3 style="flex:1">Share</h3><button class="btn small" data-act="closeSheet">Close</button></div>
+        <div class="card" style="margin-top:.7rem">
+          <b>Link</b>
+          <div class="muted">Opens as a new item in the other person's library. <code>{ version, doc, practice? }</code> → JSON → deflate → base64url in one <code>?s=</code> param.</div>
+          <div class="opt ${inc ? "on" : ""}" style="margin-top:.55rem" data-act="sharePractice">
+            <span>${inc ? "☑" : "☐"}</span>
+            <span style="flex:1">Include practice settings<br><span class="muted">${esc(practiceSummary())}</span></span>
+          </div>
+          <div id="share-stats" class="muted" style="margin-top:.4rem">Measuring…</div>
+          <div class="muted" style="margin-top:.3rem">Never included: loop audio, cached samples, volume levels, playback position, app preferences.</div>
+        </div>
+        <div class="card">
+          <b>Recording</b> <span class="badge">later</span>
+          <div class="muted">Record the master output to an audio file and share it (Web Share API on mobile). Includes loops.</div>
+        </div>
+        <div class="card">
+          <b>Project file</b> <span class="badge">later</span>
+          <div class="muted">One file with the song JSON plus loop audio; the other person imports it and can edit.</div>
+        </div>`;
+      }
+
+      async function computeShare() {
+        const el = document.getElementById("share-stats");
+        if (!el) return;
+        const json = JSON.stringify(shareEnvelope());
+        let enc = "";
+        try {
+          const stream = new Blob([json])
+            .stream()
+            .pipeThrough(new CompressionStream("deflate-raw"));
+          const buf = new Uint8Array(await new Response(stream).arrayBuffer());
+          let bin = "";
+          buf.forEach((b) => (bin += String.fromCharCode(b)));
+          enc = btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+        } catch {
+          el.textContent = "CompressionStream unavailable in this browser.";
+          return;
+        }
+        const url = "https://dougflip.github.io/progression/v2/?s=" + enc;
+        el.innerHTML = `JSON ${json.length.toLocaleString()} chars → URL <b>${url.length.toLocaleString()}</b> chars ${
+          url.length > 2000
+            ? '<span class="badge" style="color:var(--queued)">long for some chat apps</span>'
+            : ""
+        }`;
+      }
+
+      // ═══════════════════════════════════════════════════════════════════
+      // Fake playback: reads a snapshot, refreshed only at bar boundaries
+      // ═══════════════════════════════════════════════════════════════════
+      function loopingSectionId() {
+        return S.mode === "composer" && S.view.screen === "section" ? S.view.sectionId : null;
+      }
+      function playSection() {
+        const snap = S.play.snapshot;
+        if (!snap) return null;
+        const loopId = loopingSectionId();
+        return findSec(snap, loopId || snap.arrangement[S.play.arrIdx]);
+      }
+      function currentChordIndex() {
+        const sec = playSection();
+        if (!sec) return -1;
+        return sec.chords.findIndex(
+          (c) => S.play.tick >= c.start && S.play.tick < c.start + c.duration,
+        );
+      }
+      function tempoOf(snap, sec) {
+        return (sec && sec.overrides && sec.overrides.tempo) || snap.defaults.tempo;
+      }
+
+      // ▶: resume from the cued/paused bar if there is one, else from the top.
+      function startPlay() {
+        const song = liveSong();
+        if (!song || !song.sections.length) return;
+        const pos = S.cue ? clampPos(song, S.cue) : { arrIdx: 0, lap: 0, bar: 0 };
+        S.cue = null;
+        S.play = {
+          on: true,
+          tick: pos.bar * barTicks(),
+          arrIdx: pos.arrIdx,
+          lap: pos.lap,
+          jump: null,
+          keyJump: null,
+          snapshot: structuredClone(song),
+          dirty: false,
+          last: performance.now(),
+        };
+        render();
+        requestAnimationFrame(step);
+      }
+      // ❚❚: stop sound, remember the bar we were in.
+      function pausePlay() {
+        S.cue = {
+          arrIdx: S.play.arrIdx,
+          lap: S.play.lap,
+          bar: Math.floor(S.play.tick / barTicks()),
+          paused: true,
+        };
+        S.play.on = false;
+        render();
+      }
+      // ■: stop sound, forget the position.
+      function stopPlay() {
+        S.play.on = false;
+        S.cue = null;
+        render();
+      }
+
+      // Key jumps are the one exception to "next bar": they land at the end of the
+      // current lap, so tapping the current key repeats it and any other key skips to it.
+      function nextLap(p) {
+        if (p.keyJump != null) {
+          p.lap = p.keyJump;
+          p.keyJump = null;
+        } else p.lap++;
+      }
+
+      function step(now) {
+        if (!S.play.on) return;
+        const p = S.play;
+        const dt = (now - p.last) / 1000;
+        p.last = now;
+        let sec = playSection();
+        if (!sec) {
+          // section vanished (deleted/new) — pick up the latest data and restart it
+          p.snapshot = structuredClone(liveSong());
+          p.tick = 0;
+          p.arrIdx = 0;
+          sec = playSection();
+          if (!sec) return stopPlay();
+        }
+        const prevBar = Math.floor(p.tick / barTicks());
+        p.tick += dt * (tempoOf(p.snapshot, sec) / 60) * PPQ;
+        const len = sectionTicks(sec, p.snapshot);
+        let crossed = Math.floor(p.tick / barTicks()) !== prevBar;
+        if (p.tick >= len) {
+          p.tick -= len;
+          crossed = true;
+          if (loopingSectionId()) {
+            nextLap(p); // looping one section: each pass is a cycle lap
+          } else if (S.practice.advance === "auto") {
+            p.arrIdx++;
+            if (p.arrIdx >= p.snapshot.arrangement.length) {
+              p.arrIdx = 0;
+              nextLap(p); // arrangement finished → next key in the cycle
+            }
+          } else if (p.keyJump != null) {
+            // manual: the arrangement never finishes, so a queued key lands at the end of this section
+            nextLap(p);
+          } // manual: repeat this arrangement position until a jump is queued
+        }
+        // Queued jumps (section or chord) land on the next bar, at the start of the target bar.
+        if (crossed && p.jump) {
+          const over = p.tick % barTicks();
+          if (!loopingSectionId())
+            p.arrIdx = Math.min(p.jump.arrIdx, p.snapshot.arrangement.length - 1);
+          p.tick = p.jump.bar * barTicks() + over;
+          p.jump = null;
+          const target = playSection();
+          if (target && p.tick >= sectionTicks(target, p.snapshot)) p.tick = over;
+        }
+        // The engine only looks at new data at bar boundaries.
+        if (crossed && p.dirty) {
+          p.snapshot = structuredClone(liveSong());
+          p.dirty = false;
+          if (p.arrIdx >= p.snapshot.arrangement.length) p.arrIdx = 0;
+          toast("Edit applied");
+          safeRender();
+        } else if (crossed) {
+          safeRender();
+        } else {
+          updatePlayUI();
+        }
+        requestAnimationFrame(step);
+      }
+
+      function updatePlayUI() {
+        const pos = document.getElementById("pos");
+        const ph = document.getElementById("playhead");
+        const player = document.getElementById("player");
+        if (!S.play.on || !S.play.snapshot) {
+          if (ph) ph.hidden = true;
+          return;
+        }
+        const sec = playSection();
+        if (!sec) return;
+        const bar = Math.floor(S.play.tick / barTicks()) + 1;
+        const beat = Math.floor((S.play.tick % barTicks()) / PPQ) + 1;
+        const ci = currentChordIndex();
+        const chord = ci >= 0 ? sec.chords[ci] : null;
+        // Player header: active chip, bar-progress within it, beat dots (cheap DOM toggles, no re-render).
+        if (player && player.dataset.sec === sec.id) {
+          player.querySelectorAll(".chip").forEach((el, i) => {
+            el.classList.toggle("active", i === ci);
+            if (i === ci) {
+              const barInChord = Math.floor((S.play.tick - chord.start) / barTicks());
+              el.querySelectorAll(".bar-dot").forEach((d, b) =>
+                d.classList.toggle("active", b === barInChord),
+              );
+            }
+          });
+          player
+            .querySelectorAll(".beat-dot")
+            .forEach((d, b) => d.classList.toggle("active", b === beat - 1));
+        }
+        const keys = lapKeys(S.play.snapshot, S.practice);
+        const key = playKey();
+        const muted = CHANNELS.filter(([ch]) => S.practice.mutes[ch]).map(([ch]) => ch);
+        if (pos)
+          pos.innerHTML = `<b>${esc(sec.name)}</b> · bar ${bar} · beat ${beat}${
+            chord ? ` · <b>${esc(chordName(chord, key))}</b>` : ""
+          }<br><span class="muted">${keys.length > 1 ? `key ${key} (${(S.play.lap % keys.length) + 1}/${keys.length}) · ` : ""}♩ ${tempoOf(S.play.snapshot, sec)}${
+            S.practice.advance === "manual" && !loopingSectionId() ? " · manual" : ""
+          }${muted.length ? " · muted: " + muted.join(", ") : ""}${
+            S.play.dirty
+              ? ' · <span style="color:var(--queued)">edit queued for next bar</span>'
+              : ""
+          }${loopingSectionId() ? " · looping section" : ""}</span>`;
+        if (ph) {
+          const showing = sec.id === S.view.sectionId;
+          ph.hidden = !showing;
+          ph.style.left = 60 + (S.play.tick / SIX) * CELL + "px";
+        }
+      }
+
+      // Playback-driven re-renders must not steal focus from a field being edited.
+      let deferredRender = false;
+      function safeRender() {
+        const a = document.activeElement;
+        if (a && (a.tagName === "INPUT" || a.tagName === "SELECT")) {
+          deferredRender = true;
+          updatePlayUI();
+        } else render();
+      }
+      document.addEventListener("focusout", () => {
+        if (deferredRender) {
+          deferredRender = false;
+          setTimeout(render, 0);
+        }
+      });
+
+      let toastTimer;
+      function toast(msg) {
+        const el = document.getElementById("toast");
+        el.textContent = msg;
+        el.hidden = false;
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => (el.hidden = true), 1600);
+      }
+
+      // ═══════════════════════════════════════════════════════════════════
+      // Actions
+      // ═══════════════════════════════════════════════════════════════════
+      function clampChord(sec, i) {
+        // keep chord within section and not overlapping its neighbours
+        const c = sec.chords[i];
+        const end = sec.bars * barTicks();
+        const sorted = sec.chords.filter((x) => x !== c);
+        const next = sorted.filter((x) => x.start >= c.start).sort((a, b) => a.start - b.start)[0];
+        const limit = next ? next.start : end;
+        c.duration = Math.max(EIGHTH, Math.min(c.duration, limit - c.start));
+      }
+      function sortChords(sec, keep) {
+        sec.chords.sort((a, b) => a.start - b.start);
+        S.view.selChord = keep ? sec.chords.indexOf(keep) : null;
+      }
+
+      function readRegenSeed() {
+        const v = (id) => document.getElementById(id).value;
+        return {
+          progression: v("regen-prog"),
+          barsPerChord: Number(v("regen-bpc")),
+          style: v("regen-style"),
+          drums: v("regen-drums"),
+          bass: v("regen-bass"),
+        };
+      }
+
+      const ACTIONS = {
+        mode(d) {
+          S.mode = d.mode;
+          S.view = { screen: "play", sectionId: null, selChord: null, confirm: null };
+          if (S.play.on || S.cue) stopPlay();
+          render();
+        },
+        // Play view ⇄ edit. Playback is unaffected by navigation.
+        edit() {
+          S.view = {
+            screen: S.mode === "backing" ? "edit" : "song",
+            sectionId: null,
+            selChord: null,
+            confirm: null,
+          };
+          render();
+        },
+        done() {
+          S.view = { screen: "play", sectionId: null, selChord: null, confirm: null };
+          render();
+        },
+        theme() {
+          const h = document.documentElement;
+          h.dataset.theme = h.dataset.theme === "dark" ? "light" : "dark";
+        },
+        sheet(d) {
+          S.sheet = { type: d.type };
+          render();
+        },
+        closeSheet() {
+          S.sheet = null;
+          render();
+        },
+        dataScope(d) {
+          S.dataScope = d.s;
+          render();
+        },
+        confirmNo() {
+          S.view.confirm = null;
+          render();
+        },
+
+        // backing track
+        rsecAdd() {
+          const id = uid("R");
+          S.recipe.sections.push({
+            id,
+            name: "Bridge",
+            progression: "vi IV I V",
+            barsPerChord: 1,
+            style: null,
+            tempo: null,
+          });
+          edited();
+        },
+        rsecDel(d) {
+          const s = S.recipe.sections[d.i];
+          if (S.recipe.sections.length < 2) return;
+          S.recipe.sections.splice(d.i, 1);
+          S.recipe.arrangement = S.recipe.arrangement.filter((id) => id !== s.id);
+          edited();
+        },
+        arrAdd(d) {
+          (d.p === "r" ? S.recipe : S.song).arrangement.push(d.id);
+          edited();
+        },
+        arrDel(d) {
+          const arr = (d.p === "r" ? S.recipe : S.song).arrangement;
+          if (arr.length < 2) return;
+          arr.splice(Number(d.i), 1);
+          edited();
+        },
+        // Creates a NEW song item; the recipe item is untouched.
+        openComposer() {
+          const song = generateSong(S.recipe);
+          song.title = S.recipe.title === "Scratch" ? "Untitled song" : S.recipe.title + " (song)";
+          const item = addItem(song, structuredClone(S.practice));
+          openItem(item.id);
+          S.view.screen = "song";
+          render();
+          toast("New song added to your library");
+        },
+        blankSong() {
+          const song = generateSong(mkRecipe("Untitled song", [["A", "Section 1", "I"]], {}));
+          song.sections[0].bars = 4;
+          song.sections[0].chords[0].duration = 4 * barTicks();
+          const item = addItem(song);
+          openItem(item.id);
+          S.view.screen = "song";
+          render();
+        },
+
+        // library
+        openItem(d) {
+          openItem(d.id);
+        },
+        keepScratch(d = {}) {
+          const name = (document.getElementById(d.input || "scratch-name").value || "").trim();
+          if (!name) return toast("Give it a name first");
+          const sc = S.library.find((i) => i.scratch);
+          const item = addItem(
+            { ...structuredClone(sc.doc), title: name },
+            structuredClone(sc.practice),
+          );
+          // Scratch resets to a fresh starter so it's ready for the next jam.
+          sc.doc = { ...structuredClone(STARTERS[0].doc), title: "Scratch" };
+          sc.practice = structuredClone(DP);
+          sc.modified = false;
+          openItem(item.id);
+          toast(`Saved “${name}”`);
+        },
+        loadStarter(d) {
+          const sc = S.library.find((i) => i.scratch);
+          if (
+            sc.modified &&
+            !(S.libConfirm && S.libConfirm.type === "starter" && S.libConfirm.i === d.i)
+          ) {
+            S.libConfirm = { type: "starter", i: d.i };
+            return render();
+          }
+          const st = STARTERS[Number(d.i)];
+          sc.doc = { ...structuredClone(st.doc), title: "Scratch" };
+          sc.practice = structuredClone(st.practice);
+          sc.modified = false;
+          sc.updated = Date.now();
+          openItem("scratch");
+          toast(`Scratch: ${st.doc.title}`);
+        },
+        dupItem(d) {
+          const src = S.library.find((i) => i.id === d.id);
+          const title = src.scratch ? "Scratch copy" : src.doc.title + " copy";
+          addItem({ ...structuredClone(src.doc), title }, structuredClone(src.practice));
+          render();
+        },
+        delItem(d) {
+          S.libConfirm = { type: "delete", id: d.id };
+          render();
+        },
+        delYes() {
+          const id = S.libConfirm.id;
+          S.library = S.library.filter((i) => i.id !== id); // a song's loop takes go with it
+          S.libConfirm = null;
+          if (S.currentId === id) openItem("scratch");
+          else render();
+        },
+        libCancel() {
+          S.libConfirm = null;
+          render();
+        },
+        // Pasted agent JSON and opened share links take the same path: validate, add, open.
+        importJson() {
+          const text = document.getElementById("import-json").value;
+          let env;
+          try {
+            env = JSON.parse(text);
+          } catch {
+            return toast("Not valid JSON");
+          }
+          const doc = env && env.doc ? env.doc : env;
+          const err = validateDoc(doc);
+          if (err) return toast("Can't import: " + err);
+          const item = addItem(
+            doc,
+            env.practice ? { ...structuredClone(DP), ...env.practice } : null,
+            { source: "import" },
+          );
+          openItem(item.id);
+          toast("Imported into your library");
+        },
+        simulateLink() {
+          const doc = generateSong(
+            mkRecipe(
+              "Funky idea",
+              [
+                ["A", "Groove", "i7 IV7 i7 IV7"],
+                ["B", "Turn", "bVI7 V7"],
+              ],
+              {
+                style: "funk",
+                tempo: 104,
+                arrangement: ["A", "A", "B"],
+              },
+            ),
+          );
+          doc.title = "Funky idea";
+          const env = { version: 2, doc, practice: { ...structuredClone(DP), cycle: "5ths" } };
+          const item = addItem(env.doc, env.practice, { shared: true });
+          openItem(item.id);
+          toast("Opened a shared link → added to your library");
+        },
+
+        // composer: song screen
+        openSection(d) {
+          S.view = { screen: "section", sectionId: d.id, selChord: null, confirm: null };
+          render();
+        },
+        backToSong() {
+          S.view = { screen: "song", sectionId: null, selChord: null, confirm: null };
+          render();
+        },
+        addSection() {
+          const id = uid("s");
+          const sec = generateSection(id, "Section " + (S.song.sections.length + 1), {
+            progression: "",
+            barsPerChord: 1,
+            style: "pop",
+          });
+          sec.bars = 4;
+          sec.drums = { kick: [], snare: [], hat: [] };
+          S.song.sections.push(sec);
+          S.song.arrangement.push(id);
+          ACTIONS.openSection({ id });
+          edited();
+        },
+        instRole(d) {
+          S.sheet.role = d.r;
+          render();
+        },
+        pickPatch(d) {
+          S.song.instruments[S.sheet.role || "chords"] = d.id;
+          edited();
+        },
+        agentPatch() {
+          S.song.patches[AGENT_PATCH.id] = structuredClone(AGENT_PATCH.patch);
+          S.song.instruments.chords = AGENT_PATCH.id;
+          edited();
+        },
+
+        // composer: section editor
+        bars(d) {
+          const sec = curSec();
+          const n = Math.min(16, Math.max(1, sec.bars + Number(d.d)));
+          sec.bars = n;
+          const end = n * barTicks();
+          sec.chords = sec.chords.filter((c) => c.start < end);
+          sec.chords.forEach((c) => (c.duration = Math.min(c.duration, end - c.start)));
+          for (const k of DRUMS) sec.drums[k] = sec.drums[k].filter((t) => t < end);
+          sec.bass = sec.bass.filter((b) => b.start < end);
+          S.view.selChord = null;
+          edited();
+        },
+        chordCell(d) {
+          const sec = curSec();
+          const t = Number(d.e) * EIGHTH;
+          const hit = sec.chords.findIndex((c) => t >= c.start && t < c.start + c.duration);
+          if (hit >= 0) {
+            S.view.selChord = hit;
+            return render();
+          }
+          const next = sec.chords.filter((c) => c.start > t).sort((a, b) => a.start - b.start)[0];
+          const end = Math.min(next ? next.start : sec.bars * barTicks(), t + barTicks());
+          const c = {
+            start: t,
+            duration: end - t,
+            root: { degree: 1, accidental: 0 },
+            quality: "maj",
+          };
+          sec.chords.push(c);
+          sortChords(sec, c);
+          edited();
+        },
+        selChord(d) {
+          S.view.selChord = S.view.selChord === Number(d.i) ? null : Number(d.i);
+          render();
+        },
+        setNumeral(d) {
+          const sec = curSec();
+          const p = parseNumeral(d.n.replace("♭", "b"));
+          if (!p) return;
+          Object.assign(sec.chords[S.view.selChord], p);
+          edited();
+        },
+        dur(d) {
+          const sec = curSec();
+          const c = sec.chords[S.view.selChord];
+          c.duration += Number(d.d) * EIGHTH;
+          clampChord(sec, S.view.selChord);
+          edited();
+        },
+        nudge(d) {
+          const sec = curSec();
+          const c = sec.chords[S.view.selChord];
+          const t = c.start + Number(d.d) * EIGHTH;
+          const others = sec.chords.filter((x) => x !== c);
+          const end = sec.bars * barTicks();
+          if (t < 0 || t + c.duration > end) return;
+          if (others.some((x) => t < x.start + x.duration && t + c.duration > x.start)) return;
+          c.start = t;
+          sortChords(sec, c);
+          edited();
+        },
+        split() {
+          const sec = curSec();
+          const c = sec.chords[S.view.selChord];
+          const half = Math.round(c.duration / 2 / EIGHTH) * EIGHTH;
+          const b = { ...structuredClone(c), start: c.start + half, duration: c.duration - half };
+          c.duration = half;
+          sec.chords.push(b);
+          sortChords(sec, b);
+          edited();
+        },
+        chordDel() {
+          const sec = curSec();
+          sec.chords.splice(S.view.selChord, 1);
+          S.view.selChord = null;
+          edited();
+        },
+        drum(d) {
+          const lane = curSec().drums[d.d];
+          const t = Number(d.s) * SIX;
+          const i = lane.indexOf(t);
+          if (i >= 0) lane.splice(i, 1);
+          else {
+            lane.push(t);
+            lane.sort((a, b) => a - b);
+          }
+          edited();
+        },
+        bass(d) {
+          const sec = curSec();
+          const t = Number(d.s) * SIX;
+          const i = sec.bass.findIndex((b) => b.start === t);
+          const cycle = [1, 3, 5, 7];
+          if (i < 0) {
+            sec.bass.push({ start: t, duration: SIX, pitch: { kind: "chordTone", tone: 1 } });
+            sec.bass.sort((a, b) => a.start - b.start);
+          } else {
+            const k = cycle.indexOf(sec.bass[i].pitch.tone);
+            if (k === cycle.length - 1) sec.bass.splice(i, 1);
+            else sec.bass[i].pitch.tone = cycle[k + 1];
+          }
+          edited();
+        },
+        takeAdd() {
+          const sec = curSec();
+          const n = sec.loops.length + 1;
+          sec.loops.push({
+            id: uid("take-"),
+            name: "Take " + n,
+            audio: "idb:" + uid("take-"),
+            bars: sec.bars,
+            gain: 1,
+            muted: false,
+          });
+          toast("(simulated) recorded " + sec.bars + " bars");
+          edited();
+        },
+        takeMute(d) {
+          const t = curSec().loops[d.i];
+          t.muted = !t.muted;
+          edited();
+        },
+        takeDel(d) {
+          curSec().loops.splice(d.i, 1);
+          edited();
+        },
+        regen() {
+          S.view.confirm = "regen";
+          render();
+        },
+        regenYes() {
+          const sec = curSec();
+          const fresh = generateSection(sec.id, sec.name, readRegenSeed());
+          Object.assign(sec, {
+            bars: fresh.bars,
+            chords: fresh.chords,
+            drums: fresh.drums,
+            bass: fresh.bass,
+            seed: fresh.seed,
+          });
+          S.view.confirm = null;
+          S.view.selChord = null;
+          edited();
+        },
+        restyle() {
+          const sec = curSec();
+          const { style, drums, bass } = readRegenSeed();
+          sec.seed = { ...(sec.seed || {}), style, drums, bass };
+          applyStyle(sec, sec.seed);
+          edited();
+        },
+
+        // practice
+        advance() {
+          S.practice.advance = S.practice.advance === "auto" ? "manual" : "auto";
+          edited();
+        },
+        // Jumps: while playing they're queued for the next bar; otherwise they move the cue.
+        arrJump(d) {
+          const i = Number(d.i);
+          if (S.play.on) {
+            const same = S.play.jump && S.play.jump.section && S.play.jump.arrIdx === i;
+            S.play.jump = same ? null : { arrIdx: i, bar: 0, section: true };
+          } else {
+            S.cue = {
+              arrIdx: i,
+              lap: S.cue ? S.cue.lap : 0,
+              bar: 0,
+              paused: S.cue ? S.cue.paused : false,
+            };
+          }
+          render();
+        },
+        chipJump(d) {
+          const ci = Number(d.ci);
+          const { sec } = playerContext();
+          const chord = sec && sec.chords[ci];
+          if (!chord) return;
+          const bar = Math.floor(chord.start / barTicks());
+          if (S.play.on) {
+            const same = S.play.jump && S.play.jump.chord === ci;
+            S.play.jump = same ? null : { arrIdx: S.play.arrIdx, bar, chord: ci };
+          } else {
+            const cur = S.cue ? clampPos(liveSong(), S.cue) : { arrIdx: 0, lap: 0 };
+            S.cue = { arrIdx: cur.arrIdx, lap: cur.lap, bar, paused: S.cue ? S.cue.paused : false };
+          }
+          render();
+        },
+        keyJump(d) {
+          const i = Number(d.i);
+          if (S.play.on) {
+            S.play.keyJump = S.play.keyJump === i ? null : i;
+          } else {
+            const cur = S.cue ? clampPos(liveSong(), S.cue) : { arrIdx: 0, bar: 0 };
+            S.cue = {
+              arrIdx: cur.arrIdx,
+              lap: i,
+              bar: cur.bar,
+              paused: S.cue ? S.cue.paused : false,
+            };
+          }
+          render();
+        },
+        stop() {
+          stopPlay();
+        },
+        sharePractice() {
+          S.sharePractice = !includePractice();
+          render();
+        },
+        secDel() {
+          if (S.song.sections.length < 2) return toast("A song needs at least one section");
+          const id = S.view.sectionId;
+          S.song.sections = S.song.sections.filter((s) => s.id !== id);
+          S.song.arrangement = S.song.arrangement.filter((x) => x !== id);
+          if (!S.song.arrangement.length) S.song.arrangement.push(S.song.sections[0].id);
+          S.sheet = null;
+          ACTIONS.backToSong();
+          edited();
+        },
+
+        play() {
+          S.play.on ? pausePlay() : startPlay();
+        },
+      };
+
+      // Field edits (change events)
+      function onField(field, value, d) {
+        const r = S.recipe;
+        const g = S.song;
+        const sec = curSec();
+        const num = (v) => (v === "" ? null : Number(v));
+        switch (field) {
+          case "recipe.key":
+            r.key = value;
+            break;
+          case "recipe.tempo":
+            r.tempo = num(value) || 96;
+            break;
+          case "recipe.style":
+          case "recipe.drums":
+          case "recipe.bass":
+          case "recipe.voicing":
+            r[field.split(".")[1]] = value;
+            break;
+          case "rsec.drums":
+          case "rsec.bass":
+            r.sections[d.i][field.split(".")[1]] = value || null;
+            break;
+          case "song.voicing":
+            g.defaults.voicing = value;
+            break;
+          case "sec.voicing":
+            if (value === "") delete sec.overrides.voicing;
+            else sec.overrides.voicing = value;
+            break;
+          // Mixer: channel gains apply instantly, so these skip the "queued for next bar" path.
+          case "mix.on":
+            S.practice.mutes[d.ch] = !value;
+            return render();
+          case "mix.vol":
+            S.mix[d.ch] = Number(value);
+            return render();
+          case "practice.cycle":
+            S.practice.cycle = value;
+            break;
+          case "practice.customKeys": {
+            const SHARP = { "C#": "Db", "D#": "Eb", "F#": "Gb", "G#": "Ab", "A#": "Bb" };
+            const keys = value
+              .split(/[\s,]+/)
+              .filter(Boolean)
+              .map((k) => k[0].toUpperCase() + k.slice(1).toLowerCase())
+              .map((k) => SHARP[k] || k);
+            const bad = keys.filter((k) => !KEYS.includes(k));
+            if (bad.length) toast("Unknown key: " + bad.join(", "));
+            S.practice.customKeys = keys.filter((k) => KEYS.includes(k));
+            break;
+          }
+          case "rsec.name":
+          case "rsec.progression":
+            r.sections[d.i][field.split(".")[1]] = value;
+            break;
+          case "rsec.barsPerChord":
+            r.sections[d.i].barsPerChord = Number(value);
+            break;
+          case "rsec.style":
+            r.sections[d.i].style = value || null;
+            break;
+          case "rsec.tempo":
+            r.sections[d.i].tempo = num(value);
+            break;
+          // The doc's title is the library item's name (one source of truth).
+          case "song.title":
+          case "doc.title":
+            if (!value.trim()) return (toast("A name can't be empty"), render());
+            (field === "song.title" ? g : r).title = value.trim();
+            break;
+          case "song.key":
+            g.key = value;
+            break;
+          case "song.tempo":
+            g.defaults.tempo = num(value) || 96;
+            break;
+          case "song.swing":
+            g.defaults.swing = Number(value);
+            break;
+          case "sec.name":
+            sec.name = value;
+            break;
+          case "sec.tempo":
+            if (value === "") delete sec.overrides.tempo;
+            else sec.overrides.tempo = Number(value);
+            break;
+          case "sec.swing":
+            if (value === "") delete sec.overrides.swing;
+            else sec.overrides.swing = Number(value);
+            break;
+          case "sec.chordsPatch":
+            if (value === "") delete sec.overrides.instruments;
+            else sec.overrides.instruments = { chords: value };
+            break;
+          case "chordNumeral": {
+            const p = parseNumeral(value);
+            if (!p) return toast("Couldn't read “" + value + "”");
+            Object.assign(sec.chords[S.view.selChord], p);
+            break;
+          }
+          default:
+            return;
+        }
+        edited();
+      }
+
+      document.addEventListener("click", (e) => {
+        const el = e.target.closest("[data-act]");
+        if (!el || el.disabled) return;
+        const fn = ACTIONS[el.dataset.act];
+        if (fn) fn(el.dataset);
+      });
+      document.addEventListener("change", (e) => {
+        const el = e.target.closest("[data-field]");
+        if (el)
+          onField(el.dataset.field, el.type === "checkbox" ? el.checked : el.value, el.dataset);
+      });
+      // Live readout while dragging a mix slider (the change event commits it).
+      document.addEventListener("input", (e) => {
+        const el = e.target;
+        if (el.dataset && el.dataset.field === "mix.vol")
+          el.nextElementSibling.textContent = el.value;
+      });
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && S.sheet) ACTIONS.closeSheet();
+      });
+
+      openItem("scratch"); // first run: Scratch, pre-filled from a starter — never an empty app
+    </script>
+  </body>
+</html>
