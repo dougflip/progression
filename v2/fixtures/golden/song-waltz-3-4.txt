@@ -1,0 +1,50 @@
+# song-waltz-3-4: 8 bars from the top (advance forced to auto)
+
+bar 1 · Waltz [arr 0] bar 1/4 · lap 0 key G · 120 bpm 3/4 (144 ticks)
+  chord  0       +144     #0 I           G         G3 G4 B4 D5        pad-v1
+  bass   0       +48      G2    bass-v1
+  kick     0                                        kit-v1
+  hat      48 96                                    kit-v1
+  voicing → G4 B4 D5
+bar 2 · Waltz [arr 0] bar 2/4 · lap 0 key G · 120 bpm 3/4 (144 ticks)
+  chord  0       +144     #1 vi          Em        E3 G4 B4 E5        pad-v1
+  bass   0       +48      E2    bass-v1
+  kick     0                                        kit-v1
+  hat      48 96                                    kit-v1
+  voicing → G4 B4 E5
+bar 3 · Waltz [arr 0] bar 3/4 · lap 0 key G · 120 bpm 3/4 (144 ticks)
+  chord  0       +144     #2 ii          Am        A3 A4 C5 E5        pad-v1
+  bass   0       +48      A2    bass-v1
+  kick     0                                        kit-v1
+  hat      48 96                                    kit-v1
+  voicing → A4 C5 E5
+bar 4 · Waltz [arr 0] bar 4/4 · lap 0 key G · 120 bpm 3/4 (144 ticks)
+  chord  0       +144     #3 V7          D7        D3 F#4 C5 D5       pad-v1
+  bass   0       +48      D2    bass-v1
+  kick     0                                        kit-v1
+  hat      48 96                                    kit-v1
+  voicing → F#4 C5 D5
+bar 5 · Waltz [arr 0] bar 1/4 · lap 0 key G · 120 bpm 3/4 (144 ticks)
+  chord  0       +144     #0 I           G         G3 G4 B4 D5        pad-v1
+  bass   0       +48      G2    bass-v1
+  kick     0                                        kit-v1
+  hat      48 96                                    kit-v1
+  voicing → G4 B4 D5
+bar 6 · Waltz [arr 0] bar 2/4 · lap 0 key G · 120 bpm 3/4 (144 ticks)
+  chord  0       +144     #1 vi          Em        E3 G4 B4 E5        pad-v1
+  bass   0       +48      E2    bass-v1
+  kick     0                                        kit-v1
+  hat      48 96                                    kit-v1
+  voicing → G4 B4 E5
+bar 7 · Waltz [arr 0] bar 3/4 · lap 0 key G · 120 bpm 3/4 (144 ticks)
+  chord  0       +144     #2 ii          Am        A3 A4 C5 E5        pad-v1
+  bass   0       +48      A2    bass-v1
+  kick     0                                        kit-v1
+  hat      48 96                                    kit-v1
+  voicing → A4 C5 E5
+bar 8 · Waltz [arr 0] bar 4/4 · lap 0 key G · 120 bpm 3/4 (144 ticks)
+  chord  0       +144     #3 V7          D7        D3 F#4 C5 D5       pad-v1
+  bass   0       +48      D2    bass-v1
+  kick     0                                        kit-v1
+  hat      48 96                                    kit-v1
+  voicing → F#4 C5 D5

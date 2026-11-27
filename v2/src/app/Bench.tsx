@@ -1,8 +1,9 @@
 /**
- * Engine bench (Milestone 3): play fixtures through the real engine and player.
- * Fixture picker, "swap to fixture B at the next bar" (stands in for a live edit),
- * a JSON panel (edit → applied at the next bar), section looping, and a
- * performance readout. The player components are the real play view's.
+ * Engine bench: play fixtures through the real engine and player. Fixture picker,
+ * "swap to fixture B at the next bar" (stands in for a live edit), a JSON panel
+ * (edit → applied at the next bar), section looping, practice (cycle, advance),
+ * the Mix sheet, and a performance readout. The player components are the real
+ * play view's.
  */
 
 import { useEffect, useState, useSyncExternalStore } from "react";
@@ -15,9 +16,10 @@ import { makeEngine, type EngineStats, type ScheduledBarInfo } from "../engine/e
 import { loadDrumSamples } from "../engine/patches";
 import { decodeEnvelope, encodeEnvelope, validateEnvelope } from "../model/envelope";
 import type { EngineSource, PlayScope } from "../model/runtime";
-import type { ShareEnvelope } from "../model/schema";
+import { DEFAULT_LEVELS, type Mix, type Practice, type ShareEnvelope } from "../model/schema";
 import { cuedChips, positionText, shownPosition } from "./player/derive";
 import { PlayerHeader, Scrubbers, TransportButtons } from "./player/Player";
+import { MixSheet, PracticeRow } from "./player/Practice";
 import { usePlayback } from "./usePlayback";
 
 const fixtureFiles = import.meta.glob<unknown>("../../fixtures/*.json", {
@@ -35,7 +37,8 @@ const FIXTURES = Object.entries(fixtureFiles)
     return result.ok ? [{ name, env: result.value }] : [];
   });
 
-type Entry = { name: string; env: ShareEnvelope };
+/** `rev` counts edits to the entry (practice changes), so panels showing it refresh. */
+type Entry = { name: string; env: ShareEnvelope; rev?: number };
 
 function toSource(env: ShareEnvelope): EngineSource {
   const song = env.doc.kind === "song" ? env.doc : generateSong(env.doc, STYLES);
@@ -54,6 +57,7 @@ const engine = makeEngine({
   },
 });
 engine.setSource(() => toSource(playingEntry.env));
+engine.setMutes((playingEntry.env.practice ?? DEFAULT_PRACTICE).mutes);
 loadDrumSamples(`${import.meta.env.BASE_URL}samples/`);
 const subscribePerf = (cb: () => void) => {
   perfListeners.add(cb);
@@ -66,6 +70,8 @@ export function Bench() {
   const [current, setCurrent] = useState<Entry>(playingEntry);
   const [swapTarget, setSwapTarget] = useState<string>(FIXTURES[1]?.name ?? FIXTURES[0]!.name);
   const perf = useSyncExternalStore(subscribePerf, () => perfLog);
+  const [levels, setLevels] = useState<Mix["levels"]>(DEFAULT_LEVELS);
+  const [mixOpen, setMixOpen] = useState(false);
   const playback = usePlayback(engine);
   const { transport } = playback;
 
@@ -83,12 +89,24 @@ export function Bench() {
     });
   }, []); // oxlint-disable-line react/exhaustive-deps -- once, on open
 
-  /** Makes `entry` the source. While playing it lands on the next bar. */
+  /** Makes `entry` the source. While playing it lands on the next bar (mutes: instantly). */
   function load(entry: Entry) {
     playingEntry = entry;
     setCurrent(entry);
     engine.setMutes((entry.env.practice ?? DEFAULT_PRACTICE).mutes);
   }
+
+  /** Edits the current entry's practice in place (same name, next revision). */
+  function updatePractice(practice: Practice) {
+    const entry: Entry = {
+      ...current,
+      env: { ...current.env, practice },
+      rev: (current.rev ?? 0) + 1,
+    };
+    setEntries((list) => list.map((x) => (x.name === entry.name ? entry : x)));
+    load(entry);
+  }
+  const practice = current.env.practice ?? DEFAULT_PRACTICE;
 
   // What the player shows: while playing, the doc the audible bar came from.
   const playing = transport.status === "playing";
@@ -164,9 +182,11 @@ export function Bench() {
           onChip={onChip}
         />
 
+        <PracticeRow key={current.name} practice={practice} onChange={updatePractice} />
+
         <PerfReadout perf={perf} stats={engine.stats()} />
         <JsonPanel
-          key={current.name}
+          key={`${current.name}:${current.rev ?? 0}`}
           entry={current}
           onApply={(env) => {
             const entry = { name: `${current.name} (edited)`, env };
@@ -196,9 +216,24 @@ export function Bench() {
             position={positionText(transport, view)}
             onPlay={onPlay}
             onStop={() => engine.stop()}
+            onMix={() => setMixOpen(true)}
           />
         </div>
       </div>
+
+      {mixOpen && (
+        <MixSheet
+          levels={levels}
+          mutes={practice.mutes}
+          showLoops={current.env.doc.kind === "song"}
+          onLevels={(next) => {
+            setLevels(next);
+            engine.setLevels(next);
+          }}
+          onMutes={(mutes) => updatePractice({ ...(structuredClone(practice) as Practice), mutes })}
+          onClose={() => setMixOpen(false)}
+        />
+      )}
     </>
   );
 }

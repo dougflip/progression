@@ -1,0 +1,24 @@
+# practice-custom-cycle-manual: player view at the start of each arrangement entry
+
+Custom cycle drill (backingTrack) · keys G D A
+arrangement: 0:A 1:B
+
+[arr 0] A · lap 0 key G · 2 bars of 192 ticks
+  settings: style=pop drums=simple bass=simple tempo=96 voicing=voice-lead
+  chip #0 I        G         bars 0
+  chip #1 IV       C         bars 1
+
+[arr 1] B · lap 0 key G · 2 bars of 192 ticks
+  settings: style=pop drums=simple bass=simple tempo=96 voicing=voice-lead
+  chip #0 vi       Em        bars 0
+  chip #1 V        D         bars 1
+
+[arr 0] A · lap 1 key D · 2 bars of 192 ticks
+  settings: style=pop drums=simple bass=simple tempo=96 voicing=voice-lead
+  chip #0 I        D         bars 0
+  chip #1 IV       G         bars 1
+
+[arr 1] B · lap 1 key D · 2 bars of 192 ticks
+  settings: style=pop drums=simple bass=simple tempo=96 voicing=voice-lead
+  chip #0 vi       Bm        bars 0
+  chip #1 V        A         bars 1

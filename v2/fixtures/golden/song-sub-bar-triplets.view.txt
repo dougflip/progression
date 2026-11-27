@@ -1,0 +1,19 @@
+# song-sub-bar-triplets: player view at the start of each arrangement entry
+
+Sub-bar changes and triplets (song) · keys C
+arrangement: 0:Main
+
+[arr 0] Main · lap 0 key C · 4 bars of 192 ticks
+  settings: tempo=90 meter=4/4 swing=0 voicing=voice-lead instruments(chords=pad-v1 bass=bass-v1 drums=kit-v1)
+  chip #0 I        C         bars 0
+  chip #1 IV       F         bars 0
+  chip #2 V        G         bars 0
+  chip #3 IV       F         bars 0
+  chip #4 I        C         bars 0
+  chip #5 IV       F         bars 0
+  chip #6 V        G         bars 0
+  chip #7 IV       F         bars 0
+  chip #8 vi       Am        bars 1
+  chip #9 ii7      Dm7       bars 1
+  chip #10 V7       G7        bars 2
+  chip #11 I        C         bars 3

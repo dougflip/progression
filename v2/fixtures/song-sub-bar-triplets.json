@@ -1,0 +1,339 @@
+{
+  "$comment": "Sub-bar timing. Bar 1: a chord on every 8th note (I IV V IV ...). Bar 2: half-bar changes. Bar 3: 8th-note-triplet bass and hats (16 ticks). Bar 4: one chord with a 16th-triplet snare fill (8 ticks) on beat 4.",
+  "version": 2,
+  "doc": {
+    "version": 2,
+    "kind": "song",
+    "title": "Sub-bar changes and triplets",
+    "key": "C",
+    "ppq": 48,
+    "defaults": {
+      "swing": 0,
+      "voicing": "voice-lead",
+      "tempo": 90,
+      "meter": {
+        "beatsPerBar": 4,
+        "beatUnit": 4
+      }
+    },
+    "instruments": {
+      "chords": {
+        "kind": "builtin",
+        "id": "pad-v1"
+      },
+      "bass": {
+        "kind": "builtin",
+        "id": "bass-v1"
+      },
+      "drums": {
+        "kind": "builtin",
+        "id": "kit-v1"
+      }
+    },
+    "patches": {},
+    "sections": [
+      {
+        "id": "main",
+        "name": "Main",
+        "bars": 4,
+        "overrides": {},
+        "drums": {
+          "kick": [0, 96, 192, 288, 384, 480, 576, 672],
+          "hat": [
+            0, 24, 48, 72, 96, 120, 144, 168, 192, 216, 240, 264, 288, 312, 336, 360, 384, 400, 416,
+            432, 448, 464, 480, 496, 512, 528, 544, 560
+          ],
+          "snare": [48, 144, 240, 336, 432, 528, 624, 720, 728, 736, 744, 752, 760]
+        },
+        "parts": {
+          "bass": [
+            {
+              "start": 0,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 24,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 48,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 72,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 96,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 120,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 144,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 168,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 192,
+              "duration": 96,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 288,
+              "duration": 96,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 384,
+              "duration": 16,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 400,
+              "duration": 16,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            },
+            {
+              "start": 416,
+              "duration": 16,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 432,
+              "duration": 16,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 448,
+              "duration": 16,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            },
+            {
+              "start": 464,
+              "duration": 16,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 480,
+              "duration": 16,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 496,
+              "duration": 16,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            },
+            {
+              "start": 512,
+              "duration": 16,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 528,
+              "duration": 16,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 544,
+              "duration": 16,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            },
+            {
+              "start": 560,
+              "duration": 16,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 576,
+              "duration": 192,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            }
+          ]
+        },
+        "loops": [],
+        "chords": [
+          {
+            "start": 0,
+            "duration": 24,
+            "root": {
+              "degree": 1
+            },
+            "quality": "major"
+          },
+          {
+            "start": 24,
+            "duration": 24,
+            "root": {
+              "degree": 4
+            },
+            "quality": "major"
+          },
+          {
+            "start": 48,
+            "duration": 24,
+            "root": {
+              "degree": 5
+            },
+            "quality": "major"
+          },
+          {
+            "start": 72,
+            "duration": 24,
+            "root": {
+              "degree": 4
+            },
+            "quality": "major"
+          },
+          {
+            "start": 96,
+            "duration": 24,
+            "root": {
+              "degree": 1
+            },
+            "quality": "major"
+          },
+          {
+            "start": 120,
+            "duration": 24,
+            "root": {
+              "degree": 4
+            },
+            "quality": "major"
+          },
+          {
+            "start": 144,
+            "duration": 24,
+            "root": {
+              "degree": 5
+            },
+            "quality": "major"
+          },
+          {
+            "start": 168,
+            "duration": 24,
+            "root": {
+              "degree": 4
+            },
+            "quality": "major"
+          },
+          {
+            "start": 192,
+            "duration": 96,
+            "root": {
+              "degree": 6
+            },
+            "quality": "minor"
+          },
+          {
+            "start": 288,
+            "duration": 96,
+            "root": {
+              "degree": 2
+            },
+            "quality": "m7"
+          },
+          {
+            "start": 384,
+            "duration": 192,
+            "root": {
+              "degree": 5
+            },
+            "quality": "dom7"
+          },
+          {
+            "start": 576,
+            "duration": 192,
+            "root": {
+              "degree": 1
+            },
+            "quality": "major"
+          }
+        ]
+      }
+    ],
+    "arrangement": ["main"]
+  }
+}

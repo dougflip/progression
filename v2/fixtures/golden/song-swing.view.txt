@@ -1,0 +1,14 @@
+# song-swing: player view at the start of each arrangement entry
+
+Swing (song) · keys F
+arrangement: 0:Swung 1:Straight
+
+[arr 0] Swung · lap 0 key F · 2 bars of 192 ticks
+  settings: tempo=110 meter=4/4 swing=1 voicing=voice-lead instruments(chords=pad-v1 bass=bass-v1 drums=kit-v1)
+  chip #0 I7       F7        bars 0
+  chip #1 IV7      Bb7       bars 1
+
+[arr 1] Straight · lap 0 key F · 2 bars of 192 ticks
+  settings: tempo=110 meter=4/4 swing=0 • voicing=voice-lead instruments(chords=pad-v1 bass=bass-v1 drums=kit-v1)
+  chip #0 I7       F7        bars 0
+  chip #1 IV7      Bb7       bars 1

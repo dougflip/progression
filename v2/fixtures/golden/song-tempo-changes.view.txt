@@ -1,0 +1,23 @@
+# song-tempo-changes: player view at the start of each arrangement entry
+
+Tempo changes (song) · keys D
+arrangement: 0:Intro 1:Verse 2:Chorus 3:Verse
+
+[arr 0] Intro · lap 0 key D · 2 bars of 192 ticks
+  settings: tempo=70 • meter=4/4 swing=0 voicing=voice-lead instruments(chords=pad-v1 bass=bass-v1 drums=kit-v1)
+  chip #0 I        D         bars 0,1
+
+[arr 1] Verse · lap 0 key D · 2 bars of 192 ticks
+  settings: tempo=100 meter=4/4 swing=0 voicing=voice-lead instruments(chords=pad-v1 bass=bass-v1 drums=kit-v1)
+  chip #0 I        D         bars 0
+  chip #1 IV       G         bars 1
+
+[arr 2] Chorus · lap 0 key D · 2 bars of 192 ticks
+  settings: tempo=140 • meter=4/4 swing=0 voicing=voice-lead instruments(chords=pad-v1 bass=bass-v1 drums=kit-v1)
+  chip #0 V        A         bars 0
+  chip #1 I        D         bars 1
+
+[arr 3] Verse · lap 0 key D · 2 bars of 192 ticks
+  settings: tempo=100 meter=4/4 swing=0 voicing=voice-lead instruments(chords=pad-v1 bass=bass-v1 drums=kit-v1)
+  chip #0 I        D         bars 0
+  chip #1 IV       G         bars 1

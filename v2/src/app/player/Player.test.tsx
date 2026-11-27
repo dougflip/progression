@@ -92,7 +92,14 @@ describe("Scrubbers and transport", () => {
 
   it("shows play or pause, and the position", () => {
     const html = renderToStaticMarkup(
-      <TransportButtons playing canStop position="Verse · bar 2/4" onPlay={noop} onStop={noop} />,
+      <TransportButtons
+        playing
+        canStop
+        position="Verse · bar 2/4"
+        onPlay={noop}
+        onStop={noop}
+        onMix={noop}
+      />,
     );
     expect(html).toContain('class="play on"');
     expect(html).toContain("❚❚");

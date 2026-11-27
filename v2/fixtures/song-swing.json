@@ -1,0 +1,364 @@
+{
+  "$comment": "Swing. The song swings fully (1 = triplet feel: off-beat 8ths at tick 32 of each beat, not 24); the Straight section overrides swing to 0 for comparison. 8th-note hats and an 8th-note bass line show the difference.",
+  "version": 2,
+  "doc": {
+    "version": 2,
+    "kind": "song",
+    "title": "Swing",
+    "key": "F",
+    "ppq": 48,
+    "defaults": {
+      "swing": 1,
+      "voicing": "voice-lead",
+      "tempo": 110,
+      "meter": {
+        "beatsPerBar": 4,
+        "beatUnit": 4
+      }
+    },
+    "instruments": {
+      "chords": {
+        "kind": "builtin",
+        "id": "pad-v1"
+      },
+      "bass": {
+        "kind": "builtin",
+        "id": "bass-v1"
+      },
+      "drums": {
+        "kind": "builtin",
+        "id": "kit-v1"
+      }
+    },
+    "patches": {},
+    "sections": [
+      {
+        "id": "swung",
+        "name": "Swung",
+        "bars": 2,
+        "overrides": {},
+        "drums": {
+          "kick": [0, 96, 192, 288],
+          "snare": [48, 144, 240, 336],
+          "hat": [0, 24, 48, 72, 96, 120, 144, 168, 192, 216, 240, 264, 288, 312, 336, 360]
+        },
+        "parts": {
+          "bass": [
+            {
+              "start": 0,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 24,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            },
+            {
+              "start": 48,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 72,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            },
+            {
+              "start": 96,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 120,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            },
+            {
+              "start": 144,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 168,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            },
+            {
+              "start": 192,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 216,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            },
+            {
+              "start": 240,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 264,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            },
+            {
+              "start": 288,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 312,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            },
+            {
+              "start": 336,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 360,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            }
+          ]
+        },
+        "loops": [],
+        "chords": [
+          {
+            "start": 0,
+            "duration": 192,
+            "root": {
+              "degree": 1
+            },
+            "quality": "dom7"
+          },
+          {
+            "start": 192,
+            "duration": 192,
+            "root": {
+              "degree": 4
+            },
+            "quality": "dom7"
+          }
+        ]
+      },
+      {
+        "id": "straight",
+        "name": "Straight",
+        "bars": 2,
+        "overrides": {
+          "swing": 0
+        },
+        "drums": {
+          "kick": [0, 96, 192, 288],
+          "snare": [48, 144, 240, 336],
+          "hat": [0, 24, 48, 72, 96, 120, 144, 168, 192, 216, 240, 264, 288, 312, 336, 360]
+        },
+        "parts": {
+          "bass": [
+            {
+              "start": 0,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 24,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            },
+            {
+              "start": 48,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 72,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            },
+            {
+              "start": 96,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 120,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            },
+            {
+              "start": 144,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 168,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            },
+            {
+              "start": 192,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 216,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            },
+            {
+              "start": 240,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 264,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            },
+            {
+              "start": 288,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 312,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            },
+            {
+              "start": 336,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 360,
+              "duration": 24,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            }
+          ]
+        },
+        "loops": [],
+        "chords": [
+          {
+            "start": 0,
+            "duration": 192,
+            "root": {
+              "degree": 1
+            },
+            "quality": "dom7"
+          },
+          {
+            "start": 192,
+            "duration": 192,
+            "root": {
+              "degree": 4
+            },
+            "quality": "dom7"
+          }
+        ]
+      }
+    ],
+    "arrangement": ["swung", "straight"]
+  }
+}

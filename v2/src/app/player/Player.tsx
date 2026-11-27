@@ -169,9 +169,13 @@ export function TransportButtons(props: {
   position: string;
   onPlay: () => void;
   onStop: () => void;
+  onMix: () => void;
 }) {
   return (
     <div className="inner">
+      <button type="button" className="btn" onClick={props.onMix}>
+        🎚 Mix
+      </button>
       <button
         type="button"
         className="btn"

@@ -1,0 +1,155 @@
+{
+  "$comment": "6/8 meter: six 8th-note beats per bar (144 ticks), felt in two. Tempo still counts quarter notes (90 bpm = dotted quarter at 60). Kick on 1, snare on 4, hats on every 8th, bass on 1 and 4.",
+  "version": 2,
+  "doc": {
+    "version": 2,
+    "kind": "song",
+    "title": "Six-eight",
+    "key": "A",
+    "ppq": 48,
+    "defaults": {
+      "swing": 0,
+      "voicing": "voice-lead",
+      "tempo": 90,
+      "meter": {
+        "beatsPerBar": 6,
+        "beatUnit": 8
+      }
+    },
+    "instruments": {
+      "chords": {
+        "kind": "builtin",
+        "id": "pad-v1"
+      },
+      "bass": {
+        "kind": "builtin",
+        "id": "bass-v1"
+      },
+      "drums": {
+        "kind": "builtin",
+        "id": "kit-v1"
+      }
+    },
+    "patches": {},
+    "sections": [
+      {
+        "id": "main",
+        "name": "Main",
+        "bars": 4,
+        "overrides": {},
+        "drums": {
+          "kick": [0, 144, 288, 432],
+          "snare": [72, 216, 360, 504],
+          "hat": [
+            0, 24, 48, 72, 96, 120, 144, 168, 192, 216, 240, 264, 288, 312, 336, 360, 384, 408, 432,
+            456, 480, 504, 528, 552
+          ]
+        },
+        "parts": {
+          "bass": [
+            {
+              "start": 0,
+              "duration": 72,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 72,
+              "duration": 72,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 144,
+              "duration": 72,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 216,
+              "duration": 72,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 288,
+              "duration": 72,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 360,
+              "duration": 72,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 432,
+              "duration": 72,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 504,
+              "duration": 72,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            }
+          ]
+        },
+        "loops": [],
+        "chords": [
+          {
+            "start": 0,
+            "duration": 144,
+            "root": {
+              "degree": 6
+            },
+            "quality": "minor"
+          },
+          {
+            "start": 144,
+            "duration": 144,
+            "root": {
+              "degree": 4
+            },
+            "quality": "major"
+          },
+          {
+            "start": 288,
+            "duration": 144,
+            "root": {
+              "degree": 1
+            },
+            "quality": "major"
+          },
+          {
+            "start": 432,
+            "duration": 144,
+            "root": {
+              "degree": 5
+            },
+            "quality": "major"
+          }
+        ]
+      }
+    ],
+    "arrangement": ["main"]
+  }
+}

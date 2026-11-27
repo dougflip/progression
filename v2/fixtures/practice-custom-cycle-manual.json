@@ -1,0 +1,46 @@
+{
+  "$comment": "Practice settings. Custom cycle G → D → A (keys as given; the song key C is ignored), manual advance (each section repeats until a jump or key jump is queued), bass muted. Two sections so section jumps have somewhere to go.",
+  "version": 2,
+  "doc": {
+    "version": 2,
+    "kind": "backingTrack",
+    "title": "Custom cycle drill",
+    "key": "C",
+    "tempo": 96,
+    "style": {
+      "kind": "builtin",
+      "id": "pop"
+    },
+    "drums": "simple",
+    "bass": "simple",
+    "voicing": "voice-lead",
+    "sections": [
+      {
+        "id": "a",
+        "name": "A",
+        "progression": "I IV",
+        "barsPerChord": 1
+      },
+      {
+        "id": "b",
+        "name": "B",
+        "progression": "vi V",
+        "barsPerChord": 1
+      }
+    ],
+    "arrangement": ["a", "b"]
+  },
+  "practice": {
+    "cycle": {
+      "kind": "custom",
+      "keys": ["G", "D", "A"]
+    },
+    "advance": "manual",
+    "mutes": {
+      "chords": false,
+      "bass": true,
+      "drums": false,
+      "loops": false
+    }
+  }
+}
