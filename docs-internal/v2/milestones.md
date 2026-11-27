@@ -7,7 +7,8 @@ Related: `decisions.md`, `data-model.md`, `v2/src/model/schema.ts`.
 ## Status
 
 - **Done (merged):** 1 Foundation (#55), 2 Pure core (#56), 3 Engine + bench (#57).
-- **In progress:** 4 Engine complete, on branch `v2-m4-engine-complete`: fixtures, timing tests, practice row and Mix sheet are built; listen checks pending, then PR.
+- **In review:** 4 Engine complete (branch `v2-m4-engine-complete`): listen checks passed.
+- **Next:** 5 Sound, starting with the patch vocabulary proposal.
 - Update this section when a milestone merges.
 
 ## Ground rules (every milestone)
