@@ -120,7 +120,9 @@ export type EngineEvent =
   | { type: "beat"; position: Position; beat: number } // 0-based within the bar
   | { type: "chord"; position: Position; chordIndex: number }
   /** Playback hit an error (e.g. the source threw) and paused on the audible bar. */
-  | { type: "error"; message: string };
+  | { type: "error"; message: string }
+  /** ▶ is waiting (briefly) for these sample sets; a `transport` event follows when it plays. */
+  | { type: "loadingSounds"; sets: readonly string[] };
 
 /** What the engine plays: the open item's song (or the one generated from it) + its practice. */
 export interface EngineSource {

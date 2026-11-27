@@ -29,6 +29,7 @@
 
 import { z } from "zod";
 import { parseProgression, progressionBars } from "../core/numerals";
+import { SAMPLE_SETS } from "./sampleSets";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -280,8 +281,19 @@ export type Channel = z.infer<typeof Channel>;
 // Sound: instruments are data
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Built-in patch ids (registry defined in Milestone 5; v1's sounds are the defaults). */
-export const BuiltinPatchId = z.enum(["pad-v1", "bass-v1", "kit-v1"]);
+/**
+ * Built-in patch ids: v1's sounds (the defaults). `pad-v1` and `bass-v1` are `Patch`
+ * data (`BUILTIN_PATCHES` in `model/patches.ts`); `kit-v1` is code. Built-ins are
+ * frozen: a new sound gets a new id, so saved songs never change how they sound.
+ */
+export const BuiltinPatchId = z.enum([
+  "pad-v1",
+  "bass-v1",
+  "kit-v1",
+  "piano-v1",
+  "epiano-fm-v1",
+  "bass-electric-v1",
+]);
 export type BuiltinPatchId = z.infer<typeof BuiltinPatchId>;
 
 /** The role each built-in patch plays. A patch can only be used for its own role. */
@@ -289,6 +301,9 @@ export const BUILTIN_PATCH_ROLE: Record<BuiltinPatchId, "chords" | "bass" | "dru
   "pad-v1": "chords",
   "bass-v1": "bass",
   "kit-v1": "drums",
+  "piano-v1": "chords",
+  "epiano-fm-v1": "chords",
+  "bass-electric-v1": "bass",
 };
 
 /** Either a built-in, or a custom patch embedded in `Song.patches`. */
@@ -298,11 +313,109 @@ export const PatchRef = z.discriminatedUnion("kind", [
 ]);
 export type PatchRef = z.infer<typeof PatchRef>;
 
+/** Roles a patch can play. Drums use built-in kits only (custom kits: later, additive). */
+export const PatchRole = z.enum(["chords", "bass"]);
+export type PatchRole = z.infer<typeof PatchRole>;
+
+/** Seconds, 0…max. */
+const seconds = (max: number) => z.number().min(0).max(max);
+
+/** Amplitude envelope. Times in seconds; sustain is a level (0–1). */
+export const Envelope = z.strictObject({
+  attack: seconds(10),
+  decay: seconds(10),
+  sustain: z.number().min(0).max(1),
+  release: seconds(10),
+});
+export type Envelope = z.infer<typeof Envelope>;
+
+/** Basic waveforms. Later (additive): `voices` / `spread` for detuned sounds, FM/AM types. */
+export const Oscillator = z.strictObject({
+  type: z.enum(["sine", "triangle", "sawtooth", "square"]),
+});
+export type Oscillator = z.infer<typeof Oscillator>;
+
 /**
- * Patch shape: defined in Milestone 5 (oscillator/effect vocabulary, sample sets).
- * Until then `Song.patches` must be `{}`, so no value is accepted.
+ * A 12 dB/octave filter. With an `envelope`, the cutoff starts at `frequency` and
+ * sweeps up by `octaves` at the envelope's peak (a classic synth-bass "pluck").
  */
-export const Patch = z.never({ error: "custom patches are not supported yet (Milestone 5)" });
+export const Filter = z.strictObject({
+  type: z.enum(["lowpass", "highpass", "bandpass"]),
+  /** Cutoff in Hz (the envelope's base when it has one). */
+  frequency: z.number().min(20).max(20000),
+  /** Resonance. */
+  q: z.number().min(0.1).max(20),
+  envelope: z.strictObject({ ...Envelope.shape, octaves: z.number().min(0).max(8) }).optional(),
+});
+export type Filter = z.infer<typeof Filter>;
+
+/**
+ * Effects, applied in order after the sound source. Only reverb so far; new kinds
+ * (delay, chorus, …) widen this union.
+ */
+export const Effect = z.discriminatedUnion("kind", [
+  z.strictObject({
+    kind: z.literal("reverb"),
+    /** Seconds for the tail to fade out (to −60 dB). */
+    decay: z.number().min(0.1).max(10),
+    /** Dry/wet mix, 0 = dry, 1 = all reverb. */
+    wet: z.number().min(0).max(1),
+  }),
+]);
+export type Effect = z.infer<typeof Effect>;
+
+/** Output level in dB, relative to the role's channel. */
+const Volume = z.number().min(-40).max(6);
+
+/**
+ * Sample sets are referenced by id only: audio never goes in a song or a link.
+ * The registry (`model/sampleSets.ts`) holds where each set's files are, which
+ * notes were sampled and its credit line. Sets are never removed or changed once
+ * shipped (a new recording gets a new id), so this list only grows.
+ */
+export const SAMPLE_SET_IDS: readonly string[] = Object.keys(SAMPLE_SETS);
+export const SampleSetId = idString()
+  .refine((id) => SAMPLE_SET_IDS.includes(id), {
+    error: (iss) =>
+      SAMPLE_SET_IDS.length === 0
+        ? "no sample sets are available yet"
+        : `unknown sample set "${String(iss.input)}" (available: ${SAMPLE_SET_IDS.join(", ")})`,
+  })
+  .brand<"SampleSetId">();
+export type SampleSetId = z.infer<typeof SampleSetId>;
+
+/**
+ * An instrument as data. `role` says what it may play: `chords` plays polyphonically,
+ * `bass` monophonically (a new note cuts the previous one, like parts). Registers
+ * are fixed per role (see Semantics), not part of the patch.
+ */
+export const Patch = z.discriminatedUnion("kind", [
+  /** A synthesizer: one oscillator, an amplitude envelope, an optional filter. */
+  z.strictObject({
+    kind: z.literal("synth"),
+    role: PatchRole,
+    oscillator: Oscillator,
+    envelope: Envelope,
+    filter: Filter.optional(),
+    effects: z.array(Effect).max(4).optional(),
+    volume: Volume,
+  }),
+  /**
+   * A sampled instrument: notes between the sampled ones are pitched from the
+   * nearest sample. Plays a fallback synth (the role's default patch) until the
+   * set has loaded, or if it fails to.
+   */
+  z.strictObject({
+    kind: z.literal("sampler"),
+    role: PatchRole,
+    set: SampleSetId,
+    /** Fade-in / fade-out in seconds. Omitted = the set's own. */
+    attack: seconds(10).optional(),
+    release: seconds(10).optional(),
+    effects: z.array(Effect).max(4).optional(),
+    volume: Volume,
+  }),
+]);
 export type Patch = z.infer<typeof Patch>;
 
 /** v1's sounds: the instrument for a role a doc doesn't name. */
@@ -582,7 +695,7 @@ export const Song = z
     ppq: z.literal(PPQ), // self-describing for agents; always 48
     defaults: SongDefaults,
     instruments: InstrumentMap,
-    patches: z.record(PatchId, Patch), // custom patches; `{}` until Milestone 5
+    patches: z.record(PatchId, Patch), // custom patches, referenced by `PatchRef` id
     sections: nonEmpty(Section),
     arrangement: nonEmpty(SectionId),
   })
@@ -592,8 +705,21 @@ export const Song = z
     checkArrangement(song.arrangement, ids, ctx);
 
     const checkRef = (ref: PatchRef, role: Role, path: Path) => {
-      if (ref.kind === "custom" && !(ref.id in song.patches)) {
-        ctx.addIssue({ code: "custom", path, message: `no patch with id "${ref.id}" in patches` });
+      if (ref.kind === "custom") {
+        const patch = song.patches[ref.id];
+        if (!patch) {
+          ctx.addIssue({
+            code: "custom",
+            path,
+            message: `no patch with id "${ref.id}" in patches`,
+          });
+        } else if (patch.role !== role) {
+          ctx.addIssue({
+            code: "custom",
+            path,
+            message: `patch "${ref.id}" is a ${patch.role} patch, not ${role}`,
+          });
+        }
       }
       if (ref.kind === "builtin" && BUILTIN_PATCH_ROLE[ref.id] !== role) {
         ctx.addIssue({
@@ -602,7 +728,6 @@ export const Song = z
           message: `"${ref.id}" is a ${BUILTIN_PATCH_ROLE[ref.id]} patch, not ${role}`,
         });
       }
-      // Milestone 5: custom patches' `role` must match too.
     };
     for (const role of Role.options) checkRef(song.instruments[role], role, ["instruments", role]);
 

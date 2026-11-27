@@ -3,7 +3,7 @@
  * Recording instruments log every scheduled note; a click instrument checks that
  * rendered audio starts where the schedule says.
  */
-import { onsets, renderOffline } from "./offline"; // first: installs Web Audio for Tone
+import { onsets, renderOffline, useIdleOfflineContext } from "./offline"; // first: installs Web Audio for Tone
 import * as Tone from "tone";
 import { describe, expect, it, vi } from "vitest";
 import otherside from "../../fixtures/starter-otherside.json";
@@ -12,9 +12,41 @@ import { generateSong } from "../core/generate";
 import { DEFAULT_PRACTICE } from "../core/settings";
 import { STYLES } from "../core/styles";
 import type { EngineEvent, EngineSource } from "../model/runtime";
-import { BackingTrack, DrumInstrument, Song, type Practice, type Role } from "../model/schema";
+import { instrumentKey, tailSeconds, type InstrumentSpec } from "../core/instruments";
+import { BUILTIN_PATCHES } from "../model/patches";
+import { SAMPLE_SETS, type SampleSet } from "../model/sampleSets";
+import {
+  BackingTrack,
+  DrumInstrument,
+  Song,
+  type Patch,
+  type PatchId,
+  type Practice,
+  type Role,
+  type SampleSetId,
+} from "../model/schema";
 import { makeEngine, type EngineOptions, type ScheduledBarInfo } from "./engine";
-import { builtinPatches, type PatchFactory } from "./patches";
+import { makePatchFactory, type PatchFactory } from "./patches";
+import { makeSampleLibrary, type SampleLibrary } from "./samples";
+
+/**
+ * Timing tests don't load samples: every set counts as settled (failed), so ▶
+ * starts at once and samplers play their fallback synth.
+ */
+const settledSamples: SampleLibrary = {
+  sets: SAMPLE_SETS,
+  status: () => ({ kind: "failed", error: "no samples in tests" }),
+  load: () => Promise.resolve(),
+};
+
+/** The real instruments, with no sample sets. */
+const builtinPatches = makePatchFactory({
+  samples: makeSampleLibrary({
+    baseUrl: "",
+    loadBuffer: () => Promise.reject(new Error("no samples in tests")),
+  }),
+  random: Math.random,
+});
 
 const fixtureFiles = import.meta.glob<unknown>("../../fixtures/*.json", {
   import: "default",
@@ -53,7 +85,7 @@ function recorder(log: Note[]): PatchFactory {
 }
 
 /** Drums are a short click; chords and bass are silent. */
-const clicks: PatchFactory = ((role: Role, _ref: unknown, out: Tone.InputNode) => {
+const clicks: PatchFactory = ((role: Role, _spec: unknown, out: Tone.InputNode) => {
   if (role !== "drums") return { play: () => {}, dispose: () => {} };
   const synth = new Tone.Synth({
     envelope: { attack: 0.001, decay: 0.01, sustain: 0, release: 0.005 },
@@ -123,6 +155,7 @@ async function run(
   let audibleTime = NaN; // set while a UI callback runs (here: immediately, with its time)
   const audio = await renderOffline(seconds, () => {
     engine = makeEngine({
+      samples: settledSamples,
       patches: recorder(notes),
       atAudibleTime: (fn, time) => {
         audibleTime = time;
@@ -489,5 +522,139 @@ describe("robustness", () => {
     expect(bars.length).toBeGreaterThanOrEqual(3);
     expect(quiet).toHaveBeenCalled();
     quiet.mockRestore();
+  });
+});
+
+describe("patches", () => {
+  /** Logs each note with its instrument's key, and each dispose with its context time. */
+  function tracking(log: { key: string; time: number }[], disposed: { key: string; at: number }[]) {
+    return ((_role: Role, spec: InstrumentSpec) => {
+      const key = instrumentKey(spec);
+      return {
+        play: (_m: unknown, time: number) => log.push({ key, time }),
+        hit: (_d: unknown, time: number) => log.push({ key, time }),
+        dispose: () => disposed.push({ key, at: Tone.getContext().now() }),
+      };
+    }) as unknown as PatchFactory;
+  }
+
+  /** 8 bars at 120 bpm (2 s each), a bass note on every beat played by custom patch `b`. */
+  function bassSong(patch: Patch): Song {
+    const s = structuredClone(song(120, [{ bars: 8 }])) as Song;
+    s.patches = { [patchId("b")]: patch };
+    s.instruments = { ...s.instruments, bass: { kind: "custom", id: patchId("b") } };
+    s.sections[0]!.parts.bass = Array.from({ length: 32 }, (_, i) => ({
+      start: i * 48,
+      duration: 24,
+      pitch: { kind: "chordTone", tone: 1 },
+    })) as Song["sections"][number]["parts"]["bass"];
+    return s;
+  }
+  const patchId = (s: string) => s as PatchId;
+  const SET_FOR_CANCEL: SampleSet = {
+    id: "k",
+    role: "chords",
+    path: "",
+    notes: { 60: "c4.wav" },
+    attack: 0,
+    release: 0.1,
+    licence: "test",
+    credit: "test",
+    source: "test",
+  };
+  const A = BUILTIN_PATCHES["bass-v1"];
+  const B = { ...A, volume: -12 }; // an edit: one parameter changed
+  const keyOf = (p: Patch) => instrumentKey({ kind: "patch", role: "bass", patch: p });
+
+  it("an edited patch plays from the next bar; the old one is disposed once silent", async () => {
+    const log: { key: string; time: number }[] = [];
+    const disposed: { key: string; at: number }[] = [];
+    let current = Song.parse(bassSong(A));
+    await run(9, () => ({ song: current, practice: DEFAULT_PRACTICE }), {
+      patches: tracking(log, disposed),
+      script: (_e, at) => at(3.0, () => (current = Song.parse(bassSong(B)))),
+    });
+    const a = log.filter((n) => n.key === keyOf(A));
+    const b = log.filter((n) => n.key === keyOf(B));
+    // Bars start at 0.05 + 2i; the edit at 3.0 lands on the bar at 4.05.
+    expect(Math.max(...a.map((n) => n.time))).toBeLessThan(4.05);
+    expect(Math.min(...b.map((n) => n.time))).toBeCloseTo(4.05, 9);
+
+    const lastA = Math.max(...a.map((n) => n.time)) + 0.25; // its last note's end (an 8th)
+    const gone = disposed.filter((d) => d.key === keyOf(A));
+    expect(gone).toHaveLength(1);
+    expect(gone[0]!.at).toBeGreaterThan(
+      lastA + tailSeconds({ kind: "patch", role: "bass", patch: A }, {}),
+    );
+    expect(disposed.filter((d) => d.key === keyOf(B))).toEqual([]);
+  });
+
+  it("▶ waits for the song's sample sets, then plays", async () => {
+    const set: SampleSet = {
+      id: "test-keys",
+      role: "chords",
+      path: "",
+      notes: { 60: "c4.wav" },
+      attack: 0,
+      release: 0.1,
+      licence: "test",
+      credit: "test",
+      source: "test",
+    };
+    const loads: string[] = [];
+    const samples = makeSampleLibrary({
+      baseUrl: "",
+      loadBuffer: async (url) => (loads.push(url), {} as AudioBuffer),
+      sets: { [set.id]: set },
+    });
+    // The schema only accepts shipped sets, so the sampler is put in after parsing.
+    const s = structuredClone(song(120)) as Song;
+    s.patches = {
+      [patchId("keys")]: { kind: "sampler", role: "chords", set: set.id as SampleSetId, volume: 0 },
+    };
+    s.instruments = { ...s.instruments, chords: { kind: "custom", id: patchId("keys") } };
+
+    useIdleOfflineContext(3);
+    const events: EngineEvent["type"][] = [];
+    const bars: ScheduledBarInfo[] = [];
+    const engine = makeEngine({
+      samples,
+      patches: recorder([]),
+      atAudibleTime: (fn) => fn(),
+      onBarScheduled: (b) => bars.push(b),
+    });
+    engine.subscribe((e) => void events.push(e.type));
+    engine.setSource(() => ({ song: s, practice: DEFAULT_PRACTICE }));
+
+    const played = engine.play();
+    expect(events).toEqual(["loadingSounds"]);
+    expect(bars).toEqual([]); // nothing scheduled while waiting
+    await played;
+    expect(loads).toEqual(["c4.wav"]);
+    expect(samples.status(set.id).kind).toBe("ready");
+    expect(engine.getTransport().status).toBe("playing");
+    expect(bars).toHaveLength(1);
+    engine.dispose();
+  });
+
+  it("stop while waiting for samples cancels the start", async () => {
+    const samples = makeSampleLibrary({
+      baseUrl: "",
+      loadBuffer: async () => ({}) as AudioBuffer,
+      sets: { k: { ...SET_FOR_CANCEL } },
+    });
+    const s = structuredClone(song(120)) as Song;
+    s.patches = {
+      [patchId("keys")]: { kind: "sampler", role: "chords", set: "k" as SampleSetId, volume: 0 },
+    };
+    s.instruments = { ...s.instruments, chords: { kind: "custom", id: patchId("keys") } };
+    useIdleOfflineContext(3);
+    const engine = makeEngine({ samples, patches: recorder([]), atAudibleTime: (fn) => fn() });
+    engine.setSource(() => ({ song: s, practice: DEFAULT_PRACTICE }));
+    const played = engine.play();
+    engine.stop();
+    await played;
+    expect(engine.getTransport().status).toBe("stopped");
+    engine.dispose();
   });
 });

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import frozen from "../../fixtures/frozen.json";
 import { validateEnvelope } from "./envelope";
-import { LibraryStore, Mix, type ShareEnvelope } from "./schema";
+import { BUILTIN_PATCHES } from "./patches";
+import { SAMPLE_SETS } from "./sampleSets";
+import { BUILTIN_PATCH_ROLE, LibraryStore, Mix, Patch, type ShareEnvelope } from "./schema";
 
 const raw = import.meta.glob<string>("../../fixtures/*.json", {
   query: "?raw",
@@ -175,10 +177,56 @@ describe("invalid docs are rejected with readable errors", () => {
       'doc.sections[1].overrides.instruments.bass: "kit-v1" is a drums patch, not bass',
     ],
     [
-      "custom patches before Milestone 5",
+      "custom patch missing its fields",
       SONG,
-      (e) => (e.doc.patches = { fat: { kind: "synth" } }),
-      "doc.patches.fat: custom patches are not supported yet",
+      (e) => (e.doc.patches = { fat: { kind: "synth", role: "bass" } }),
+      "doc.patches.fat.oscillator",
+    ],
+    [
+      "custom patch out of range",
+      SONG,
+      (e) => (e.doc.patches = { loud: { ...BUILTIN_PATCHES["bass-v1"], volume: 30 } }),
+      "doc.patches.loud.volume: Too big",
+    ],
+    [
+      "unknown effect",
+      SONG,
+      (e) =>
+        (e.doc.patches = {
+          wet: { ...BUILTIN_PATCHES["pad-v1"], effects: [{ kind: "delay", time: 0.25 }] },
+        }),
+      "doc.patches.wet.effects[0].kind",
+    ],
+    [
+      "sampler with an unknown sample set",
+      SONG,
+      (e) =>
+        (e.doc.patches = { keys: { kind: "sampler", role: "chords", set: "harp", volume: 0 } }),
+      'doc.patches.keys.set: unknown sample set "harp"',
+    ],
+    [
+      "custom patch not in patches",
+      SONG,
+      (e) => (e.doc.instruments = { bass: { kind: "custom", id: "nope" } }),
+      'doc.instruments.bass: no patch with id "nope" in patches',
+    ],
+    [
+      "custom patch in the wrong role",
+      SONG,
+      (e) => {
+        e.doc.patches = { pad: BUILTIN_PATCHES["pad-v1"] };
+        e.doc.instruments = { bass: { kind: "custom", id: "pad" } };
+      },
+      'doc.instruments.bass: patch "pad" is a chords patch, not bass',
+    ],
+    [
+      "custom patch for drums",
+      SONG,
+      (e) => {
+        e.doc.patches = { b: BUILTIN_PATCHES["bass-v1"] };
+        e.doc.instruments = { drums: { kind: "custom", id: "b" } };
+      },
+      'doc.instruments.drums: patch "b" is a bass patch, not drums',
     ],
     [
       "custom cycle without keys",
@@ -209,6 +257,12 @@ describe("invalid docs are rejected with readable errors", () => {
       e.doc.key = "H";
     });
     expect(errors).toHaveLength(2);
+  });
+});
+
+describe("built-in patches", () => {
+  it.each(Object.entries(BUILTIN_PATCHES))("%s validates as a Patch", (_, patch) => {
+    expect(Patch.safeParse(patch).success).toBe(true);
   });
 });
 
@@ -296,3 +350,30 @@ async function sha256(text: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
   return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
 }
+
+describe("sample sets", () => {
+  // Paths of every file shipped under public/v2/samples/, e.g. "piano-v1/60.ogg".
+  const shipped = new Set(
+    Object.keys(import.meta.glob("../../../public/v2/samples/**/*")).map((p) =>
+      p.replace("../../../public/v2/samples/", ""),
+    ),
+  );
+  const existsSync = (path: string) => shipped.has(path);
+
+  it.each(Object.entries(SAMPLE_SETS))("%s: every file it names is shipped", (id, set) => {
+    expect(set.id).toBe(id);
+    expect(set.path).toBe(`${id}/`);
+    for (const file of Object.values(set.notes)) {
+      expect(existsSync(`${set.path}${file}`), `${set.path}${file}`).toBe(true);
+    }
+    expect(existsSync(`${set.path}CREDITS.txt`)).toBe(true);
+  });
+
+  it("every built-in sampler names a shipped set for its own role", () => {
+    for (const [id, patch] of Object.entries(BUILTIN_PATCHES)) {
+      if (patch.kind !== "sampler") continue;
+      expect(SAMPLE_SETS[patch.set]?.role, id).toBe(patch.role);
+      expect(BUILTIN_PATCH_ROLE[id as keyof typeof BUILTIN_PATCH_ROLE]).toBe(patch.role);
+    }
+  });
+});

@@ -28,6 +28,17 @@ export async function renderOffline(seconds: number, setup: () => void): Promise
   return buffer.getChannelData(0);
 }
 
+/**
+ * Makes a fresh offline context the current Tone context without rendering it:
+ * for tests of async engine behaviour (e.g. ▶ waiting for samples). Rendering
+ * runs all scheduling in one synchronous pass, so code that resumes after an
+ * `await` can't touch the graph while it renders.
+ */
+export function useIdleOfflineContext(seconds: number): void {
+  const native = new wa.OfflineAudioContext(2, Math.ceil(SAMPLE_RATE * seconds), SAMPLE_RATE);
+  Tone.setContext(new Tone.OfflineContext(native as unknown as OfflineAudioContext));
+}
+
 /** Note onsets (seconds): where the signal turns loud after ≥ `gap` of quiet. */
 export function onsets(data: Float32Array, { threshold = 0.01, gap = 0.02 } = {}): number[] {
   const window = Math.round(SAMPLE_RATE * 0.001);

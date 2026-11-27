@@ -1,0 +1,25 @@
+# song-custom-patches: player view at the start of each arrangement entry
+
+Custom patches (song) · keys F
+arrangement: 0:Custom 1:Pad 2:Edge
+
+[arr 0] Custom · lap 0 key F · 4 bars of 192 ticks
+  settings: tempo=100 meter=4/4 swing=0 voicing=voice-lead instruments(chords=glass bass=sub drums=kit-v1)
+  chip #0 Imaj7    Fmaj7     bars 0
+  chip #1 vi7      Dm7       bars 1
+  chip #2 ii7      Gm7       bars 2
+  chip #3 V7       C7        bars 3
+
+[arr 1] Pad · lap 0 key F · 4 bars of 192 ticks
+  settings: tempo=100 meter=4/4 swing=0 voicing=voice-lead instruments(chords=pad-v1 • bass=sub drums=kit-v1)
+  chip #0 Imaj7    Fmaj7     bars 0
+  chip #1 vi7      Dm7       bars 1
+  chip #2 ii7      Gm7       bars 2
+  chip #3 V7       C7        bars 3
+
+[arr 2] Edge · lap 0 key F · 4 bars of 192 ticks
+  settings: tempo=100 meter=4/4 swing=0 voicing=voice-lead instruments(chords=glass bass=buzz • drums=kit-v1)
+  chip #0 Imaj7    Fmaj7     bars 0
+  chip #1 vi7      Dm7       bars 1
+  chip #2 ii7      Gm7       bars 2
+  chip #3 V7       C7        bars 3

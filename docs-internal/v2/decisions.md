@@ -83,10 +83,16 @@ Background and goals: `version-2.md`.
 
 ## Sound
 
-- Instruments are data: either a sampler (sample set reference) or a synth patch (oscillator, envelope, filter, effects as JSON).
-- v1's sounds become the default patches.
+- Instruments are data: a `Patch` is either a `synth` (oscillator, envelope, optional filter, effects) or a `sampler` (a sample set by id). Shape: `schema.ts`; semantics: `data-model.md`.
+- A patch's `role` decides how it plays: chords polyphonic, bass monophonic. Registers stay fixed per role.
+- v1's pad and bass are built-in patches written as data, with v1's exact settings (proven by rendering both). The drum kit stays code; custom kits are deferred.
+- Built-ins are frozen: a new sound gets a new id (`piano-v1`), so saved songs never change how they sound.
+- Sample sets are referenced by id; audio never goes in a song or a link. Sets are added to the app (with licence and credit), never removed.
+  - Each set is built reproducibly from its original download (`scripts/build-sample-sets.mjs`): one velocity layer, sparse notes, leading silence trimmed, faded, Ogg Vorbis (like v1's drums). Built-in sampler volumes are matched to v1's synths by measured loudness.
+  - Credits for shipped sounds (`SOUND_CREDITS`) are shown in the app.
+- Samples are fetched on first use and cached with the Cache API in app code (v1's service worker is untouched). A sampler plays its role's default synth until its set has loaded, or if loading fails.
+- Effects: reverb only for now; more kinds widen the union.
 - Synth patches are meant to be authored mostly by an agent ("natural language → patch"), with user controls optional.
-- Samples for bass/keys/synth are lazy-loaded and cached at runtime, not precached at install.
 
 ## Playback engine
 
@@ -97,6 +103,7 @@ Background and goals: `version-2.md`.
 - **Errors** while computing a bar pause playback on the audible bar and emit an `error` event; ▶ resumes there once fixed. A failing `play()` rejects and leaves the transport as it was. Listener exceptions never stop the engine.
   - This replaces v1's rebuild/teardown complexity. There's nothing to cancel and rebuild; the next bar just reads new data.
 - Instrument nodes (synths, samplers) live for a play session and survive edits; only events are rescheduled. Channels (levels, mutes) live as long as the engine.
+  - Instruments are keyed by patch content: an edited patch builds a new one at the next bar, and the old one is disposed once the song no longer uses it and its tail has finished (so slider drags don't pile up nodes).
   - v1 lesson: disposing the synth on rebuild cut off ringing notes (`c43e200`).
   - Pause and stop fade the session out and dispose it: that's how notes already handed to Web Audio are cancelled.
 - The engine captures Tone's context once and takes its instruments and UI-event scheduler as options, so tests render offline on Node (`node-web-audio-api`) with recording instruments.

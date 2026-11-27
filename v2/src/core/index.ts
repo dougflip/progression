@@ -27,3 +27,13 @@ export {
   type ChipView,
   type SectionSettings,
 } from "./view";
+export {
+  instrumentKey,
+  instrumentSpec,
+  instrumentsToDispose,
+  songInstrumentKeys,
+  songSampleSets,
+  tailSeconds,
+  type InstrumentSpec,
+  type InstrumentUse,
+} from "./instruments";

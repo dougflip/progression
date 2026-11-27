@@ -15,6 +15,7 @@ import { playerView, type ChipView } from "../core/view";
 import { makeEngine, type EngineStats, type ScheduledBarInfo } from "../engine/engine";
 import { loadDrumSamples } from "../engine/patches";
 import { decodeEnvelope, encodeEnvelope, validateEnvelope } from "../model/envelope";
+import { SOUND_CREDITS } from "../model/sampleSets";
 import type { EngineSource, PlayScope } from "../model/runtime";
 import { DEFAULT_LEVELS, type Mix, type Practice, type ShareEnvelope } from "../model/schema";
 import { cuedChips, positionText, shownPosition } from "./player/derive";
@@ -51,6 +52,7 @@ let playingEntry: Entry = FIXTURES[0]!;
 let perfLog: ScheduledBarInfo[] = [];
 const perfListeners = new Set<() => void>();
 const engine = makeEngine({
+  sampleBaseUrl: `${import.meta.env.BASE_URL}v2/samples/`,
   onBarScheduled: (info) => {
     perfLog = [...perfLog.slice(-31), info];
     perfListeners.forEach((l) => l());
@@ -194,6 +196,7 @@ export function Bench() {
             load(entry);
           }}
         />
+        <p className="muted">Sounds: {SOUND_CREDITS.join(" · ")}.</p>
       </main>
 
       <div className="action-bar">
@@ -213,7 +216,9 @@ export function Bench() {
           <TransportButtons
             playing={playing}
             canStop={transport.status !== "stopped" || transport.cue !== undefined}
-            position={positionText(transport, view)}
+            position={
+              playback.sounds.kind === "loading" ? "Loading sounds…" : positionText(transport, view)
+            }
             onPlay={onPlay}
             onStop={() => engine.stop()}
             onMix={() => setMixOpen(true)}

@@ -1,0 +1,25 @@
+# song-sampled-instruments: player view at the start of each arrangement entry
+
+Sampled instruments (song) · keys A
+arrangement: 0:Piano 1:Electric piano 2:High bass
+
+[arr 0] Piano · lap 0 key A · 4 bars of 192 ticks
+  settings: tempo=96 meter=4/4 swing=0 voicing=voice-lead instruments(chords=piano-v1 bass=bass-electric-v1 drums=kit-v1)
+  chip #0 Imaj7    Amaj7     bars 0
+  chip #1 vi7      F#m7      bars 1
+  chip #2 ii7      Bm7       bars 2
+  chip #3 V7       E7        bars 3
+
+[arr 1] Electric piano · lap 0 key A · 4 bars of 192 ticks
+  settings: tempo=96 meter=4/4 swing=0 voicing=voice-lead instruments(chords=epiano-fm-v1 • bass=bass-electric-v1 drums=kit-v1)
+  chip #0 Imaj7    Amaj7     bars 0
+  chip #1 vi7      F#m7      bars 1
+  chip #2 ii7      Bm7       bars 2
+  chip #3 V7       E7        bars 3
+
+[arr 2] High bass · lap 0 key A · 4 bars of 192 ticks
+  settings: tempo=96 meter=4/4 swing=0 voicing=voice-lead instruments(chords=piano-v1 bass=bass-electric-v1 drums=kit-v1)
+  chip #0 Imaj7    Amaj7     bars 0
+  chip #1 vi7      F#m7      bars 1
+  chip #2 ii7      Bm7       bars 2
+  chip #3 V7       E7        bars 3

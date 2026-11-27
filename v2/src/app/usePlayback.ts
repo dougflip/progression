@@ -6,6 +6,10 @@
 import { useSyncExternalStore } from "react";
 import type { ToneEngine } from "../engine/engine";
 import type { EngineSource, ScheduledBar, Transport } from "../model/runtime";
+import { assertNever } from "../model/types";
+
+/** Whether ▶ is waiting for sample sets. */
+export type Sounds = { kind: "ready" } | { kind: "loading"; sets: readonly string[] };
 
 export interface Playback {
   transport: Transport;
@@ -16,6 +20,7 @@ export interface Playback {
   chordIndex?: number;
   /** The last playback error; cleared when playback starts again. */
   error?: string;
+  sounds: Sounds;
 }
 
 const stores = new WeakMap<
@@ -26,16 +31,18 @@ const stores = new WeakMap<
 function store(engine: ToneEngine) {
   let s = stores.get(engine);
   if (s) return s;
-  let state: Playback = { transport: engine.getTransport() };
+  const READY: Sounds = { kind: "ready" };
+  let state: Playback = { transport: engine.getTransport(), sounds: READY };
   const listeners = new Set<() => void>();
   engine.subscribe((e) => {
     switch (e.type) {
       case "transport": {
         const stopped = e.transport.status !== "playing";
         const { error, ...rest } = state;
+        // Any transport change ends a wait for sounds (it played, or was cancelled).
         state = stopped
-          ? { transport: e.transport, ...(error !== undefined && { error }) }
-          : { ...rest, transport: e.transport };
+          ? { transport: e.transport, sounds: READY, ...(error !== undefined && { error }) }
+          : { ...rest, transport: e.transport, sounds: READY };
         break;
       }
       case "error":
@@ -62,6 +69,11 @@ function store(engine: ToneEngine) {
       case "chord":
         state = { ...state, chordIndex: e.chordIndex };
         break;
+      case "loadingSounds":
+        state = { ...state, sounds: { kind: "loading", sets: e.sets } };
+        break;
+      default:
+        assertNever(e);
     }
     listeners.forEach((l) => l());
   });
