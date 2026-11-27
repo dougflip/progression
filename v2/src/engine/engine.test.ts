@@ -14,7 +14,7 @@ import { STYLES } from "../core/styles";
 import type { EngineEvent, EngineSource } from "../model/runtime";
 import { instrumentKey, tailSeconds, type InstrumentSpec } from "../core/instruments";
 import { BUILTIN_PATCHES } from "../model/patches";
-import type { SampleSet } from "../model/sampleSets";
+import { SAMPLE_SETS, type SampleSet } from "../model/sampleSets";
 import {
   BackingTrack,
   DrumInstrument,
@@ -27,7 +27,17 @@ import {
 } from "../model/schema";
 import { makeEngine, type EngineOptions, type ScheduledBarInfo } from "./engine";
 import { makePatchFactory, type PatchFactory } from "./patches";
-import { makeSampleLibrary } from "./samples";
+import { makeSampleLibrary, type SampleLibrary } from "./samples";
+
+/**
+ * Timing tests don't load samples: every set counts as settled (failed), so ▶
+ * starts at once and samplers play their fallback synth.
+ */
+const settledSamples: SampleLibrary = {
+  sets: SAMPLE_SETS,
+  status: () => ({ kind: "failed", error: "no samples in tests" }),
+  load: () => Promise.resolve(),
+};
 
 /** The real instruments, with no sample sets. */
 const builtinPatches = makePatchFactory({
@@ -145,6 +155,7 @@ async function run(
   let audibleTime = NaN; // set while a UI callback runs (here: immediately, with its time)
   const audio = await renderOffline(seconds, () => {
     engine = makeEngine({
+      samples: settledSamples,
       patches: recorder(notes),
       atAudibleTime: (fn, time) => {
         audibleTime = time;

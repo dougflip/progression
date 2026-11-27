@@ -286,7 +286,14 @@ export type Channel = z.infer<typeof Channel>;
  * data (`BUILTIN_PATCHES` in `model/patches.ts`); `kit-v1` is code. Built-ins are
  * frozen: a new sound gets a new id, so saved songs never change how they sound.
  */
-export const BuiltinPatchId = z.enum(["pad-v1", "bass-v1", "kit-v1"]);
+export const BuiltinPatchId = z.enum([
+  "pad-v1",
+  "bass-v1",
+  "kit-v1",
+  "piano-v1",
+  "epiano-fm-v1",
+  "bass-electric-v1",
+]);
 export type BuiltinPatchId = z.infer<typeof BuiltinPatchId>;
 
 /** The role each built-in patch plays. A patch can only be used for its own role. */
@@ -294,6 +301,9 @@ export const BUILTIN_PATCH_ROLE: Record<BuiltinPatchId, "chords" | "bass" | "dru
   "pad-v1": "chords",
   "bass-v1": "bass",
   "kit-v1": "drums",
+  "piano-v1": "chords",
+  "epiano-fm-v1": "chords",
+  "bass-electric-v1": "bass",
 };
 
 /** Either a built-in, or a custom patch embedded in `Song.patches`. */

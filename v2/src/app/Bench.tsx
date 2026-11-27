@@ -15,6 +15,7 @@ import { playerView, type ChipView } from "../core/view";
 import { makeEngine, type EngineStats, type ScheduledBarInfo } from "../engine/engine";
 import { loadDrumSamples } from "../engine/patches";
 import { decodeEnvelope, encodeEnvelope, validateEnvelope } from "../model/envelope";
+import { SOUND_CREDITS } from "../model/sampleSets";
 import type { EngineSource, PlayScope } from "../model/runtime";
 import { DEFAULT_LEVELS, type Mix, type Practice, type ShareEnvelope } from "../model/schema";
 import { cuedChips, positionText, shownPosition } from "./player/derive";
@@ -195,6 +196,7 @@ export function Bench() {
             load(entry);
           }}
         />
+        <p className="muted">Sounds: {SOUND_CREDITS.join(" · ")}.</p>
       </main>
 
       <div className="action-bar">

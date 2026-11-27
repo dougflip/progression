@@ -1,0 +1,587 @@
+{
+  "$comment": "The sampled built-ins. Song-level: piano-v1 (Salamander) chords and bass-electric-v1 (Finger Bass YR) in A, walking 1-3-5-3 (bass MIDI 33-49; recorded only E1-D#2 = 28-39, higher notes pitched up). Electric piano overrides chords with epiano-fm-v1. High bass puts the root and 3rd up an octave (MIDI 40-57), a worst case for the pitched-up upper range.",
+  "version": 2,
+  "doc": {
+    "version": 2,
+    "kind": "song",
+    "title": "Sampled instruments",
+    "key": "A",
+    "ppq": 48,
+    "defaults": {
+      "tempo": 96,
+      "meter": {
+        "beatsPerBar": 4,
+        "beatUnit": 4
+      },
+      "swing": 0,
+      "voicing": "voice-lead"
+    },
+    "instruments": {
+      "chords": {
+        "kind": "builtin",
+        "id": "piano-v1"
+      },
+      "bass": {
+        "kind": "builtin",
+        "id": "bass-electric-v1"
+      },
+      "drums": {
+        "kind": "builtin",
+        "id": "kit-v1"
+      }
+    },
+    "patches": {},
+    "sections": [
+      {
+        "id": "piano",
+        "name": "Piano",
+        "bars": 4,
+        "overrides": {},
+        "chords": [
+          {
+            "start": 0,
+            "duration": 192,
+            "root": {
+              "degree": 1
+            },
+            "quality": "maj7"
+          },
+          {
+            "start": 192,
+            "duration": 192,
+            "root": {
+              "degree": 6
+            },
+            "quality": "m7"
+          },
+          {
+            "start": 384,
+            "duration": 192,
+            "root": {
+              "degree": 2
+            },
+            "quality": "m7"
+          },
+          {
+            "start": 576,
+            "duration": 192,
+            "root": {
+              "degree": 5
+            },
+            "quality": "dom7"
+          }
+        ],
+        "drums": {
+          "kick": [0, 96, 192, 288, 384, 480, 576, 672],
+          "snare": [48, 144, 240, 336, 432, 528, 624, 720],
+          "ride": [0, 48, 96, 144, 192, 240, 288, 336, 384, 432, 480, 528, 576, 624, 672, 720]
+        },
+        "parts": {
+          "bass": [
+            {
+              "start": 0,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 48,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            },
+            {
+              "start": 96,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 144,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            },
+            {
+              "start": 192,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 240,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            },
+            {
+              "start": 288,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 336,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            },
+            {
+              "start": 384,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 432,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            },
+            {
+              "start": 480,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 528,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            },
+            {
+              "start": 576,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 624,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            },
+            {
+              "start": 672,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 720,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            }
+          ]
+        },
+        "loops": []
+      },
+      {
+        "id": "epiano",
+        "name": "Electric piano",
+        "bars": 4,
+        "overrides": {
+          "instruments": {
+            "chords": {
+              "kind": "builtin",
+              "id": "epiano-fm-v1"
+            }
+          }
+        },
+        "chords": [
+          {
+            "start": 0,
+            "duration": 192,
+            "root": {
+              "degree": 1
+            },
+            "quality": "maj7"
+          },
+          {
+            "start": 192,
+            "duration": 192,
+            "root": {
+              "degree": 6
+            },
+            "quality": "m7"
+          },
+          {
+            "start": 384,
+            "duration": 192,
+            "root": {
+              "degree": 2
+            },
+            "quality": "m7"
+          },
+          {
+            "start": 576,
+            "duration": 192,
+            "root": {
+              "degree": 5
+            },
+            "quality": "dom7"
+          }
+        ],
+        "drums": {
+          "kick": [0, 96, 192, 288, 384, 480, 576, 672],
+          "snare": [48, 144, 240, 336, 432, 528, 624, 720],
+          "ride": [0, 48, 96, 144, 192, 240, 288, 336, 384, 432, 480, 528, 576, 624, 672, 720]
+        },
+        "parts": {
+          "bass": [
+            {
+              "start": 0,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 48,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            },
+            {
+              "start": 96,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 144,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            },
+            {
+              "start": 192,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 240,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            },
+            {
+              "start": 288,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 336,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            },
+            {
+              "start": 384,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 432,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            },
+            {
+              "start": 480,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 528,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            },
+            {
+              "start": 576,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 624,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            },
+            {
+              "start": 672,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 720,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3
+              }
+            }
+          ]
+        },
+        "loops": []
+      },
+      {
+        "id": "high",
+        "name": "High bass",
+        "bars": 4,
+        "overrides": {},
+        "chords": [
+          {
+            "start": 0,
+            "duration": 192,
+            "root": {
+              "degree": 1
+            },
+            "quality": "maj7"
+          },
+          {
+            "start": 192,
+            "duration": 192,
+            "root": {
+              "degree": 6
+            },
+            "quality": "m7"
+          },
+          {
+            "start": 384,
+            "duration": 192,
+            "root": {
+              "degree": 2
+            },
+            "quality": "m7"
+          },
+          {
+            "start": 576,
+            "duration": 192,
+            "root": {
+              "degree": 5
+            },
+            "quality": "dom7"
+          }
+        ],
+        "drums": {
+          "kick": [0, 96, 192, 288, 384, 480, 576, 672],
+          "snare": [48, 144, 240, 336, 432, 528, 624, 720],
+          "ride": [0, 48, 96, 144, 192, 240, 288, 336, 384, 432, 480, 528, 576, 624, 672, 720]
+        },
+        "parts": {
+          "bass": [
+            {
+              "start": 0,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1,
+                "octave": 1
+              }
+            },
+            {
+              "start": 48,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 96,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3,
+                "octave": 1
+              }
+            },
+            {
+              "start": 144,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 192,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1,
+                "octave": 1
+              }
+            },
+            {
+              "start": 240,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 288,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3,
+                "octave": 1
+              }
+            },
+            {
+              "start": 336,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 384,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1,
+                "octave": 1
+              }
+            },
+            {
+              "start": 432,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 480,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3,
+                "octave": 1
+              }
+            },
+            {
+              "start": 528,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 576,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1,
+                "octave": 1
+              }
+            },
+            {
+              "start": 624,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 672,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 3,
+                "octave": 1
+              }
+            },
+            {
+              "start": 720,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            }
+          ]
+        },
+        "loops": []
+      }
+    ],
+    "arrangement": ["piano", "epiano", "high"]
+  }
+}

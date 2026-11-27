@@ -88,6 +88,8 @@ Background and goals: `version-2.md`.
 - v1's pad and bass are built-in patches written as data, with v1's exact settings (proven by rendering both). The drum kit stays code; custom kits are deferred.
 - Built-ins are frozen: a new sound gets a new id (`piano-v1`), so saved songs never change how they sound.
 - Sample sets are referenced by id; audio never goes in a song or a link. Sets are added to the app (with licence and credit), never removed.
+  - Each set is built reproducibly from its original download (`scripts/build-sample-sets.mjs`): one velocity layer, sparse notes, leading silence trimmed, faded, Ogg Vorbis (like v1's drums). Built-in sampler volumes are matched to v1's synths by measured loudness.
+  - Credits for shipped sounds (`SOUND_CREDITS`) are shown in the app.
 - Samples are fetched on first use and cached with the Cache API in app code (v1's service worker is untouched). A sampler plays its role's default synth until its set has loaded, or if loading fails.
 - Effects: reverb only for now; more kinds widen the union.
 - Synth patches are meant to be authored mostly by an agent ("natural language → patch"), with user controls optional.

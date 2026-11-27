@@ -7,7 +7,7 @@ Related: `decisions.md`, `data-model.md`, `v2/src/model/schema.ts`.
 ## Status
 
 - **Done (merged):** 1 Foundation (#55), 2 Pure core (#56), 3 Engine + bench (#57), 4 Engine complete (#59).
-- **In progress:** 5 Sound, on branch `v2-m5-sound`: patch vocabulary, patch builder, sampler support and the custom-patches fixture are built; listen checks pending, then PR.
+- **In review:** 5 Sound (branch `v2-m5-sound`): patches as data, sampler support, three sampled built-ins; listen checks passed.
 - Update this section when a milestone merges.
 
 ## Ground rules (every milestone)
@@ -80,7 +80,7 @@ Related: `decisions.md`, `data-model.md`, `v2/src/model/schema.ts`.
 - `Patch` (synth, sampler) in the schema; v1's pad and bass rewritten as built-in patch data.
 - One builder for built-in and custom patches. Instruments for patches no longer in the song are disposed once their sound has finished.
 - Sampler support: sample-set registry (files, sampled notes, licence, credit), fetched on first use and cached (Cache API), fallback synth while loading. ▶ waits briefly for the current song's sets.
-- No sample sets ship in this milestone: finding and choosing CC-licensed bass and keys sets comes next, then adds them as data.
+- Three sampled built-ins from FreePats: `piano-v1` (Salamander Grand, CC BY 3.0), `epiano-fm-v1` (DX7-style FM piano, CC0), `bass-electric-v1` (Finger Bass YR, CC0). Built by `scripts/build-sample-sets.mjs` into `public/v2/samples/` (1.6 MB, Ogg Vorbis); credits shown in the app.
 
 **Tests:** every built-in patch validates and builds; the data-built pad and bass render the same as v1's code; sampler loading and fallback (with a test set); a patch change takes effect at the next bar; replaced instruments are disposed.
 **You'll check:** the starters still sound like v1; a fixture with custom patches.

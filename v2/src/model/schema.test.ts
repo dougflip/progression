@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import frozen from "../../fixtures/frozen.json";
 import { validateEnvelope } from "./envelope";
 import { BUILTIN_PATCHES } from "./patches";
-import { LibraryStore, Mix, Patch, type ShareEnvelope } from "./schema";
+import { SAMPLE_SETS } from "./sampleSets";
+import { BUILTIN_PATCH_ROLE, LibraryStore, Mix, Patch, type ShareEnvelope } from "./schema";
 
 const raw = import.meta.glob<string>("../../fixtures/*.json", {
   query: "?raw",
@@ -197,11 +198,11 @@ describe("invalid docs are rejected with readable errors", () => {
       "doc.patches.wet.effects[0].kind",
     ],
     [
-      "sampler with no sample sets yet",
+      "sampler with an unknown sample set",
       SONG,
       (e) =>
-        (e.doc.patches = { keys: { kind: "sampler", role: "chords", set: "piano", volume: 0 } }),
-      "doc.patches.keys.set: no sample sets are available yet",
+        (e.doc.patches = { keys: { kind: "sampler", role: "chords", set: "harp", volume: 0 } }),
+      'doc.patches.keys.set: unknown sample set "harp"',
     ],
     [
       "custom patch not in patches",
@@ -349,3 +350,30 @@ async function sha256(text: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
   return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
 }
+
+describe("sample sets", () => {
+  // Paths of every file shipped under public/v2/samples/, e.g. "piano-v1/60.ogg".
+  const shipped = new Set(
+    Object.keys(import.meta.glob("../../../public/v2/samples/**/*")).map((p) =>
+      p.replace("../../../public/v2/samples/", ""),
+    ),
+  );
+  const existsSync = (path: string) => shipped.has(path);
+
+  it.each(Object.entries(SAMPLE_SETS))("%s: every file it names is shipped", (id, set) => {
+    expect(set.id).toBe(id);
+    expect(set.path).toBe(`${id}/`);
+    for (const file of Object.values(set.notes)) {
+      expect(existsSync(`${set.path}${file}`), `${set.path}${file}`).toBe(true);
+    }
+    expect(existsSync(`${set.path}CREDITS.txt`)).toBe(true);
+  });
+
+  it("every built-in sampler names a shipped set for its own role", () => {
+    for (const [id, patch] of Object.entries(BUILTIN_PATCHES)) {
+      if (patch.kind !== "sampler") continue;
+      expect(SAMPLE_SETS[patch.set]?.role, id).toBe(patch.role);
+      expect(BUILTIN_PATCH_ROLE[id as keyof typeof BUILTIN_PATCH_ROLE]).toBe(patch.role);
+    }
+  });
+});

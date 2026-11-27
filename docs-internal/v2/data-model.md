@@ -125,7 +125,7 @@ Field-level ranges are in `schema.ts`. Objects are strict (unknown keys are reje
 
 ## Deferred (don't guess; defined in the named milestone)
 
-- **Sample sets:** which CC-licensed bass and keys sets to ship (licence, size, credit line). The schema and engine support them; `SAMPLE_SET_IDS` is empty until then.
+- **More sounds:** a real Rhodes (samples with a clear licence, or an FM oscillator kind for a synth one), upright bass, organ.
 - **Custom drum kits** (a `PatchRole` of `drums`), and more effect and oscillator kinds: additive widenings.
 - **Milestone 6:** loop recording details beyond `LoopTake` / `LoopAudio` (latency compensation, count-in).
 - **Open question:** custom styles (v1's user-authored patterns). `StyleRef` only has `kind: "builtin"` today; a `kind: "custom"` member would be an additive widening.

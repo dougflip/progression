@@ -1,0 +1,142 @@
+# song-sampled-instruments: 14 bars from the top (advance forced to auto)
+
+bar 1 · Piano [arr 0] bar 1/4 · lap 0 key A · 96 bpm 4/4 (192 ticks)
+  chord  0       +192     #0 Imaj7       Amaj7     A2 A3 C#4 G#4      piano-v1
+  bass   0       +40      A1    bass-electric-v1
+  bass   48      +40      C#2   bass-electric-v1
+  bass   96      +40      E2    bass-electric-v1
+  bass   144     +40      C#2   bass-electric-v1
+  kick     0 96                                     kit-v1
+  ride     0 48 96 144                              kit-v1
+  snare    48 144                                   kit-v1
+  voicing → A3 C#4 G#4
+bar 2 · Piano [arr 0] bar 2/4 · lap 0 key A · 96 bpm 4/4 (192 ticks)
+  chord  0       +192     #1 vi7         F#m7      F#3 A3 E4 F#4      piano-v1
+  bass   0       +40      F#2   bass-electric-v1
+  bass   48      +40      A2    bass-electric-v1
+  bass   96      +40      C#3   bass-electric-v1
+  bass   144     +40      A2    bass-electric-v1
+  kick     0 96                                     kit-v1
+  ride     0 48 96 144                              kit-v1
+  snare    48 144                                   kit-v1
+  voicing → A3 E4 F#4
+bar 3 · Piano [arr 0] bar 3/4 · lap 0 key A · 96 bpm 4/4 (192 ticks)
+  chord  0       +192     #2 ii7         Bm7       B2 B3 D4 A4        piano-v1
+  bass   0       +40      B1    bass-electric-v1
+  bass   48      +40      D2    bass-electric-v1
+  bass   96      +40      F#2   bass-electric-v1
+  bass   144     +40      D2    bass-electric-v1
+  kick     0 96                                     kit-v1
+  ride     0 48 96 144                              kit-v1
+  snare    48 144                                   kit-v1
+  voicing → B3 D4 A4
+bar 4 · Piano [arr 0] bar 4/4 · lap 0 key A · 96 bpm 4/4 (192 ticks)
+  chord  0       +192     #3 V7          E7        E3 D4 E4 G#4       piano-v1
+  bass   0       +40      E2    bass-electric-v1
+  bass   48      +40      G#2   bass-electric-v1
+  bass   96      +40      B2    bass-electric-v1
+  bass   144     +40      G#2   bass-electric-v1
+  kick     0 96                                     kit-v1
+  ride     0 48 96 144                              kit-v1
+  snare    48 144                                   kit-v1
+  voicing → D4 E4 G#4
+bar 5 · Electric piano [arr 1] bar 1/4 · lap 0 key A · 96 bpm 4/4 (192 ticks)
+  chord  0       +192     #0 Imaj7       Amaj7     A2 C#4 G#4 A4      epiano-fm-v1
+  bass   0       +40      A1    bass-electric-v1
+  bass   48      +40      C#2   bass-electric-v1
+  bass   96      +40      E2    bass-electric-v1
+  bass   144     +40      C#2   bass-electric-v1
+  kick     0 96                                     kit-v1
+  ride     0 48 96 144                              kit-v1
+  snare    48 144                                   kit-v1
+  voicing → C#4 G#4 A4
+bar 6 · Electric piano [arr 1] bar 2/4 · lap 0 key A · 96 bpm 4/4 (192 ticks)
+  chord  0       +192     #1 vi7         F#m7      F#3 E4 F#4 A4      epiano-fm-v1
+  bass   0       +40      F#2   bass-electric-v1
+  bass   48      +40      A2    bass-electric-v1
+  bass   96      +40      C#3   bass-electric-v1
+  bass   144     +40      A2    bass-electric-v1
+  kick     0 96                                     kit-v1
+  ride     0 48 96 144                              kit-v1
+  snare    48 144                                   kit-v1
+  voicing → E4 F#4 A4
+bar 7 · Electric piano [arr 1] bar 3/4 · lap 0 key A · 96 bpm 4/4 (192 ticks)
+  chord  0       +192     #2 ii7         Bm7       B2 D4 A4 B4        epiano-fm-v1
+  bass   0       +40      B1    bass-electric-v1
+  bass   48      +40      D2    bass-electric-v1
+  bass   96      +40      F#2   bass-electric-v1
+  bass   144     +40      D2    bass-electric-v1
+  kick     0 96                                     kit-v1
+  ride     0 48 96 144                              kit-v1
+  snare    48 144                                   kit-v1
+  voicing → D4 A4 B4
+bar 8 · Electric piano [arr 1] bar 4/4 · lap 0 key A · 96 bpm 4/4 (192 ticks)
+  chord  0       +192     #3 V7          E7        E3 E4 G#4 D5       epiano-fm-v1
+  bass   0       +40      E2    bass-electric-v1
+  bass   48      +40      G#2   bass-electric-v1
+  bass   96      +40      B2    bass-electric-v1
+  bass   144     +40      G#2   bass-electric-v1
+  kick     0 96                                     kit-v1
+  ride     0 48 96 144                              kit-v1
+  snare    48 144                                   kit-v1
+  voicing → E4 G#4 D5
+bar 9 · High bass [arr 2] bar 1/4 · lap 0 key A · 96 bpm 4/4 (192 ticks)
+  chord  0       +192     #0 Imaj7       Amaj7     A2 G#4 A4 C#5      piano-v1
+  bass   0       +40      A2    bass-electric-v1
+  bass   48      +40      E2    bass-electric-v1
+  bass   96      +40      C#3   bass-electric-v1
+  bass   144     +40      E2    bass-electric-v1
+  kick     0 96                                     kit-v1
+  ride     0 48 96 144                              kit-v1
+  snare    48 144                                   kit-v1
+  voicing → G#4 A4 C#5
+bar 10 · High bass [arr 2] bar 2/4 · lap 0 key A · 96 bpm 4/4 (192 ticks)
+  chord  0       +192     #1 vi7         F#m7      F#3 F#4 A4 E5      piano-v1
+  bass   0       +40      F#3   bass-electric-v1
+  bass   48      +40      C#3   bass-electric-v1
+  bass   96      +40      A3    bass-electric-v1
+  bass   144     +40      C#3   bass-electric-v1
+  kick     0 96                                     kit-v1
+  ride     0 48 96 144                              kit-v1
+  snare    48 144                                   kit-v1
+  voicing → F#4 A4 E5
+bar 11 · High bass [arr 2] bar 3/4 · lap 0 key A · 96 bpm 4/4 (192 ticks)
+  chord  0       +192     #2 ii7         Bm7       B2 A4 B4 D5        piano-v1
+  bass   0       +40      B2    bass-electric-v1
+  bass   48      +40      F#2   bass-electric-v1
+  bass   96      +40      D3    bass-electric-v1
+  bass   144     +40      F#2   bass-electric-v1
+  kick     0 96                                     kit-v1
+  ride     0 48 96 144                              kit-v1
+  snare    48 144                                   kit-v1
+  voicing → A4 B4 D5
+bar 12 · High bass [arr 2] bar 4/4 · lap 0 key A · 96 bpm 4/4 (192 ticks)
+  chord  0       +192     #3 V7          E7        E3 G#4 D5 E5       piano-v1
+  bass   0       +40      E3    bass-electric-v1
+  bass   48      +40      B2    bass-electric-v1
+  bass   96      +40      G#3   bass-electric-v1
+  bass   144     +40      B2    bass-electric-v1
+  kick     0 96                                     kit-v1
+  ride     0 48 96 144                              kit-v1
+  snare    48 144                                   kit-v1
+  voicing → G#4 D5 E5
+bar 13 · Piano [arr 0] bar 1/4 · lap 0 key A · 96 bpm 4/4 (192 ticks)
+  chord  0       +192     #0 Imaj7       Amaj7     A2 G#4 A4 C#5      piano-v1
+  bass   0       +40      A1    bass-electric-v1
+  bass   48      +40      C#2   bass-electric-v1
+  bass   96      +40      E2    bass-electric-v1
+  bass   144     +40      C#2   bass-electric-v1
+  kick     0 96                                     kit-v1
+  ride     0 48 96 144                              kit-v1
+  snare    48 144                                   kit-v1
+  voicing → G#4 A4 C#5
+bar 14 · Piano [arr 0] bar 2/4 · lap 0 key A · 96 bpm 4/4 (192 ticks)
+  chord  0       +192     #1 vi7         F#m7      F#3 F#4 A4 E5      piano-v1
+  bass   0       +40      F#2   bass-electric-v1
+  bass   48      +40      A2    bass-electric-v1
+  bass   96      +40      C#3   bass-electric-v1
+  bass   144     +40      A2    bass-electric-v1
+  kick     0 96                                     kit-v1
+  ride     0 48 96 144                              kit-v1
+  snare    48 144                                   kit-v1
+  voicing → F#4 A4 E5
