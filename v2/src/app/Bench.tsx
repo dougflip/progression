@@ -51,6 +51,7 @@ let playingEntry: Entry = FIXTURES[0]!;
 let perfLog: ScheduledBarInfo[] = [];
 const perfListeners = new Set<() => void>();
 const engine = makeEngine({
+  sampleBaseUrl: `${import.meta.env.BASE_URL}v2/samples/`,
   onBarScheduled: (info) => {
     perfLog = [...perfLog.slice(-31), info];
     perfListeners.forEach((l) => l());
@@ -213,7 +214,9 @@ export function Bench() {
           <TransportButtons
             playing={playing}
             canStop={transport.status !== "stopped" || transport.cue !== undefined}
-            position={positionText(transport, view)}
+            position={
+              playback.sounds.kind === "loading" ? "Loading sounds…" : positionText(transport, view)
+            }
             onPlay={onPlay}
             onStop={() => engine.stop()}
             onMix={() => setMixOpen(true)}

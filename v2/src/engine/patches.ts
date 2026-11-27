@@ -3,13 +3,19 @@
  * so the engine never touches Tone synths directly and tests can swap in
  * recording instruments.
  *
- * The built-ins are v1's sounds, ported with the same settings (Milestone 5
- * makes patches data). Drum samples are shared, loaded once, and fall back to
- * v1's synth drums until they're ready (or if they fail to load).
+ * Patches (synth or sampler) are data, built here by one builder for built-in and
+ * custom patches alike. The drum kit is code: v1's drum samples, shared and loaded
+ * once, falling back to v1's synth drums until they're ready (or if they fail).
  */
 
 import * as Tone from "tone";
-import type { DrumInstrument, PatchRef, Role } from "../model/schema";
+import { BUILTIN_PATCHES } from "../model/patches";
+import type { DrumInstrument, Effect, Patch, PatchRole, Role } from "../model/schema";
+import { assertNever, type DeepReadonly } from "../model/types";
+import type { InstrumentSpec } from "../core/instruments";
+import type { SampleLibrary } from "./samples";
+
+type R<T> = DeepReadonly<T>;
 
 export interface ChordInstrument {
   /** Strike notes (MIDI) at `time` (context seconds), held for `duration` seconds. */
@@ -33,10 +39,10 @@ export interface RoleInstruments {
   drums: KitInstrument;
 }
 
-/** Builds an instrument for a role from a patch, connected to `out`. */
+/** Builds the instrument for a role from its spec, connected to `out`. */
 export type PatchFactory = <R extends Role>(
   role: R,
-  ref: PatchRef,
+  spec: InstrumentSpec,
   out: Tone.InputNode,
 ) => RoleInstruments[R];
 
@@ -46,9 +52,15 @@ const midiToFreq = (m: number) => 440 * 2 ** ((m - 69) / 12);
  * A reverb impulse built synchronously: stereo noise decaying to −60 dB over
  * `decay` seconds after a short pre-delay. Replaces `Tone.Reverb`, whose impulse
  * is rendered asynchronously with `Tone.Offline` (which also swaps Tone's global
- * context while it runs). Same settings as v1's pad reverb.
+ * context while it runs). v1's pad reverb. `random` is injectable so tests can
+ * render the same impulse twice.
  */
-function reverb(decay: number, wet: number, out: Tone.InputNode) {
+export function reverb(
+  decay: number,
+  wet: number,
+  out: Tone.InputNode,
+  random: () => number = Math.random,
+) {
   const ctx = Tone.getContext();
   const preDelay = 0.01;
   const length = Math.ceil(decay * ctx.sampleRate);
@@ -57,7 +69,7 @@ function reverb(decay: number, wet: number, out: Tone.InputNode) {
       const t = i / ctx.sampleRate;
       const env =
         t < preDelay ? t / preDelay : Math.exp((-6.9 * (t - preDelay)) / (decay - preDelay));
-      return (Math.random() * 2 - 1) * env;
+      return (random() * 2 - 1) * env;
     });
   const impulse = Tone.ToneAudioBuffer.fromArray([channel(), channel()]);
   const mix = new Tone.CrossFade(wet).connect(out); // equal-power, like Tone.Reverb's `wet`
@@ -71,42 +83,194 @@ function reverb(decay: number, wet: number, out: Tone.InputNode) {
   };
 }
 
-function padV1(out: Tone.InputNode): ChordInstrument {
-  const verb = reverb(2.5, 0.25, out);
-  const synth = new Tone.PolySynth(Tone.Synth, {
-    oscillator: { type: "triangle" },
-    envelope: { attack: 0.05, decay: 0.3, sustain: 0.6, release: 1.5 },
-  }).connect(verb.input);
-  synth.volume.value = -13;
+/** Chains `effects` in order into `out`; returns the chain's input. */
+function effectChain(effects: R<Effect[]> | undefined, out: Tone.InputNode, random: () => number) {
+  const built: { input: Tone.InputNode; dispose: () => void }[] = [];
+  let next = out;
+  for (const effect of [...(effects ?? [])].reverse()) {
+    switch (effect.kind) {
+      case "reverb": {
+        const r = reverb(effect.decay, effect.wet, next, random);
+        built.push(r);
+        next = r.input;
+        break;
+      }
+      default:
+        assertNever(effect.kind);
+    }
+  }
+  return { input: next, dispose: () => built.forEach((e) => e.dispose()) };
+}
+
+/** A role's instrument from one Tone voice: chords strike chords, bass single notes. */
+type Voice = {
+  /** Frequencies sound at `time` for `duration` seconds. */
+  strike(freqs: number[], time: number, duration: number): void;
+  dispose(): void;
+};
+
+function asRole<P extends PatchRole>(role: P, voice: Voice): RoleInstruments[P] {
+  switch (role) {
+    case "chords":
+      return {
+        play: (midi: readonly number[], time: number, duration: number) =>
+          voice.strike(midi.map(midiToFreq), time, duration),
+        dispose: voice.dispose,
+      } satisfies ChordInstrument as RoleInstruments[P];
+    case "bass":
+      return {
+        play: (midi: number, time: number, duration: number) =>
+          voice.strike([midiToFreq(midi)], time, duration),
+        dispose: voice.dispose,
+      } satisfies BassInstrument as RoleInstruments[P];
+    default:
+      return assertNever(role);
+  }
+}
+
+type SynthPatch = Extract<R<Patch>, { kind: "synth" }>;
+type SamplerPatch = Extract<R<Patch>, { kind: "sampler" }>;
+
+/**
+ * A synth patch as Tone nodes. Chords are polyphonic (`PolySynth`), bass is mono.
+ * With a filter the voice is a `MonoSynth` (filter + filter envelope); without one,
+ * a plain `Synth`. These are exactly v1's pad (PolySynth of Synth) and bass (MonoSynth).
+ */
+function synthVoice(
+  role: PatchRole,
+  patch: SynthPatch,
+  out: Tone.InputNode,
+  random: () => number,
+): Voice {
+  const chain = effectChain(patch.effects, out, random);
+  const oscillator = { type: patch.oscillator.type };
+  const envelope = { ...patch.envelope };
+  const filter = patch.filter;
+  const mono = filter
+    ? {
+        oscillator,
+        envelope,
+        filter: { type: filter.type, Q: filter.q },
+        filterEnvelope: {
+          ...(filter.envelope ?? { attack: 0, decay: 0, sustain: 1, release: 0 }),
+          baseFrequency: filter.frequency,
+          octaves: filter.envelope?.octaves ?? 0,
+        },
+      }
+    : undefined;
+
+  const synth = ((): Tone.PolySynth | Tone.Synth | Tone.MonoSynth => {
+    switch (role) {
+      case "chords":
+        return mono
+          ? new Tone.PolySynth(Tone.MonoSynth, mono)
+          : new Tone.PolySynth(Tone.Synth, { oscillator, envelope });
+      case "bass":
+        return mono ? new Tone.MonoSynth(mono) : new Tone.Synth({ oscillator, envelope });
+      default:
+        return assertNever(role);
+    }
+  })();
+  synth.connect(chain.input);
+  synth.volume.value = patch.volume;
   return {
-    play: (midi, time, duration) =>
-      synth.triggerAttackRelease(midi.map(midiToFreq), duration, time),
+    strike: (freqs, time, duration) =>
+      synth instanceof Tone.PolySynth
+        ? synth.triggerAttackRelease(freqs, duration, time)
+        : synth.triggerAttackRelease(freqs[0]!, duration, time),
     dispose: () => {
       synth.dispose();
-      verb.dispose();
+      chain.dispose();
     },
   };
 }
 
-function bassV1(out: Tone.InputNode): BassInstrument {
-  const synth = new Tone.MonoSynth({
-    oscillator: { type: "sawtooth" },
-    filter: { Q: 2, type: "lowpass" },
-    envelope: { attack: 0.01, decay: 0.25, sustain: 0.4, release: 0.3 },
-    filterEnvelope: {
-      attack: 0.01,
-      decay: 0.2,
-      sustain: 0.4,
-      release: 0.3,
-      baseFrequency: 80,
-      octaves: 2.5,
-    },
-  }).connect(out);
-  synth.volume.value = -6;
-  return {
-    play: (midi, time, duration) => synth.triggerAttackRelease(midiToFreq(midi), duration, time),
-    dispose: () => synth.dispose(),
+/**
+ * A sampler patch: plays `fallback` (the role's default synth) until its set is
+ * ready, then the samples. Bass stays monophonic: a new note releases the last.
+ */
+function samplerVoice(
+  role: PatchRole,
+  patch: SamplerPatch,
+  out: Tone.InputNode,
+  library: SampleLibrary,
+  fallback: Voice,
+  random: () => number,
+): Voice {
+  void library.load(patch.set);
+  const set = library.sets[patch.set];
+  const chain = effectChain(patch.effects, out, random);
+  let sampler: Tone.Sampler | undefined;
+  let sounding: { freq: number; end: number } | undefined;
+
+  const ready = (): Tone.Sampler | undefined => {
+    if (sampler) return sampler;
+    const status = library.status(patch.set);
+    switch (status.kind) {
+      case "ready":
+        sampler = new Tone.Sampler({
+          urls: Object.fromEntries(status.buffers),
+          attack: patch.attack ?? set?.attack ?? 0,
+          release: patch.release ?? set?.release ?? 0.1,
+        }).connect(chain.input);
+        sampler.volume.value = patch.volume;
+        return sampler;
+      case "unloaded":
+      case "loading":
+      case "failed":
+        return undefined;
+      default:
+        return assertNever(status);
+    }
   };
+
+  return {
+    strike: (freqs, time, duration) => {
+      const s = ready();
+      if (!s) return fallback.strike(freqs, time, duration);
+      switch (role) {
+        case "chords":
+          s.triggerAttackRelease(freqs, duration, time);
+          break;
+        case "bass":
+          if (sounding && sounding.end > time) s.triggerRelease(sounding.freq, time);
+          s.triggerAttackRelease(freqs[0]!, duration, time);
+          sounding = { freq: freqs[0]!, end: time + duration };
+          break;
+        default:
+          assertNever(role);
+      }
+    },
+    dispose: () => {
+      sampler?.dispose();
+      chain.dispose();
+      fallback.dispose();
+    },
+  };
+}
+
+/** The role's default patch: what a sampler plays until its samples are ready. */
+const FALLBACK: Record<PatchRole, SynthPatch> = {
+  chords: BUILTIN_PATCHES["pad-v1"] as SynthPatch,
+  bass: BUILTIN_PATCHES["bass-v1"] as SynthPatch,
+};
+
+function patchVoice(role: PatchRole, patch: R<Patch>, out: Tone.InputNode, deps: PatchDeps): Voice {
+  switch (patch.kind) {
+    case "synth":
+      return synthVoice(role, patch, out, deps.random);
+    case "sampler":
+      return samplerVoice(
+        role,
+        patch,
+        out,
+        deps.samples,
+        synthVoice(role, FALLBACK[role], out, deps.random),
+        deps.random,
+      );
+    default:
+      return assertNever(patch);
+  }
 }
 
 // ── Drums ───────────────────────────────────────────────────────────────────
@@ -270,8 +434,24 @@ function kitV1(out: Tone.InputNode): KitInstrument {
   };
 }
 
-export const builtinPatches: PatchFactory = (role, ref, out) => {
-  if (ref.kind === "custom") throw new Error("custom patches arrive in Milestone 5");
-  const make = { "pad-v1": padV1, "bass-v1": bassV1, "kit-v1": kitV1 }[ref.id];
-  return make(out) as unknown as RoleInstruments[typeof role];
-};
+export interface PatchDeps {
+  /** Where sampler patches get their samples. */
+  samples: SampleLibrary;
+  /** Noise source for reverb impulses (tests seed it). */
+  random: () => number;
+}
+
+/** The engine's instrument builder: patches (data) and the drum kit (code). */
+export function makePatchFactory(deps: PatchDeps): PatchFactory {
+  return ((role: Role, spec: InstrumentSpec, out: Tone.InputNode) => {
+    switch (spec.kind) {
+      case "kit":
+        return kitV1(out);
+      case "patch":
+        if (role !== spec.role) throw new Error(`a ${spec.role} patch can't play ${role}`);
+        return asRole(spec.role, patchVoice(spec.role, spec.patch, out, deps));
+      default:
+        return assertNever(spec);
+    }
+  }) as PatchFactory;
+}

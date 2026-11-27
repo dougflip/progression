@@ -1,0 +1,142 @@
+# song-custom-patches: 14 bars from the top (advance forced to auto)
+
+bar 1 · Custom [arr 0] bar 1/4 · lap 0 key F · 100 bpm 4/4 (192 ticks)
+  chord  0       +192     #0 Imaj7       Fmaj7     F3 F4 A4 E5        glass
+  bass   0       +40      F2    sub
+  bass   48      +40      C3    sub
+  bass   96      +40      F2    sub
+  bass   144     +40      C3    sub
+  kick     0 96                                     kit-v1
+  hat      0 24 48 72 96 120 144 168                kit-v1
+  snare    48 144                                   kit-v1
+  voicing → F4 A4 E5
+bar 2 · Custom [arr 0] bar 2/4 · lap 0 key F · 100 bpm 4/4 (192 ticks)
+  chord  0       +192     #1 vi7         Dm7       D3 F4 C5 D5        glass
+  bass   0       +40      D2    sub
+  bass   48      +40      A2    sub
+  bass   96      +40      D2    sub
+  bass   144     +40      A2    sub
+  kick     0 96                                     kit-v1
+  hat      0 24 48 72 96 120 144 168                kit-v1
+  snare    48 144                                   kit-v1
+  voicing → F4 C5 D5
+bar 3 · Custom [arr 0] bar 3/4 · lap 0 key F · 100 bpm 4/4 (192 ticks)
+  chord  0       +192     #2 ii7         Gm7       G2 F4 G4 Bb4       glass
+  bass   0       +40      G1    sub
+  bass   48      +40      D2    sub
+  bass   96      +40      G1    sub
+  bass   144     +40      D2    sub
+  kick     0 96                                     kit-v1
+  hat      0 24 48 72 96 120 144 168                kit-v1
+  snare    48 144                                   kit-v1
+  voicing → F4 G4 Bb4
+bar 4 · Custom [arr 0] bar 4/4 · lap 0 key F · 100 bpm 4/4 (192 ticks)
+  chord  0       +192     #3 V7          C7        C3 E4 Bb4 C5       glass
+  bass   0       +40      C2    sub
+  bass   48      +40      G2    sub
+  bass   96      +40      C2    sub
+  bass   144     +40      G2    sub
+  kick     0 96                                     kit-v1
+  hat      0 24 48 72 96 120 144 168                kit-v1
+  snare    48 144                                   kit-v1
+  voicing → E4 Bb4 C5
+bar 5 · Pad [arr 1] bar 1/4 · lap 0 key F · 100 bpm 4/4 (192 ticks)
+  chord  0       +192     #0 Imaj7       Fmaj7     F3 F4 A4 E5        pad-v1
+  bass   0       +40      F2    sub
+  bass   48      +40      C3    sub
+  bass   96      +40      F2    sub
+  bass   144     +40      C3    sub
+  kick     0 96                                     kit-v1
+  hat      0 24 48 72 96 120 144 168                kit-v1
+  snare    48 144                                   kit-v1
+  voicing → F4 A4 E5
+bar 6 · Pad [arr 1] bar 2/4 · lap 0 key F · 100 bpm 4/4 (192 ticks)
+  chord  0       +192     #1 vi7         Dm7       D3 F4 C5 D5        pad-v1
+  bass   0       +40      D2    sub
+  bass   48      +40      A2    sub
+  bass   96      +40      D2    sub
+  bass   144     +40      A2    sub
+  kick     0 96                                     kit-v1
+  hat      0 24 48 72 96 120 144 168                kit-v1
+  snare    48 144                                   kit-v1
+  voicing → F4 C5 D5
+bar 7 · Pad [arr 1] bar 3/4 · lap 0 key F · 100 bpm 4/4 (192 ticks)
+  chord  0       +192     #2 ii7         Gm7       G2 F4 G4 Bb4       pad-v1
+  bass   0       +40      G1    sub
+  bass   48      +40      D2    sub
+  bass   96      +40      G1    sub
+  bass   144     +40      D2    sub
+  kick     0 96                                     kit-v1
+  hat      0 24 48 72 96 120 144 168                kit-v1
+  snare    48 144                                   kit-v1
+  voicing → F4 G4 Bb4
+bar 8 · Pad [arr 1] bar 4/4 · lap 0 key F · 100 bpm 4/4 (192 ticks)
+  chord  0       +192     #3 V7          C7        C3 E4 Bb4 C5       pad-v1
+  bass   0       +40      C2    sub
+  bass   48      +40      G2    sub
+  bass   96      +40      C2    sub
+  bass   144     +40      G2    sub
+  kick     0 96                                     kit-v1
+  hat      0 24 48 72 96 120 144 168                kit-v1
+  snare    48 144                                   kit-v1
+  voicing → E4 Bb4 C5
+bar 9 · Edge [arr 2] bar 1/4 · lap 0 key F · 100 bpm 4/4 (192 ticks)
+  chord  0       +192     #0 Imaj7       Fmaj7     F3 F4 A4 E5        glass
+  bass   0       +40      F2    buzz
+  bass   48      +40      C3    buzz
+  bass   96      +40      F2    buzz
+  bass   144     +40      C3    buzz
+  kick     0 96                                     kit-v1
+  hat      0 24 48 72 96 120 144 168                kit-v1
+  snare    48 144                                   kit-v1
+  voicing → F4 A4 E5
+bar 10 · Edge [arr 2] bar 2/4 · lap 0 key F · 100 bpm 4/4 (192 ticks)
+  chord  0       +192     #1 vi7         Dm7       D3 F4 C5 D5        glass
+  bass   0       +40      D2    buzz
+  bass   48      +40      A2    buzz
+  bass   96      +40      D2    buzz
+  bass   144     +40      A2    buzz
+  kick     0 96                                     kit-v1
+  hat      0 24 48 72 96 120 144 168                kit-v1
+  snare    48 144                                   kit-v1
+  voicing → F4 C5 D5
+bar 11 · Edge [arr 2] bar 3/4 · lap 0 key F · 100 bpm 4/4 (192 ticks)
+  chord  0       +192     #2 ii7         Gm7       G2 F4 G4 Bb4       glass
+  bass   0       +40      G1    buzz
+  bass   48      +40      D2    buzz
+  bass   96      +40      G1    buzz
+  bass   144     +40      D2    buzz
+  kick     0 96                                     kit-v1
+  hat      0 24 48 72 96 120 144 168                kit-v1
+  snare    48 144                                   kit-v1
+  voicing → F4 G4 Bb4
+bar 12 · Edge [arr 2] bar 4/4 · lap 0 key F · 100 bpm 4/4 (192 ticks)
+  chord  0       +192     #3 V7          C7        C3 E4 Bb4 C5       glass
+  bass   0       +40      C2    buzz
+  bass   48      +40      G2    buzz
+  bass   96      +40      C2    buzz
+  bass   144     +40      G2    buzz
+  kick     0 96                                     kit-v1
+  hat      0 24 48 72 96 120 144 168                kit-v1
+  snare    48 144                                   kit-v1
+  voicing → E4 Bb4 C5
+bar 13 · Custom [arr 0] bar 1/4 · lap 0 key F · 100 bpm 4/4 (192 ticks)
+  chord  0       +192     #0 Imaj7       Fmaj7     F3 F4 A4 E5        glass
+  bass   0       +40      F2    sub
+  bass   48      +40      C3    sub
+  bass   96      +40      F2    sub
+  bass   144     +40      C3    sub
+  kick     0 96                                     kit-v1
+  hat      0 24 48 72 96 120 144 168                kit-v1
+  snare    48 144                                   kit-v1
+  voicing → F4 A4 E5
+bar 14 · Custom [arr 0] bar 2/4 · lap 0 key F · 100 bpm 4/4 (192 ticks)
+  chord  0       +192     #1 vi7         Dm7       D3 F4 C5 D5        glass
+  bass   0       +40      D2    sub
+  bass   48      +40      A2    sub
+  bass   96      +40      D2    sub
+  bass   144     +40      A2    sub
+  kick     0 96                                     kit-v1
+  hat      0 24 48 72 96 120 144 168                kit-v1
+  snare    48 144                                   kit-v1
+  voicing → F4 C5 D5

@@ -1,0 +1,662 @@
+{
+  "$comment": "Custom patches. Song-level: chords on 'glass' (square wave through a resonant lowpass with a filter envelope, plus reverb), bass on 'sub' (a plain sine, no filter: mono Synth). The Pad section overrides chords back to the built-in pad-v1, and the Edge section overrides bass with 'buzz' (a bright sawtooth bass). Each section plays the same I-vi-ii-V and walking roots so the sounds can be compared.",
+  "version": 2,
+  "doc": {
+    "version": 2,
+    "kind": "song",
+    "title": "Custom patches",
+    "key": "F",
+    "ppq": 48,
+    "defaults": {
+      "tempo": 100,
+      "meter": {
+        "beatsPerBar": 4,
+        "beatUnit": 4
+      },
+      "swing": 0,
+      "voicing": "voice-lead"
+    },
+    "instruments": {
+      "chords": {
+        "kind": "custom",
+        "id": "glass"
+      },
+      "bass": {
+        "kind": "custom",
+        "id": "sub"
+      },
+      "drums": {
+        "kind": "builtin",
+        "id": "kit-v1"
+      }
+    },
+    "patches": {
+      "glass": {
+        "kind": "synth",
+        "role": "chords",
+        "oscillator": {
+          "type": "square"
+        },
+        "envelope": {
+          "attack": 0.005,
+          "decay": 0.4,
+          "sustain": 0.3,
+          "release": 0.8
+        },
+        "filter": {
+          "type": "lowpass",
+          "frequency": 400,
+          "q": 4,
+          "envelope": {
+            "attack": 0.005,
+            "decay": 0.3,
+            "sustain": 0.2,
+            "release": 0.5,
+            "octaves": 3
+          }
+        },
+        "effects": [
+          {
+            "kind": "reverb",
+            "decay": 3,
+            "wet": 0.3
+          }
+        ],
+        "volume": -18
+      },
+      "sub": {
+        "kind": "synth",
+        "role": "bass",
+        "oscillator": {
+          "type": "sine"
+        },
+        "envelope": {
+          "attack": 0.01,
+          "decay": 0.1,
+          "sustain": 0.9,
+          "release": 0.2
+        },
+        "volume": -2
+      },
+      "buzz": {
+        "kind": "synth",
+        "role": "bass",
+        "oscillator": {
+          "type": "sawtooth"
+        },
+        "envelope": {
+          "attack": 0.005,
+          "decay": 0.15,
+          "sustain": 0.5,
+          "release": 0.15
+        },
+        "filter": {
+          "type": "lowpass",
+          "frequency": 300,
+          "q": 1
+        },
+        "volume": -10
+      }
+    },
+    "sections": [
+      {
+        "id": "custom",
+        "name": "Custom",
+        "bars": 4,
+        "overrides": {},
+        "chords": [
+          {
+            "start": 0,
+            "duration": 192,
+            "root": {
+              "degree": 1
+            },
+            "quality": "maj7"
+          },
+          {
+            "start": 192,
+            "duration": 192,
+            "root": {
+              "degree": 6
+            },
+            "quality": "m7"
+          },
+          {
+            "start": 384,
+            "duration": 192,
+            "root": {
+              "degree": 2
+            },
+            "quality": "m7"
+          },
+          {
+            "start": 576,
+            "duration": 192,
+            "root": {
+              "degree": 5
+            },
+            "quality": "dom7"
+          }
+        ],
+        "drums": {
+          "kick": [0, 96, 192, 288, 384, 480, 576, 672],
+          "snare": [48, 144, 240, 336, 432, 528, 624, 720],
+          "hat": [
+            0, 24, 48, 72, 96, 120, 144, 168, 192, 216, 240, 264, 288, 312, 336, 360, 384, 408, 432,
+            456, 480, 504, 528, 552, 576, 600, 624, 648, 672, 696, 720, 744
+          ]
+        },
+        "parts": {
+          "bass": [
+            {
+              "start": 0,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 48,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 96,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 144,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 192,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 240,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 288,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 336,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 384,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 432,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 480,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 528,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 576,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 624,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 672,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 720,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            }
+          ]
+        },
+        "loops": []
+      },
+      {
+        "id": "pad",
+        "name": "Pad",
+        "bars": 4,
+        "overrides": {
+          "instruments": {
+            "chords": {
+              "kind": "builtin",
+              "id": "pad-v1"
+            }
+          }
+        },
+        "chords": [
+          {
+            "start": 0,
+            "duration": 192,
+            "root": {
+              "degree": 1
+            },
+            "quality": "maj7"
+          },
+          {
+            "start": 192,
+            "duration": 192,
+            "root": {
+              "degree": 6
+            },
+            "quality": "m7"
+          },
+          {
+            "start": 384,
+            "duration": 192,
+            "root": {
+              "degree": 2
+            },
+            "quality": "m7"
+          },
+          {
+            "start": 576,
+            "duration": 192,
+            "root": {
+              "degree": 5
+            },
+            "quality": "dom7"
+          }
+        ],
+        "drums": {
+          "kick": [0, 96, 192, 288, 384, 480, 576, 672],
+          "snare": [48, 144, 240, 336, 432, 528, 624, 720],
+          "hat": [
+            0, 24, 48, 72, 96, 120, 144, 168, 192, 216, 240, 264, 288, 312, 336, 360, 384, 408, 432,
+            456, 480, 504, 528, 552, 576, 600, 624, 648, 672, 696, 720, 744
+          ]
+        },
+        "parts": {
+          "bass": [
+            {
+              "start": 0,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 48,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 96,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 144,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 192,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 240,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 288,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 336,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 384,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 432,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 480,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 528,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 576,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 624,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 672,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 720,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            }
+          ]
+        },
+        "loops": []
+      },
+      {
+        "id": "edge",
+        "name": "Edge",
+        "bars": 4,
+        "overrides": {
+          "instruments": {
+            "bass": {
+              "kind": "custom",
+              "id": "buzz"
+            }
+          }
+        },
+        "chords": [
+          {
+            "start": 0,
+            "duration": 192,
+            "root": {
+              "degree": 1
+            },
+            "quality": "maj7"
+          },
+          {
+            "start": 192,
+            "duration": 192,
+            "root": {
+              "degree": 6
+            },
+            "quality": "m7"
+          },
+          {
+            "start": 384,
+            "duration": 192,
+            "root": {
+              "degree": 2
+            },
+            "quality": "m7"
+          },
+          {
+            "start": 576,
+            "duration": 192,
+            "root": {
+              "degree": 5
+            },
+            "quality": "dom7"
+          }
+        ],
+        "drums": {
+          "kick": [0, 96, 192, 288, 384, 480, 576, 672],
+          "snare": [48, 144, 240, 336, 432, 528, 624, 720],
+          "hat": [
+            0, 24, 48, 72, 96, 120, 144, 168, 192, 216, 240, 264, 288, 312, 336, 360, 384, 408, 432,
+            456, 480, 504, 528, 552, 576, 600, 624, 648, 672, 696, 720, 744
+          ]
+        },
+        "parts": {
+          "bass": [
+            {
+              "start": 0,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 48,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 96,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 144,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 192,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 240,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 288,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 336,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 384,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 432,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 480,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 528,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 576,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 624,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            },
+            {
+              "start": 672,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 1
+              }
+            },
+            {
+              "start": 720,
+              "duration": 40,
+              "pitch": {
+                "kind": "chordTone",
+                "tone": 5
+              }
+            }
+          ]
+        },
+        "loops": []
+      }
+    ],
+    "arrangement": ["custom", "pad", "edge"]
+  }
+}

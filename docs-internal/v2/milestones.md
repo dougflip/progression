@@ -6,9 +6,8 @@ Related: `decisions.md`, `data-model.md`, `v2/src/model/schema.ts`.
 
 ## Status
 
-- **Done (merged):** 1 Foundation (#55), 2 Pure core (#56), 3 Engine + bench (#57).
-- **In review:** 4 Engine complete (branch `v2-m4-engine-complete`): listen checks passed.
-- **Next:** 5 Sound, starting with the patch vocabulary proposal.
+- **Done (merged):** 1 Foundation (#55), 2 Pure core (#56), 3 Engine + bench (#57), 4 Engine complete (#59).
+- **In progress:** 5 Sound, on branch `v2-m5-sound`: patch vocabulary, patch builder, sampler support and the custom-patches fixture are built; listen checks pending, then PR.
 - Update this section when a milestone merges.
 
 ## Ground rules (every milestone)
@@ -76,13 +75,15 @@ Related: `decisions.md`, `data-model.md`, `v2/src/model/schema.ts`.
 
 ## 5. Sound
 
-**Goal:** instruments are data and sound good.
+**Goal:** instruments are data, and the engine can play sampled instruments.
 
-- Sampled bass and keys (CC-licensed sets), lazily loaded and cached at runtime (not precached at install).
-- Data-defined synth patches (oscillator, envelope, filter, effects), built-ins by id and custom patches embedded in the song.
+- `Patch` (synth, sampler) in the schema; v1's pad and bass rewritten as built-in patch data.
+- One builder for built-in and custom patches. Instruments for patches no longer in the song are disposed once their sound has finished.
+- Sampler support: sample-set registry (files, sampled notes, licence, credit), fetched on first use and cached (Cache API), fallback synth while loading. ▶ waits briefly for the current song's sets.
+- No sample sets ship in this milestone: finding and choosing CC-licensed bass and keys sets comes next, then adds them as data.
 
-**Tests:** every built-in patch validates and builds; sample loading and fallback-to-synth behaviour; patch changes take effect at the next bar.
-**You'll check:** each patch, on phone speakers and headphones; first-load time on a slow connection.
+**Tests:** every built-in patch validates and builds; the data-built pad and bass render the same as v1's code; sampler loading and fallback (with a test set); a patch change takes effect at the next bar; replaced instruments are disposed.
+**You'll check:** the starters still sound like v1; a fixture with custom patches.
 
 ## 6. Looper
 

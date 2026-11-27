@@ -26,9 +26,11 @@ Schema: `v2/src/model/schema.ts` (Zod 4; persisted types are inferred from it). 
 3. `key = lapKeys(song, practice)[lap % n]`.
 4. `scheduleBar(source, position, scope, prevVoicing)` → `ScheduledBar`: numerals, chord tones, scale degrees and chromatic notes become MIDI (see Semantics), voicing and swing are applied. The bar's `voicing` is the next bar's `prevVoicing`. **Mutes are not applied here.**
 5. `nextPosition(source, transport)`: advance mode, a queued `Jump` (next bar), a queued key jump (end of lap).
-6. Engine: hands the whole bar to Web Audio 0.2 s before it starts. Instruments live for the play session; channels for the engine; only events are scheduled. Emits `EngineEvent`s at audible time (`Tone.Draw`) for the UI; each `bar` event carries the `EngineSource` it was scheduled from (including the `doc`), so the player shows what is actually playing, even right after a swap.
+6. Engine: hands the whole bar to Web Audio 0.2 s before it starts. Each note's `PatchRef` resolves to an `InstrumentSpec` (`core/instruments.ts`), keyed by what it sounds like, so an edited patch is a new instrument from the next bar. Instruments live for the play session; one the song no longer uses is disposed once its last note and tail are over (`instrumentsToDispose`). Channels live for the engine; only events are scheduled. Emits `EngineEvent`s at audible time (`Tone.Draw`) for the UI; each `bar` event carries the `EngineSource` it was scheduled from (including the `doc`), so the player shows what is actually playing, even right after a swap.
 
 Mixer levels and mutes bypass the loop: `setLevels` / `setMutes` change channel gains instantly.
+
+**Samples.** ▶ first loads the song's sample sets (`songSampleSets`), waiting up to 1.5 s (`loadingSounds` event; pause or stop cancels). Sets load once per session into a `SampleLibrary` (status: `unloaded | loading | ready | failed`), fetched through the Cache API. Each bar also starts loading any set an edit added.
 
 **Opening in composer.** `generateSong(recipe, styles)` → new saved `LibraryItem` (`origin: "created"`). Nothing links back.
 
@@ -54,6 +56,7 @@ Mixer levels and mutes bypass the loop: `setLevels` / `setMutes` change channel 
 - **Voicing modes**: `root` never voice-leads; `voice-lead` leads from the previous chord across laps; `voice-lead-loop` starts fresh on the first bar of each lap (v1).
 - **Bass phrases** in styles use `major` or `minor` by the sounding chord: minor, m7, dim, m7b5, dim7, mMaj7 → `minor`; everything else → `major`.
 - **Cycle laps**: `fourths` / `fifths` start from the song key (12 laps), spelled with flats for fourths and sharps for fifths (v1); `custom` plays its keys as given. Chord names follow the lap key's spelling. A lap ends when the arrangement completes (or the section, when looping one section or in manual advance with a key jump queued). A queued section jump lands when the current section ends; a chord jump at the next bar. If that bar also ended a lap, the lap still advances.
+- **Patches**: `chords` patches play polyphonically, `bass` monophonically (a new note cuts the previous one). A synth's filter is 12 dB/octave; with an envelope its cutoff sweeps from `frequency` up `octaves` at the envelope's peak. Effects run in order after the source; reverb is v1's (a synchronous noise impulse with 10 ms pre-delay, equal-power wet/dry). A sampler pitches each note from the nearest sampled note; until its set loads (or if it fails) it plays the role's default patch.
 - **Generator**: a section's chords last their `:bars` or bars-per-chord; each bar repeats the style's one-bar drums and the bass phrase for the chord sounding in that bar.
 
 ## Validation rules
@@ -66,7 +69,8 @@ Field-level ranges are in `schema.ts`. Objects are strict (unknown keys are reje
 - **Drums**: per instrument, sorted, unique, every tick `<` section length.
 - **Parts**: sorted by `start`, one note per start (parts are monophonic: a note is cut where the next starts); every note `start <` section length (a note may ring past the end).
 - **Loops**: `take.bars ≤ section.bars`.
-- **Instruments**: a built-in patch is only used for its own role (`pad-v1` chords, `bass-v1` bass, `kit-v1` drums); every `PatchRef` with `kind: "custom"` resolves to a key in `song.patches`, and its `role` must match too (Milestone 5; until then `patches` is `{}`).
+- **Instruments**: a built-in patch is only used for its own role (`pad-v1` chords, `bass-v1` bass, `kit-v1` drums); every `PatchRef` with `kind: "custom"` resolves to a key in `song.patches` whose `role` matches. Custom patches can't play drums.
+- **Patches**: parameter ranges in `schema.ts` (times 0–10 s, volume −40…+6 dB, filter 20–20000 Hz, ≤ 4 effects); a sampler's `set` must be a known sample set.
 - **Progressions** (`BackingSection`, `SectionSeed`): every token parses (`[b#]NUMERAL[suffix][/[b#]NUMERAL][:bars]`, grammar in `core/numerals.ts`), `:bars` is 1–16, and the generated section is ≤ 64 bars.
 - **Ticks** are integers ≥ 0; durations > 0. Any tick is valid (the UI snaps; triplets need e.g. 16).
 - **Strings** are trimmed and non-empty.
@@ -121,6 +125,7 @@ Field-level ranges are in `schema.ts`. Objects are strict (unknown keys are reje
 
 ## Deferred (don't guess; defined in the named milestone)
 
-- **Milestone 5:** the patch vocabulary (`Patch.synth`: oscillator/effect types, params, ranges), sample-set shape, and the built-in patch registry beyond the three v1 defaults. Until then `Song.patches` must be `{}`.
+- **Sample sets:** which CC-licensed bass and keys sets to ship (licence, size, credit line). The schema and engine support them; `SAMPLE_SET_IDS` is empty until then.
+- **Custom drum kits** (a `PatchRole` of `drums`), and more effect and oscillator kinds: additive widenings.
 - **Milestone 6:** loop recording details beyond `LoopTake` / `LoopAudio` (latency compensation, count-in).
 - **Open question:** custom styles (v1's user-authored patterns). `StyleRef` only has `kind: "builtin"` today; a `kind: "custom"` member would be an additive widening.
