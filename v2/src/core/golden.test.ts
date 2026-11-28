@@ -85,7 +85,7 @@ function format(name: string, { source, bars }: ReturnType<typeof play>): string
       lines.push(`  ${pad(drum, 8)} ${pad(times.join(" "), 40)} ${id}`);
     }
     for (const l of b.loops) {
-      lines.push(`  loop   ${l.takeId} gain ${l.gain}${l.startsThisBar ? " (starts)" : ""}`);
+      lines.push(`  loop   ${l.takeId} gain ${l.gain} bar ${l.barInTake + 1}/${l.bars}`);
     }
     if (b.voicing) lines.push(`  voicing → ${b.voicing.map((m) => midiName(m, flats)).join(" ")}`);
   });

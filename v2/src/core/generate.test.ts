@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { BackingTrack, Song, type SectionId, type SectionSeed } from "../model/schema";
+import {
+  BackingSection as BackingSectionSchema,
+  BackingTrack,
+  Song,
+  type SectionId,
+  type SectionSeed,
+} from "../model/schema";
 import { generateSong, regenerateSection } from "./generate";
 import { STYLES } from "./styles";
 
@@ -119,8 +125,20 @@ describe("regenerateSection", () => {
   base.sections[0].name = "Intro";
   base.sections[0].overrides = { swing: 0.5 };
   base.sections[0].loops = [
-    { id: "t1" as never, name: "Take 1", bars: 4, gain: 1 },
-    { id: "t2" as never, name: "Take 2", bars: 1, gain: 0.5 },
+    {
+      id: "t1" as never,
+      name: "Take 1",
+      bars: 4,
+      gain: 1,
+      recorded: { key: "C", tempo: 120, meter: { beatsPerBar: 4, beatUnit: 4 } },
+    },
+    {
+      id: "t2" as never,
+      name: "Take 2",
+      bars: 1,
+      gain: 0.5,
+      recorded: { key: "C", tempo: 120, meter: { beatsPerBar: 4, beatUnit: 4 } },
+    },
   ];
 
   it("rebuilds content, keeps id, name, overrides; shortens loops to fit", () => {
@@ -141,5 +159,56 @@ describe("regenerateSection", () => {
 
     const back = regenerateSection({ ...next, defaults: base.defaults }, id("a"), seed, STYLES);
     expect(back.sections[0].overrides.meter).toBeUndefined();
+  });
+});
+
+describe("backing-track takes", () => {
+  it("ride along into the generated song's sections", () => {
+    const take = {
+      id: "t1",
+      name: "Take 1",
+      bars: 2,
+      gain: 0.8,
+      recorded: { key: "C", tempo: 120, meter: { beatsPerBar: 4, beatUnit: 4 } },
+    };
+    const bt = BackingTrack.parse({
+      version: 2,
+      kind: "backingTrack",
+      title: "Loops",
+      key: "C",
+      tempo: 120,
+      style: { kind: "builtin", id: "rock" },
+      drums: "simple",
+      bass: "simple",
+      voicing: "voice-lead",
+      sections: [
+        { id: "a", name: "A", progression: "I IV", barsPerChord: 1, loops: [take] },
+        { id: "b", name: "B", progression: "V", barsPerChord: 1 },
+      ],
+      arrangement: ["a", "b"],
+    });
+    const song = generateSong(bt, STYLES);
+    expect(song.sections[0].loops).toEqual([take]);
+    expect(song.sections[1]!.loops).toEqual([]);
+    expect(Song.safeParse(song).error).toBeUndefined();
+  });
+
+  it("are validated against the progression's length", () => {
+    const r = BackingSectionSchema.safeParse({
+      id: "a",
+      name: "A",
+      progression: "I IV",
+      barsPerChord: 1,
+      loops: [
+        {
+          id: "t1",
+          name: "T",
+          bars: 3,
+          gain: 1,
+          recorded: { key: "C", tempo: 120, meter: { beatsPerBar: 4, beatUnit: 4 } },
+        },
+      ],
+    });
+    expect(r.error?.issues[0]?.message).toBe("take is 3 bars; the section has 2");
   });
 });

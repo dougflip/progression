@@ -131,8 +131,15 @@ Background and goals: `version-2.md`.
 
 ## Looper
 
-- Loops belong to sections. A section holds a list of takes, so overdub = add a take.
-- Audio is stored in IndexedDB; the song references takes by ID. Audio never goes in the song data or the URL.
+- Loops belong to sections, in songs and backing tracks alike (the generator carries a backing section's takes into its song). A section holds a list of takes; overdub = add a take. Every unmuted take plays together, from the section's bar 1, every time the section plays.
+- Loops are off while a key cycle is on (a take is in one key): no recording, no playback. Pitch-shifting may come later.
+- A take records what the section was (`recorded`: key, tempo, meter). Later changes are shown as warnings; the take still plays, unstretched.
+- Recording (v1's flow): arming loops the section; the recording runs one pass from its bar 1 (it starts at arming, so bar 1 is always inside it). Optional "silence while recording" for no headphones. Pause or stop cancels.
+- The loop offset (mic and output latency) is one device setting, adjusted by ear (v1 found ~50 ms on a laptop, ~350 ms on a phone). Takes keep their untrimmed recording, so a new offset re-trims every take without re-recording.
+- **Storage**: IndexedDB `progression-v2`, store `loopAudio` (key = take id, indexed by owning item). Versioned upgrades, append only; recorded audio is never wiped. The audio is saved before the take is added to the doc, so a doc never names audio that failed to save. Deleting a take removes it from the doc, then its audio; deleting an item deletes its audio; a sweep at startup removes audio no saved doc references. The app asks for persistent storage.
+- **Errors never stop playback.** A take with no audio on this device (`missing`) or that failed to load (`failed`) is silent and reported once per play session; the UI marks it and offers delete. Recording failures (mic denied or missing, unsupported, empty recording, save failed incl. a full disk) are typed; the looper returns to idle and nothing is added.
+- Audio never goes in the song data or the URL. Shared links drop takes (`withoutTakes`).
+- Deferred (additive later): per-take cleanup effects (v1's high-pass, compressor, limiter), take offset within the section, time-stretch for tempo changes.
 - Export is deferred. The model must not block either option:
   - **Share a recording**: `Tone.Recorder` on the master output → audio file. Likely first.
   - **Share the project**: one file bundling song JSON + loop audio, imported by the recipient.

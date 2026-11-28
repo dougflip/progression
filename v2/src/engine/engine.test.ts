@@ -3,7 +3,7 @@
  * Recording instruments log every scheduled note; a click instrument checks that
  * rendered audio starts where the schedule says.
  */
-import { onsets, renderOffline, useIdleOfflineContext } from "./offline"; // first: installs Web Audio for Tone
+import { onsets, renderOffline, SAMPLE_RATE, useIdleOfflineContext } from "./offline"; // first: installs Web Audio for Tone
 import * as Tone from "tone";
 import { describe, expect, it, vi } from "vitest";
 import otherside from "../../fixtures/starter-otherside.json";
@@ -11,7 +11,7 @@ import { validateEnvelope } from "../model/envelope";
 import { generateSong } from "../core/generate";
 import { DEFAULT_PRACTICE } from "../core/settings";
 import { STYLES } from "../core/styles";
-import type { EngineEvent, EngineSource } from "../model/runtime";
+import type { EngineEvent, EngineSource, Position } from "../model/runtime";
 import { instrumentKey, tailSeconds, type InstrumentSpec } from "../core/instruments";
 import { BUILTIN_PATCHES } from "../model/patches";
 import { SAMPLE_SETS, type SampleSet } from "../model/sampleSets";
@@ -23,8 +23,11 @@ import {
   type PatchId,
   type Practice,
   type Role,
+  type LoopTake,
   type SampleSetId,
+  type TakeId,
 } from "../model/schema";
+import type { TakeLibrary, TakeStatus } from "./takes";
 import { makeEngine, type EngineOptions, type ScheduledBarInfo } from "./engine";
 import { makePatchFactory, type PatchFactory } from "./patches";
 import { makeSampleLibrary, type SampleLibrary } from "./samples";
@@ -145,6 +148,8 @@ async function run(
   seconds: number,
   src: () => EngineSource,
   opts: EngineOptions & {
+    /** Where ▶ starts (default: the top). */
+    from?: Position;
     script?: (e: ReturnType<typeof makeEngine>, at: (t: number, fn: () => void) => void) => void;
   } = {},
 ) {
@@ -169,7 +174,7 @@ async function run(
     engine.setSource(src);
     const at = (t: number, fn: () => void) => Tone.getContext().setTimeout(fn, t);
     opts.script?.(engine, at);
-    engine.play().catch(() => {}); // failures are asserted through events
+    engine.play(opts.from).catch(() => {}); // failures are asserted through events
   });
   return { bars, notes, events, audio, engine };
 }
@@ -655,6 +660,110 @@ describe("patches", () => {
     engine.stop();
     await played;
     expect(engine.getTransport().status).toBe("stopped");
+    engine.dispose();
+  });
+});
+
+describe("loops", () => {
+  const R = { key: "C" as const, tempo: 120, meter: { beatsPerBar: 4, beatUnit: 4 as const } };
+  /** 2 bars at 120 bpm (4 s) with one 2-bar take on it. */
+  function loopSong(over: Partial<LoopTake> = {}): Song {
+    const s = structuredClone(song(120, [{ bars: 2 }])) as Song;
+    s.sections[0]!.drums = {}; // only the loop makes sound
+    s.sections[0]!.loops = [
+      { id: "t1" as TakeId, name: "T", bars: 2, gain: 1, recorded: R, ...over },
+    ];
+    return Song.parse(s);
+  }
+
+  /** A take library whose takes are built by `make` on the render's context. */
+  function stubTakes(statuses: Record<string, () => TakeStatus>): TakeLibrary {
+    return {
+      status: (id) => statuses[id]?.() ?? { kind: "missing" },
+      load: () => Promise.resolve(),
+      setOffsetMs: () => {},
+      forget: () => {},
+    };
+  }
+  /** 4 s of silence with a click at each of `at` (seconds). */
+  const clicks =
+    (at: number[], fill = 0) =>
+    () => {
+      const data = new Float32Array(4 * SAMPLE_RATE).fill(fill);
+      for (const t of at)
+        data.fill(0.8, Math.round(t * SAMPLE_RATE), Math.round(t * SAMPLE_RATE) + 64);
+      return { kind: "ready" as const, buffer: Tone.ToneAudioBuffer.fromArray(data).get()! };
+    };
+
+  it("starts each take on its section's bar 1, every time the section plays", async () => {
+    const { audio } = await run(8.5, source(loopSong()), {
+      takes: stubTakes({ t1: clicks([0, 2]) }),
+    });
+    // Section passes start at 0.05, 4.05 and 8.05; the take clicks at its 0 s and 2 s.
+    const found = onsets(audio);
+    expect(found.map((t) => +t.toFixed(3))).toEqual([0.05, 2.05, 4.05, 6.05, 8.05]);
+  });
+
+  it("resumes mid-take from where the bar is", async () => {
+    const { audio } = await run(2.5, source(loopSong()), {
+      from: { arrIdx: 0, lap: 0, bar: 1 },
+      takes: stubTakes({ t1: clicks([0, 2]) }),
+    });
+    // The take's 2 s click at once, then the next pass from its start (2.05).
+    expect(onsets(audio).map((t) => +t.toFixed(3))).toEqual([0.05, 2.05]);
+  });
+
+  it("a take muted mid-pass stops at the next bar", async () => {
+    let current = loopSong();
+    const { audio } = await run(3.5, () => ({ song: current, practice: DEFAULT_PRACTICE }), {
+      takes: stubTakes({ t1: clicks([], 0.3) }), // a steady level for the whole take
+      script: (_e, at) => at(1.0, () => (current = loopSong({ muted: true }))),
+    });
+    const level = (t: number) => Math.abs(audio[Math.round(t * SAMPLE_RATE)]!);
+    expect(level(1.5)).toBeGreaterThan(0.1); // still bar 1
+    expect(level(2.5)).toBeLessThan(1e-4); // bar 2 (from 2.05): stopped
+  });
+
+  it("reports a take with no audio once, and keeps playing", async () => {
+    const { events, bars } = await run(8.5, source(loopSong()), { takes: stubTakes({}) });
+    const problems = events.filter((x) => x.e.type === "loopProblem").map((x) => x.e);
+    expect(problems).toEqual([{ type: "loopProblem", takeId: "t1", problem: { kind: "missing" } }]);
+    expect(bars.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("plays no loops while a cycle is on", async () => {
+    const { audio } = await run(
+      4.5,
+      source(loopSong(), { ...DEFAULT_PRACTICE, cycle: { kind: "fourths" } }),
+      {
+        takes: stubTakes({ t1: clicks([0, 2]) }),
+      },
+    );
+    expect(onsets(audio)).toEqual([]);
+  });
+
+  it("▶ waits for the song's takes", async () => {
+    useIdleOfflineContext(3);
+    const loads: string[] = [];
+    let status: TakeStatus = { kind: "unloaded" };
+    const takes: TakeLibrary = {
+      status: () => status,
+      load: async (id) => {
+        loads.push(id);
+        status = { kind: "missing" };
+      },
+      setOffsetMs: () => {},
+      forget: () => {},
+    };
+    const events: EngineEvent[] = [];
+    const engine = makeEngine({ takes, patches: recorder([]), atAudibleTime: (fn) => fn() });
+    engine.subscribe((e) => void events.push(e));
+    engine.setSource(source(loopSong()));
+    const played = engine.play();
+    expect(events[0]).toEqual({ type: "loadingSounds", sets: [], takes: ["t1"] });
+    await played;
+    expect(loads[0]).toBe("t1");
+    expect(engine.getTransport().status).toBe("playing");
     engine.dispose();
   });
 });

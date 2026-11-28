@@ -14,6 +14,7 @@ import {
   type NoteEvent,
   type Section,
   type SectionId,
+  type LoopTake,
   type SectionSeed,
   type Song,
 } from "../model/schema";
@@ -110,6 +111,7 @@ export function generateSong(bt: R<BackingTrack>, styles: Styles): Song {
       };
       const section = buildSection(s.id, s.name, seed, styles);
       if (s.tempo !== undefined) section.overrides.tempo = s.tempo;
+      if (s.loops) section.loops = structuredClone(s.loops) as LoopTake[]; // recorded takes ride along
       return section;
     }) as Song["sections"],
     arrangement: [...bt.arrangement],

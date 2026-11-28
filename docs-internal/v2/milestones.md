@@ -6,8 +6,8 @@ Related: `decisions.md`, `data-model.md`, `v2/src/model/schema.ts`.
 
 ## Status
 
-- **Done (merged):** 1 Foundation (#55), 2 Pure core (#56), 3 Engine + bench (#57), 4 Engine complete (#59).
-- **In review:** 5 Sound (branch `v2-m5-sound`): patches as data, sampler support, three sampled built-ins; listen checks passed.
+- **Done (merged):** 1 Foundation (#55), 2 Pure core (#56), 3 Engine + bench (#57), 4 Engine complete (#59), 5 Sound (#60).
+- **In review:** 6 Looper, on branch `v2-m6-looper`: model, storage, playback, recording and the bench panel are built; PR open, manual checks pending. New e2e tests for the whole v2 app come with M8.
 - Update this section when a milestone merges.
 
 ## Ground rules (every milestone)
@@ -89,12 +89,13 @@ Related: `decisions.md`, `data-model.md`, `v2/src/model/schema.ts`.
 
 **Goal:** first-class looper on the v2 engine.
 
-- Starts with a spike: mic latency and compensation, count-in, recording aligned to section boundaries.
-- Takes per section, stacked takes (overdub), stored in IndexedDB and referenced by id.
-- Recording-only UI on the bench (arm, record, mute or delete take).
+- No spike: v1's looper (record a pass from the section's bar 1, adjustable offset) already works; the focus is the model, storage and error handling.
+- Takes per section in songs and backing tracks, stacked (overdub), with recording facts for warnings. Off while a cycle is on.
+- Loop store (IndexedDB, versioned, sweep), take library (decode once, offset re-trims), engine playback on the loops channel, looper state machine with typed errors.
+- Bench: looper panel (record, takes with gain/mute/delete, warnings and problems, offset, silence while recording); bench entries saved locally so takes survive reloads.
 
-**Tests:** take alignment against rendered output; IndexedDB storage and cleanup when a song is deleted.
-**You'll check:** record, overdub and play back on phone and laptop; latency feel.
+**Tests:** pure take edits, alignment, warnings; loop store on `fake-indexeddb` (round trip, missing, sweep, item delete, unavailable, full disk); take library states; engine passes rendered offline (bar 1, mid-take resume, mute at next bar, missing reported once, off while cycling, ▶ waits); looper flow and every error.
+**You'll check:** record, overdub and play back on phone and laptop; offset by ear; reload keeps takes; delete; mic denied.
 
 ## 7. Agent skill
 
