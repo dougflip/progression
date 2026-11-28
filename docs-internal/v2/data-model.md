@@ -30,6 +30,10 @@ Schema: `v2/src/model/schema.ts` (Zod 4; persisted types are inferred from it). 
 
 Mixer levels and mutes bypass the loop: `setLevels` / `setMutes` change channel gains instantly.
 
+**Recording a take.** `makeLooper` (engine/looper.ts): arm → the engine loops the section → at its bar 1 (`bar` event, with its context `start`) one pass is recorded (`takeShape`) → the audio is saved (`LoopStore.put`, a `LoopAudio` with `bar1Ms` and `takeMs`) → a `recorded` event carries the `LoopTake`, which the app adds with `addTake`. Failures are `RecordError`s; nothing is added.
+
+**Playing takes.** `scheduleBar` lists the takes sounding in each bar (`barInTake`; none while a cycle is on). The engine reads each from a `TakeLibrary` (`unloaded | loading | ready | missing | failed`): the store's audio, decoded once and aligned with the device's offset (`alignTake`). A pass starts at the take's bar 1 (or mid-take on a fresh start) and stops at the next bar if the take stops being scheduled.
+
 **Samples.** ▶ first loads the song's sample sets (`songSampleSets`), waiting up to 1.5 s (`loadingSounds` event; pause or stop cancels). Sets load once per session into a `SampleLibrary` (status: `unloaded | loading | ready | failed`), fetched through the Cache API. Each bar also starts loading any set an edit added.
 
 **Opening in composer.** `generateSong(recipe, styles)` → new saved `LibraryItem` (`origin: "created"`). Nothing links back.
@@ -68,7 +72,7 @@ Field-level ranges are in `schema.ts`. Objects are strict (unknown keys are reje
 - **Chords**: sorted by `start`; no overlaps; `start + duration ≤` section length (`bars ×` bar length of the section's effective meter).
 - **Drums**: per instrument, sorted, unique, every tick `<` section length.
 - **Parts**: sorted by `start`, one note per start (parts are monophonic: a note is cut where the next starts); every note `start <` section length (a note may ring past the end).
-- **Loops**: `take.bars ≤ section.bars`.
+- **Loops**: take ids unique per section; `take.bars ≤ section.bars` (a backing section's bars come from its progression).
 - **Instruments**: a built-in patch is only used for its own role (`pad-v1` chords, `bass-v1` bass, `kit-v1` drums); every `PatchRef` with `kind: "custom"` resolves to a key in `song.patches` whose `role` matches. Custom patches can't play drums.
 - **Patches**: parameter ranges in `schema.ts` (times 0–10 s, volume −40…+6 dB, filter 20–20000 Hz, ≤ 4 effects); a sampler's `set` must be a known sample set.
 - **Progressions** (`BackingSection`, `SectionSeed`): every token parses (`[b#]NUMERAL[suffix][/[b#]NUMERAL][:bars]`, grammar in `core/numerals.ts`), `:bars` is 1–16, and the generated section is ≤ 64 bars.
@@ -127,5 +131,4 @@ Field-level ranges are in `schema.ts`. Objects are strict (unknown keys are reje
 
 - **More sounds:** a real Rhodes (samples with a clear licence, or an FM oscillator kind for a synth one), upright bass, organ.
 - **Custom drum kits** (a `PatchRole` of `drums`), and more effect and oscillator kinds: additive widenings.
-- **Milestone 6:** loop recording details beyond `LoopTake` / `LoopAudio` (latency compensation, count-in).
 - **Open question:** custom styles (v1's user-authored patterns). `StyleRef` only has `kind: "builtin"` today; a `kind: "custom"` member would be an additive widening.

@@ -16,8 +16,39 @@ import { makeEngine, type EngineStats, type ScheduledBarInfo } from "../engine/e
 import { loadDrumSamples } from "../engine/patches";
 import { decodeEnvelope, encodeEnvelope, validateEnvelope } from "../model/envelope";
 import { SOUND_CREDITS } from "../model/sampleSets";
+import {
+  addTake,
+  docTakeIds,
+  recordAvailability,
+  removeTake,
+  sectionTakes,
+  takeWarnings,
+  updateTake,
+  withoutTakes,
+} from "../core/looper";
+import { makeBrowserLooper } from "../engine/looper";
+import { openLoopStore, requestPersistence } from "../storage/loopStore";
+import {
+  loadLooperPrefs,
+  loadSavedEntries,
+  saveEntries,
+  saveLooperPrefs,
+  savedTakeIds,
+  type LooperPrefs,
+} from "./benchStore";
+import { LooperPanel } from "./player/Looper";
+import { useLooper } from "./useLooper";
 import type { EngineSource, PlayScope } from "../model/runtime";
-import { DEFAULT_LEVELS, type Mix, type Practice, type ShareEnvelope } from "../model/schema";
+import {
+  DEFAULT_LEVELS,
+  type Doc,
+  type ItemId,
+  type Mix,
+  type Practice,
+  type SectionId,
+  type ShareEnvelope,
+  type TakeId,
+} from "../model/schema";
 import { cuedChips, positionText, shownPosition } from "./player/derive";
 import { PlayerHeader, Scrubbers, TransportButtons } from "./player/Player";
 import { MixSheet, PracticeRow } from "./player/Practice";
@@ -59,6 +90,31 @@ const engine = makeEngine({
   },
 });
 engine.setSource(() => toSource(playingEntry.env));
+
+// Saved entries (recorded takes, edits) replace their fixture or join the list. The
+// loop store then keeps only the audio they reference.
+const SAVED = loadSavedEntries();
+const FIXTURE_ENVS = new Set<ShareEnvelope>(FIXTURES.map((f) => f.env));
+const STARTING_ENTRIES: Entry[] = [
+  ...SAVED.filter((e) => !FIXTURES.some((f) => f.name === e.name)),
+  ...FIXTURES.map((f) => SAVED.find((e) => e.name === f.name) ?? f),
+];
+playingEntry = STARTING_ENTRIES.find((e) => e.name === FIXTURES[0]!.name) ?? STARTING_ENTRIES[0]!;
+const loopStore = openLoopStore();
+void loopStore.sweep(savedTakeIds(SAVED)).then((r) => {
+  if (r.ok && r.value.length) console.info(`looper: removed ${r.value.length} unreferenced takes`);
+  if (!r.ok) console.warn("looper: couldn't sweep the loop store", r.error);
+});
+void requestPersistence();
+let looperPrefs: LooperPrefs = loadLooperPrefs();
+engine.setLoopOffsetMs(looperPrefs.offsetMs);
+const looper = makeBrowserLooper({
+  engine,
+  source: () => toSource(playingEntry.env),
+  store: loopStore,
+  itemId: "bench" as ItemId,
+  silenceWhileRecording: () => looperPrefs.silenceWhileRecording,
+});
 engine.setMutes((playingEntry.env.practice ?? DEFAULT_PRACTICE).mutes);
 loadDrumSamples(`${import.meta.env.BASE_URL}samples/`);
 const subscribePerf = (cb: () => void) => {
@@ -68,7 +124,7 @@ const subscribePerf = (cb: () => void) => {
 let sharedLinkRead = false;
 
 export function Bench() {
-  const [entries, setEntries] = useState<Entry[]>(FIXTURES);
+  const [entries, setEntries] = useState<Entry[]>(STARTING_ENTRIES);
   const [current, setCurrent] = useState<Entry>(playingEntry);
   const [swapTarget, setSwapTarget] = useState<string>(FIXTURES[1]?.name ?? FIXTURES[0]!.name);
   const perf = useSyncExternalStore(subscribePerf, () => perfLog);
@@ -76,6 +132,29 @@ export function Bench() {
   const [mixOpen, setMixOpen] = useState(false);
   const playback = usePlayback(engine);
   const { transport } = playback;
+  const looperView = useLooper(looper);
+  const [prefs, setPrefs] = useState<LooperPrefs>(looperPrefs);
+
+  // Entries that differ from their fixture are saved (so takes survive a reload).
+  useEffect(() => {
+    saveEntries(
+      entries.filter((e) => !FIXTURE_ENVS.has(e.env)).map(({ name, env }) => ({ name, env })),
+    );
+  }, [entries]);
+
+  // A saved take joins the section it was recorded on (the audio is already stored).
+  useEffect(
+    () =>
+      looper.subscribe((e) => {
+        if (e.type !== "recorded") return;
+        const entry = playingEntry;
+        replaceEntry({
+          ...entry,
+          env: { ...entry.env, doc: addTake(entry.env.doc, e.sectionId, e.take) },
+        });
+      }),
+    [],
+  ); // oxlint-disable-line react/exhaustive-deps -- once
 
   // A shared link (?s=…) is added to the picker and opened.
   useEffect(() => {
@@ -98,15 +177,29 @@ export function Bench() {
     engine.setMutes((entry.env.practice ?? DEFAULT_PRACTICE).mutes);
   }
 
-  /** Edits the current entry's practice in place (same name, next revision). */
+  /** Replaces an entry in place (same name, next revision) and plays it. */
+  function replaceEntry(entry: Entry) {
+    const next = { ...entry, rev: (entry.rev ?? 0) + 1 };
+    setEntries((list) => list.map((x) => (x.name === next.name ? next : x)));
+    load(next);
+  }
   function updatePractice(practice: Practice) {
-    const entry: Entry = {
-      ...current,
-      env: { ...current.env, practice },
-      rev: (current.rev ?? 0) + 1,
-    };
-    setEntries((list) => list.map((x) => (x.name === entry.name ? entry : x)));
-    load(entry);
+    replaceEntry({ ...current, env: { ...current.env, practice } });
+  }
+  function updateDoc(doc: Doc) {
+    replaceEntry({ ...current, env: { ...current.env, doc } });
+  }
+  function updatePrefs(next: LooperPrefs) {
+    looperPrefs = next;
+    setPrefs(next);
+    saveLooperPrefs(next);
+    engine.setLoopOffsetMs(next.offsetMs);
+  }
+  /** Removes the take from the doc first, then its audio (a failed delete is swept later). */
+  function deleteTake(sectionId: SectionId, id: TakeId) {
+    updateDoc(removeTake(current.env.doc, sectionId, id));
+    void loopStore.delete(id);
+    engine.forgetTake(id);
   }
   const practice = current.env.practice ?? DEFAULT_PRACTICE;
 
@@ -186,6 +279,28 @@ export function Bench() {
 
         <PracticeRow key={current.name} practice={practice} onChange={updatePractice} />
 
+        <LooperPanel
+          sectionName={view.section.name}
+          state={looperView.state}
+          availability={recordAvailability(toSource(current.env))}
+          error={looperView.error}
+          takes={sectionTakes(current.env.doc, view.section.id).map((take) => ({
+            take,
+            warnings: takeWarnings(take, toSource(current.env), view.section.id),
+            problem: playback.loopProblems.get(take.id),
+          }))}
+          offsetMs={prefs.offsetMs}
+          silenceWhileRecording={prefs.silenceWhileRecording}
+          onRecord={() => void looper.record(view.section.id)}
+          onCancel={() => looper.cancel()}
+          onTake={(id, change) =>
+            updateDoc(updateTake(current.env.doc, view.section.id, id, change))
+          }
+          onDelete={(id) => deleteTake(view.section.id, id)}
+          onOffset={(offsetMs) => updatePrefs({ ...prefs, offsetMs })}
+          onSilence={(silenceWhileRecording) => updatePrefs({ ...prefs, silenceWhileRecording })}
+        />
+
         <PerfReadout perf={perf} stats={engine.stats()} />
         <JsonPanel
           key={`${current.name}:${current.rev ?? 0}`}
@@ -230,7 +345,7 @@ export function Bench() {
         <MixSheet
           levels={levels}
           mutes={practice.mutes}
-          showLoops={current.env.doc.kind === "song"}
+          showLoops={docTakeIds(current.env.doc).length > 0}
           onLevels={(next) => {
             setLevels(next);
             engine.setLevels(next);
@@ -286,7 +401,8 @@ function JsonPanel({ entry, onApply }: { entry: Entry; onApply: (env: ShareEnvel
   const [errors, setErrors] = useState<string[]>([]);
   const [link, setLink] = useState<string>();
   useEffect(() => {
-    void encodeEnvelope(entry.env).then((s) => setLink(`?s=${s}`));
+    // Takes stay on this device: links never name them.
+    void encodeEnvelope(withoutTakes(entry.env)).then((s) => setLink(`?s=${s}`));
   }, [entry]);
 
   const apply = () => {

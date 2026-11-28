@@ -27,13 +27,20 @@ import type {
 } from "./schema";
 import type { DeepReadonly, NonEmpty } from "./types";
 
-/** IndexedDB record for a take's audio (object store "loopAudio", key = take id). */
+/**
+ * IndexedDB record for a take's audio (database "progression-v2", store
+ * "loopAudio", key = take id). The recording is kept untrimmed, so changing the
+ * device's loop offset re-trims every take without re-recording.
+ */
 export interface LoopAudio {
   id: TakeId;
   itemId: ItemId; // owner; deleting the item deletes its audio
   blob: Blob;
   mimeType: string;
-  durationMs: number;
+  /** Where the section's bar 1 fell in the recording by the clock (ms from its start). */
+  bar1Ms: number;
+  /** How long the take plays (ms): its bars at the tempo it was recorded at. */
+  takeMs: number;
 }
 
 /** Playback position is always a bar. */
@@ -107,7 +114,8 @@ export interface ScheduledBar {
   chords: ScheduledChord[];
   parts: { bass: ScheduledNote[] }; // mirrors Section.parts
   drums: ScheduledHit[];
-  loops: { takeId: TakeId; gain: number; startsThisBar: boolean }[];
+  /** Takes sounding in this bar; `barInTake` 0 = the take starts here. */
+  loops: { takeId: TakeId; gain: number; bars: number; barInTake: number }[];
   /** Upper voicing of the last chord; pass as `prevVoicing` for the next bar. */
   voicing?: number[];
 }
@@ -116,13 +124,17 @@ export interface ScheduledBar {
 export type EngineEvent =
   | { type: "transport"; transport: Transport }
   /** `source` is what the bar was scheduled from, so the UI shows what is actually playing. */
-  | { type: "bar"; bar: ScheduledBar; source: EngineSource }
+  | { type: "bar"; bar: ScheduledBar; source: EngineSource; start: number } // context time
   | { type: "beat"; position: Position; beat: number } // 0-based within the bar
   | { type: "chord"; position: Position; chordIndex: number }
   /** Playback hit an error (e.g. the source threw) and paused on the audible bar. */
   | { type: "error"; message: string }
-  /** ▶ is waiting (briefly) for these sample sets; a `transport` event follows when it plays. */
-  | { type: "loadingSounds"; sets: readonly string[] };
+  /** ▶ is waiting (briefly) for these sample sets and takes; a `transport` event follows. */
+  | { type: "loadingSounds"; sets: readonly string[]; takes: readonly string[] }
+  /** A take can't play: no audio on this device, or it failed to load. Once per play session. */
+  | { type: "loopProblem"; takeId: TakeId; problem: LoopProblem };
+
+export type LoopProblem = { kind: "missing" } | { kind: "failed"; error: string };
 
 /** What the engine plays: the open item's song (or the one generated from it) + its practice. */
 export interface EngineSource {

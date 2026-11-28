@@ -540,6 +540,51 @@ function checkArrangement(arrangement: readonly string[], ids: readonly string[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Loops: recorded takes (audio lives on the device, in IndexedDB)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * A recorded loop on a section. The audio is a `LoopAudio` record in IndexedDB,
+ * keyed by `id`; the doc only references it, so takes never travel in links.
+ * Every unmuted take on a section plays together (overdub = add a take), from the
+ * section's bar 1, each time the section plays. Loops are off while a cycle is on.
+ */
+export const LoopTake = z.strictObject({
+  id: TakeId,
+  name: label(40),
+  bars: z.int().min(1), // ≤ section bars; starts at bar 1. Later (additive): offset?: Tick
+  gain: z.number().min(0).max(1),
+  muted: z.boolean().optional(), // omitted = false
+  /** What the section was when this was recorded: later changes are flagged, not fixed. */
+  recorded: z.strictObject({ key: KeyName, tempo: Bpm, meter: Meter }),
+});
+export type LoopTake = z.infer<typeof LoopTake>;
+
+/** Take ids unique per section; each take fits its section. */
+function checkTakes(
+  takes: readonly LoopTake[],
+  sectionBars: number,
+  path: Path,
+  ctx: z.RefinementCtx,
+) {
+  checkUniqueIds(
+    takes.map((t) => t.id),
+    [...path, "loops"],
+    ctx,
+    "take",
+  );
+  takes.forEach((t, i) => {
+    if (t.bars > sectionBars) {
+      ctx.addIssue({
+        code: "custom",
+        path: [...path, "loops", i, "bars"],
+        message: `take is ${t.bars} bars; the section has ${sectionBars}`,
+      });
+    }
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Doc 1: BackingTrack (the recipe)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -554,8 +599,16 @@ export const BackingSection = z
     drums: Variant.optional(),
     bass: Variant.optional(),
     tempo: Bpm.optional(),
+    /** Recorded takes; carried into the generated song's section. Omitted = none. */
+    loops: z.array(LoopTake).optional(),
   })
-  .superRefine(checkProgressionBars);
+  .superRefine((section, ctx) => {
+    checkProgressionBars(section, ctx);
+    const parsed = parseProgression(section.progression);
+    if (parsed.ok && section.loops) {
+      checkTakes(section.loops, progressionBars(parsed.chords, section.barsPerChord), [], ctx);
+    }
+  });
 export type BackingSection = z.infer<typeof BackingSection>;
 
 export const BackingTrack = z
@@ -601,16 +654,6 @@ export const SectionOverrides = z.strictObject({
   instruments: z.partialRecord(Role, PatchRef).optional(),
 });
 export type SectionOverrides = z.infer<typeof SectionOverrides>;
-
-/** A recorded loop. Audio lives in IndexedDB (`LoopAudio`); the song only references it. */
-export const LoopTake = z.strictObject({
-  id: TakeId,
-  name: label(40),
-  bars: z.int().min(1), // ≤ section bars; starts at bar 1. Later (additive): offset?: Tick
-  gain: z.number().min(0).max(1),
-  muted: z.boolean().optional(), // omitted = false
-});
-export type LoopTake = z.infer<typeof LoopTake>;
 
 export const Section = z.strictObject({
   id: SectionId,
@@ -673,17 +716,7 @@ function checkSection(section: Section, length: number, path: Path, ctx: Ctx) {
     }
   });
 
-  checkUniqueIds(
-    section.loops.map((t) => t.id),
-    [...path, "loops"],
-    ctx,
-    "take",
-  );
-  section.loops.forEach((t, i) => {
-    if (t.bars > section.bars) {
-      issue(["loops", i, "bars"], `take is ${t.bars} bars; the section has ${section.bars}`);
-    }
-  });
+  checkTakes(section.loops, section.bars, path, ctx);
 }
 
 export const Song = z

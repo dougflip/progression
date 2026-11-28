@@ -154,10 +154,14 @@ export function scheduleBar(
   const kitOrder = (d: string) => DrumInstrument.options.indexOf(d as DrumInstrument);
   drums.sort((a, b) => a.time - b.time || kitOrder(a.drum) - kitOrder(b.drum));
 
-  // Loops: unmuted takes still running in this bar.
-  const loops = section.loops
-    .filter((t) => !t.muted && at.bar < t.bars)
-    .map((t) => ({ takeId: t.id, gain: t.gain, startsThisBar: at.bar === 0 }));
+  // Loops: unmuted takes still running in this bar. Off while a cycle is on: a take
+  // is recorded in one key and would clash with the others.
+  const loops =
+    source.practice.cycle.kind === "none"
+      ? section.loops
+          .filter((t) => !t.muted && at.bar < t.bars)
+          .map((t) => ({ takeId: t.id, gain: t.gain, bars: t.bars, barInTake: at.bar }))
+      : [];
 
   const bar: ScheduledBar = {
     position: { ...at },

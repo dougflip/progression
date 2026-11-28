@@ -10,8 +10,13 @@
  *   session out and dispose it, so notes already handed to Web Audio can't leak.
  *   An instrument the song no longer uses (a replaced or edited patch) is disposed
  *   once its last note and tail have finished.
- * - Sample sets: ▶ waits up to `sampleWait` for the song's sets, then plays;
- *   samplers play their fallback synth until their set is ready.
+ * - Sample sets and recorded takes: ▶ waits up to `sampleWait` for the song's,
+ *   then plays; samplers play their fallback synth until their set is ready, and a
+ *   take that isn't ready stays silent. A take with no audio (missing) or that
+ *   failed to load is reported once per play session (`loopProblem`).
+ * - Loops: each pass of a take is one buffer source on the loops channel, started
+ *   at its bar 1 (or mid-take after a jump). A take that stops being scheduled
+ *   (muted, removed, jumped away) stops at the next bar; gain lands there too.
  *   Channels (levels, mutes) are long-lived and change instantly.
  * - Late bars: if a bar is computed after its start has passed (the main thread
  *   stalled for longer than `lookahead`), it starts just after now instead of in the
@@ -54,15 +59,12 @@ import {
   type Role,
   type Song,
 } from "../model/schema";
-import type { DeepReadonly } from "../model/types";
+import { assertNever, type DeepReadonly } from "../model/types";
 import { makePatchFactory, type PatchFactory, type RoleInstruments } from "./patches";
-import {
-  loadSets,
-  makeSampleLibrary,
-  pendingSets,
-  webAudioLoader,
-  type SampleLibrary,
-} from "./samples";
+import { playableTakeIds } from "../core/looper";
+import { openLoopStore } from "../storage/loopStore";
+import { makeSampleLibrary, pendingSets, webAudioLoader, type SampleLibrary } from "./samples";
+import { makeTakeLibrary, pendingTakes, type TakeLibrary } from "./takes";
 
 export interface EngineOptions {
   /** Where sample set folders are served from (ends in `/`), for the default library. */
@@ -71,7 +73,9 @@ export interface EngineOptions {
   samples?: SampleLibrary;
   /** Builds instruments from specs. Default: `makePatchFactory` (patches + the kit). */
   patches?: PatchFactory;
-  /** Longest ▶ waits for the song's sample sets (ms). Default 1500. */
+  /** Recorded takes' audio. Default: the device's loop store, decoded on this context. */
+  takes?: TakeLibrary;
+  /** Longest ▶ waits for the song's sample sets and takes (ms). Default 1500. */
   sampleWait?: number;
   /** Seconds before a bar starts that it is computed and scheduled. */
   lookahead?: number;
@@ -114,13 +118,23 @@ export interface EngineStats {
 
 export interface ToneEngine extends Engine {
   getTransport(): Transport;
+  /** Silences every channel (instantly) while recording without headphones. */
+  setSilenced(on: boolean): void;
+  /** Device input latency for recorded takes (AppPrefs.loopOffsetMs). */
+  setLoopOffsetMs(ms: number): void;
+  /** A take's audio was deleted: drop it from memory. */
+  forgetTake(id: string): void;
   stats(): EngineStats;
   dispose(): void;
 }
 
 type Playing = Extract<Transport, { status: "playing" }>;
 type Session = {
-  gains: Record<Role, Tone.Gain>;
+  gains: Record<Role | "loops", Tone.Gain>;
+  /** Per take: its gain, and the pass playing now (stopped early if it's no longer scheduled). */
+  takes: Map<string, { gain: Tone.Gain; pass?: { source: AudioBufferSourceNode; end: number } }>;
+  /** Takes already reported as missing or failed this session. */
+  reported: Set<string>;
   /** By `instrumentKey`: the instrument, its tail and when its last note ends. */
   instruments: Map<string, { instrument: RoleInstruments[Role]; tail: number; lastEnd: number }>;
 };
@@ -154,6 +168,16 @@ export function makeEngine(options: EngineOptions = {}): ToneEngine {
     });
   const patches = options.patches ?? makePatchFactory({ samples, random: Math.random });
   const sampleWait = options.sampleWait ?? 1500;
+  const raw = context.rawContext as BaseAudioContext;
+  const takes =
+    options.takes ??
+    makeTakeLibrary({
+      store: openLoopStore(),
+      decode: async (blob) => raw.decodeAudioData(await blob.arrayBuffer()),
+      createBuffer: (channels, length, rate) => raw.createBuffer(channels, length, rate),
+    });
+  /** Silences every channel but master while recording without headphones. */
+  let silenced = false;
   let startup: Startup = { kind: "idle" };
 
   let getSource: (() => EngineSource) | undefined;
@@ -210,16 +234,23 @@ export function makeEngine(options: EngineOptions = {}): ToneEngine {
       Tone.Channel,
     ][]) {
       channel.volume.value = toDb(levels[name]);
-      channel.mute = name !== "master" && mutes[name];
+      channel.mute = name !== "master" && (mutes[name] || silenced);
     }
   }
 
   function openSession(): Session {
     const ch = mixer();
-    const gain = (role: Role) => new Tone.Gain(1).connect(ch[role]);
+    const gain = (to: Role | "loops") => new Tone.Gain(1).connect(ch[to]);
     return {
-      gains: { chords: gain("chords"), bass: gain("bass"), drums: gain("drums") },
+      gains: {
+        chords: gain("chords"),
+        bass: gain("bass"),
+        drums: gain("drums"),
+        loops: gain("loops"),
+      },
       instruments: new Map(),
+      takes: new Map(),
+      reported: new Set(),
     };
   }
 
@@ -229,6 +260,10 @@ export function makeEngine(options: EngineOptions = {}): ToneEngine {
     for (const g of Object.values(s.gains)) g.gain.rampTo(0, FADE, now);
     ctx().setTimeout(() => {
       for (const i of s.instruments.values()) i.instrument.dispose();
+      for (const t of s.takes.values()) {
+        t.pass?.source.stop();
+        t.gain.dispose();
+      }
       for (const g of Object.values(s.gains)) g.dispose();
     }, FADE * 5);
   }
@@ -254,6 +289,66 @@ export function makeEngine(options: EngineOptions = {}): ToneEngine {
     }
     entry.lastEnd = Math.max(entry.lastEnd, end);
     return entry.instrument as RoleInstruments[R];
+  }
+
+  /**
+   * Starts each take's pass at its bar 1 (or mid-take on a fresh start), and stops
+   * a pass at this bar if its take isn't scheduled any more.
+   */
+  function playLoops(bar: ScheduledBar, start: number, fresh: boolean) {
+    const s = session!;
+    const scheduled = new Set(bar.loops.map((l) => l.takeId as string));
+    for (const [id, t] of s.takes) {
+      if (t.pass && t.pass.end > start && !scheduled.has(id)) {
+        t.pass.source.stop(start);
+        t.pass = undefined;
+      }
+    }
+    for (const l of bar.loops) {
+      const status = takes.status(l.takeId);
+      switch (status.kind) {
+        case "ready": {
+          let t = s.takes.get(l.takeId);
+          if (!t) {
+            t = { gain: new Tone.Gain(l.gain).connect(s.gains.loops) };
+            s.takes.set(l.takeId, t);
+          }
+          t.gain.gain.setValueAtTime(l.gain, start);
+          if (l.barInTake !== 0 && !fresh && t.pass && t.pass.end > start) break; // still playing
+          t.pass?.source.stop(start);
+          const buffer = status.buffer;
+          const offset = (l.barInTake / l.bars) * buffer.duration;
+          if (offset >= buffer.duration) break;
+          // A plain Web Audio node: its own `ended` fires after it has really played
+          // (Tone's is timer-driven), and ended nodes are freed by the browser.
+          const source = raw.createBufferSource();
+          source.buffer = buffer;
+          Tone.connect(source, t.gain);
+          source.onended = () => source.disconnect();
+          source.start(start, offset);
+          t.pass = { source, end: start + (buffer.duration - offset) };
+          break;
+        }
+        case "unloaded":
+          void takes.load(l.takeId);
+          break;
+        case "loading":
+          break;
+        case "missing":
+        case "failed":
+          if (!s.reported.has(l.takeId)) {
+            s.reported.add(l.takeId);
+            const problem =
+              status.kind === "missing"
+                ? ({ kind: "missing" } as const)
+                : ({ kind: "failed", error: status.error } as const);
+            atAudibleTime(() => emit({ type: "loopProblem", takeId: l.takeId, problem }), start);
+          }
+          break;
+        default:
+          assertNever(status);
+      }
+    }
   }
 
   /** Disposes instruments the song no longer uses once they're silent. */
@@ -295,12 +390,14 @@ export function makeEngine(options: EngineOptions = {}): ToneEngine {
     for (const h of bar.drums) {
       instrument(song, "drums", h.instrument, time(h.time)).hit(h.drum, time(h.time));
     }
+    playLoops(bar, start, fresh);
     sweep(song);
     for (const id of songSampleSets(song)) void samples.load(id); // edits may add sets
+    for (const id of playableTakeIds(src)) void takes.load(id); // and takes
 
     const end = time(bar.length);
     const beatTicks = (PPQ * 4) / bar.meter.beatUnit;
-    atAudibleTime(() => emit({ type: "bar", bar, source: src }), start);
+    atAudibleTime(() => emit({ type: "bar", bar, source: src, start }), start);
     for (let beat = 0; beat < bar.meter.beatsPerBar; beat++) {
       atAudibleTime(
         () => emit({ type: "beat", position: bar.position, beat }),
@@ -413,20 +510,29 @@ export function makeEngine(options: EngineOptions = {}): ToneEngine {
       // Resume inside the user gesture; schedule right away (a suspended context's
       // clock doesn't move until it resumes).
       const resumed = ctx().resume();
-      let pending: string[];
+      let pending: { sets: string[]; takes: string[] };
       try {
-        pending = pendingSets(samples, songSampleSets(source().song));
+        const src = source();
+        pending = {
+          sets: pendingSets(samples, songSampleSets(src.song)),
+          takes: pendingTakes(takes, playableTakeIds(src)),
+        };
       } catch (error) {
         return failStart(error, transport);
       }
-      if (pending.length === 0) {
+      if (pending.sets.length === 0 && pending.takes.length === 0) {
         startup = { kind: "idle" };
         return start(from, resumed);
       }
       const token = {};
       startup = { kind: "waitingForSounds", token };
-      emit({ type: "loadingSounds", sets: pending });
-      return loadSets(samples, pending, sampleWait).then(() => {
+      emit({ type: "loadingSounds", ...pending });
+      const loading = Promise.all([
+        ...pending.sets.map((id) => samples.load(id)),
+        ...pending.takes.map((id) => takes.load(id)),
+      ]);
+      const timeout = new Promise<void>((resolve) => setTimeout(resolve, sampleWait));
+      return Promise.race([loading, timeout]).then(() => {
         // Paused, stopped or pressed ▶ again while waiting: that call wins.
         if (startup.kind !== "waitingForSounds" || startup.token !== token) return;
         startup = { kind: "idle" };
@@ -513,6 +619,19 @@ export function makeEngine(options: EngineOptions = {}): ToneEngine {
     setMutes(next) {
       mutes = { ...next };
       applyMix();
+    },
+
+    setSilenced(on) {
+      silenced = on;
+      applyMix();
+    },
+
+    setLoopOffsetMs(ms) {
+      takes.setOffsetMs(ms); // the next pass of each take uses it
+    },
+
+    forgetTake(id) {
+      takes.forget(id);
     },
 
     subscribe(listener) {

@@ -160,7 +160,14 @@ describe("invalid docs are rejected with readable errors", () => {
     [
       "take longer than section",
       SONG,
-      (e) => e.doc.sections[1].loops.push({ id: "t1", name: "Take 1", bars: 3, gain: 1 }),
+      (e) =>
+        e.doc.sections[1].loops.push({
+          id: "t1",
+          name: "Take 1",
+          bars: 3,
+          gain: 1,
+          recorded: { key: "C", tempo: 120, meter: { beatsPerBar: 4, beatUnit: 4 } },
+        }),
       "doc.sections[1].loops[0].bars: take is 3 bars; the section has 2",
     ],
     [

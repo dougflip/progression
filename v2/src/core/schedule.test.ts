@@ -218,19 +218,54 @@ describe("drums, meter, settings, loops", () => {
     const s = src(
       song((x) => {
         x.sections[0].loops = [
-          { id: "a" as never, name: "A", bars: 2, gain: 0.5 },
-          { id: "b" as never, name: "B", bars: 1, gain: 1 },
-          { id: "c" as never, name: "C", bars: 2, gain: 1, muted: true },
+          {
+            id: "a" as never,
+            name: "A",
+            bars: 2,
+            gain: 0.5,
+            recorded: { key: "C", tempo: 120, meter: { beatsPerBar: 4, beatUnit: 4 } },
+          },
+          {
+            id: "b" as never,
+            name: "B",
+            bars: 1,
+            gain: 1,
+            recorded: { key: "C", tempo: 120, meter: { beatsPerBar: 4, beatUnit: 4 } },
+          },
+          {
+            id: "c" as never,
+            name: "C",
+            bars: 2,
+            gain: 1,
+            muted: true,
+            recorded: { key: "C", tempo: 120, meter: { beatsPerBar: 4, beatUnit: 4 } },
+          },
         ];
       }),
     );
     expect(scheduleBar(s, at(0, 0), ARR).loops).toEqual([
-      { takeId: "a", gain: 0.5, startsThisBar: true },
-      { takeId: "b", gain: 1, startsThisBar: true },
+      { takeId: "a", gain: 0.5, bars: 2, barInTake: 0 },
+      { takeId: "b", gain: 1, bars: 1, barInTake: 0 },
     ]);
     expect(scheduleBar(s, at(0, 1), ARR).loops).toEqual([
-      { takeId: "a", gain: 0.5, startsThisBar: false },
+      { takeId: "a", gain: 0.5, bars: 2, barInTake: 1 },
     ]);
+  });
+
+  it("plays no loops while a cycle is on (a take is in one key)", () => {
+    const withTake = song((x) => {
+      x.sections[0].loops = [
+        {
+          id: "a" as never,
+          name: "A",
+          bars: 2,
+          gain: 1,
+          recorded: { key: "C", tempo: 120, meter: { beatsPerBar: 4, beatUnit: 4 } },
+        },
+      ];
+    });
+    const cycling = { ...DEFAULT_PRACTICE, cycle: { kind: "fourths" as const } };
+    expect(scheduleBar({ song: withTake, practice: cycling }, at(0, 0), ARR).loops).toEqual([]);
   });
 
   it("plays the looped section in section scope", () => {
