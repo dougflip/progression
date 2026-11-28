@@ -27,14 +27,14 @@
     "@types/react": "^19.3.3",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.3.0",
-    "concurrently": "^10.0.6",
+    "concurrently": "^10.0.7",
     "fake-indexeddb": "^6.2.8",
     "node-web-audio-api": "^2.3.0",
-    "oxfmt": "^0.73.0",
-    "oxlint": "^1.88.0",
+    "oxfmt": "^0.79.0",
+    "oxlint": "^1.94.0",
     "typescript": "latest",
-    "vite": "^8.3.4",
+    "vite": "^8.3.8",
     "vite-plugin-pwa": "^2.0.0",
-    "vitest": "^5.0.5"
+    "vitest": "^5.1.1"
   }
 }
